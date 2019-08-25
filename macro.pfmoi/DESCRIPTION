@@ -1,0 +1,13 @@
+Package: macro.pfmoi
+Type: Package
+Title: MASH - MACRO : PfMOI / RM
+Version: 1.0
+Date: 2019-08-24
+Author: Sean L. Wu
+Maintainer: Sean L. Wu <slwu89@berkeley.edu>
+Description: Includes the PfMOI course of infection (CoI) within-host model and Ross-Macdonald (RM) mosquito model with diffusion.
+License: What license is it under?
+Imports: Rcpp
+Depends: RcppProgress
+LinkingTo: Rcpp, RcppArmadillo, RcppProgress
+RoxygenNote: 6.1.1
