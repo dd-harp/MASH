@@ -11,3 +11,7 @@ Imports: Rcpp
 Depends: RcppProgress
 LinkingTo: Rcpp, RcppArmadillo, RcppProgress
 RoxygenNote: 6.1.1
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
