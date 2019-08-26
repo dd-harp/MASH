@@ -109,5 +109,3 @@ vignettes/*.pdf
 *.exe
 *.out
 *.app
-inst/doc
-Meta
