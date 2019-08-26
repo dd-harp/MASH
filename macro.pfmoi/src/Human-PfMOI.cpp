@@ -133,7 +133,7 @@ void human::accumulate_bweight(){
 void human::simulate(){
 
   /* fire all events that occur on this time step */
-  while(eventQ.size() > 0 && eventQ.front()->tEvent < tileP->get_tnow()){
+  while(!eventQ.empty() > 0 && eventQ.front()->tEvent < tileP->get_tnow()){
     fireEvent();
   }
 
