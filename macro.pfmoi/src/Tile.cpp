@@ -56,7 +56,7 @@ tile::tile(
 
   /* set up logging */
   if(verbose){std::cout << "begin initializing logging streams" << std::endl;}
-  for(size_t i=0; i<log_streams.size(); i++){
+  for(int i=0; i<log_streams.size(); i++){
     Rcpp::List log = Rcpp::as<Rcpp::List>(log_streams[i]);
     loggerPtr->open(
       Rcpp::as<std::string>(log["outfile"]),
@@ -68,7 +68,7 @@ tile::tile(
   /* construct patches */
   if(verbose){std::cout << "begin constructing patches" << std::endl;}
   patches.reserve(patch_pars.size());
-  for(size_t i=0; i<patch_pars.size(); i++){
+  for(int i=0; i<patch_pars.size(); i++){
     Rcpp::List p_par = Rcpp::as<Rcpp::List>(patch_pars[i]);
     patches.emplace_back(std::make_unique<patch>(p_par,this));
   }
@@ -76,7 +76,7 @@ tile::tile(
   /* construct human population */
   if(verbose){std::cout << "begin constructing human population" << std::endl;}
   humans.reserve(human_pars.size());
-  for(size_t i=0; i<human_pars.size(); i++){
+  for(int i=0; i<human_pars.size(); i++){
     Rcpp::List h_par = Rcpp::as<Rcpp::List>(human_pars[i]);
     humans.emplace_back(std::make_unique<human>(
       Rcpp::as<int>(h_par["id"]),
@@ -98,7 +98,7 @@ tile::tile(
   /* initialize vaccinations */
   if(verbose){std::cout << "begin initializing vaccinations" << std::endl;}
   if(vaxx_events.size() > 0){
-    for(size_t i=0; i<vaxx_events.size(); i++){
+    for(int i=0; i<vaxx_events.size(); i++){
 
       /* this vaccination 'packet' */
       Rcpp::List vaxx = Rcpp::as<Rcpp::List>(vaxx_events[i]);
