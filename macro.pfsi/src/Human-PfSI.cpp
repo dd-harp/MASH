@@ -264,7 +264,7 @@ void human::queue_bites(){
 
   if(nbite > 0){
     double tnow = tileP->get_tnow();
-    for(size_t i=0; i<nbite; i++){
+    for(int i=0; i<nbite; i++){
       addEvent2Q(e_pfsi_bite(tnow,this));
     }
   }
