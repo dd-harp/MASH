@@ -83,6 +83,6 @@ Again, let's list options.
    be difficult to install? Would have to call it from R
    for internal R random numbers.
 
-* *Agner Fog's libraries* - high quality PRNG designed in C++
+ * *Agner Fog's libraries* - high quality PRNG designed in C++
    with Monte Carlo simulation in mind; has an example of an R
    package which exports the functionality to R. Mathematically trustworthy https://www.agner.org/random/
