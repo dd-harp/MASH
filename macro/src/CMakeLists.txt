@@ -18,9 +18,11 @@ if(GIT_FOUND)
     execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --always
             OUTPUT_VARIABLE MASH_VERSION
             OUTPUT_STRIP_TRAILING_WHITESPACE
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             )
+    message(STATUS "Found version ${MASH_VERSION}")
 else(GIT_FOUND)
-    message("Needs git in order to tag version")
+    message(STATUS "Needs git in order to tag version")
     set(MASH_VERSION "0.1")
 endif(GIT_FOUND)
 
