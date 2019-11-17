@@ -39,4 +39,4 @@ movement_machine_result::duration_in_patch(human_id query) const {
 void movement_machine::init() {}
 
 const movement_machine_result *
-movement_machinestep(double time_step) { return &result; }
+movement_machine::step(double time_step) { return &result; }
