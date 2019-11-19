@@ -5,6 +5,8 @@
 #include "boost/property_map/property_map.hpp"
 #include "Rcpp.h"
 
+#include "markov_flow.h"
+
 using namespace Rcpp;
 
 
@@ -17,12 +19,6 @@ List rcpp_hello_world() {
 
     return z ;
 }
-
-using patch_id = int;
-using human_id = int;
-using clock_time = double;
-using movement_sequence = std::vector<std::tuple<patch_id,clock_time>>;
-
 
 /*!
  * From R, this will look like
