@@ -16,8 +16,6 @@ using namespace Rcpp;
  *     time_step <- 0.1
  *     moves <- movement_step(movement, time_step)
  *     person <- human_model(moves, time_step)
- * @param parameters
- * @return
  */
 // [[Rcpp::export]]
 List movement_init(List parameters) {
