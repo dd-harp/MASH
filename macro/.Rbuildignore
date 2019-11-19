@@ -1,2 +1,9 @@
 ^macro\.Rproj$
 ^\.Rproj\.user$
+*.o
+.gitignore
+.idea/
+build/
+cmake/
+.Rproj.user
+CMakeLists.txt

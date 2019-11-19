@@ -1,6 +1,8 @@
 Package: macro
 Title: Modular Simulation of Malaria
 Version: 0.0.0.9000
+Author: IHME Malaria Team <smitdave@uw.edu>
+Maintainer: IHME Malaria Team <smitdave@uw.edu>
 Authors@R: 
     person(given = "Sean",
            family = "Wu",
@@ -14,5 +16,14 @@ Authors@R:
            comment = c(ORCID = "0000-0002-6477-7981"))
 Description: Simulates malaria in a spatial community.
 License: MIT + file LICENSE
+SystemRequirements: C++17
+Imports: Rcpp
+Depends: RcppProgress
+LinkingTo: BH, Rcpp, RcppArmadillo, RcppProgress
+RoxygenNote: 6.1.1
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true
