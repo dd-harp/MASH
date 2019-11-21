@@ -21,10 +21,10 @@ Authors@R:
 Description: Simulates malaria in a spatial community.
 License: MIT + file LICENSE
 SystemRequirements: C++17
-Imports: Rcpp (>=1.0.2)
+Imports: Rcpp
 Depends: RcppProgress
 LinkingTo: BH, Rcpp, RcppArmadillo, RcppProgress
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0
 Suggests: 
     knitr,
     rmarkdown,
