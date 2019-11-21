@@ -19,7 +19,6 @@ PKG_CPPFLAGS += -I../inst/include/
 # the object files here.
 MARKOV_FLOW_OBJS = \
 	markov_flow/markov_flow.o \
-	markov_flow/markov_flow_wrap.o \
-	RcppExports.o
+	markov_flow_wrap.o
 
-OBJECTS = $(MARKOV_FLOW_OBJS)
+OBJECTS = $(MARKOV_FLOW_OBJS) RcppExports.o
