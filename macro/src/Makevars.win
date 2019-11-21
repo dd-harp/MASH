@@ -17,4 +17,9 @@ PKG_CPPFLAGS += -I../inst/include/
 
 # Include source files in subdirectories by listing
 # the object files here.
-OBJECTS = markov_flow/markov_flow.o
+MARKOV_FLOW_OBJS = \
+	markov_flow/markov_flow.o \
+	markov_flow/markov_flow_wrap.o \
+	RcppExports.o
+
+OBJECTS = $(MARKOV_FLOW_OBJS)
