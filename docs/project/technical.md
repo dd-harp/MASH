@@ -54,8 +54,7 @@ by L'Ecuyer.
     the whole state, not just the seeds. This way you can
     continue on a stream.
 
-
-Again, let's list options.
+We would like to use tools that exist. Let's list options we know.
 
  * *R builtin* - R provides random number generation that's
    exported to C libraries. It's fine quality, and we are using
@@ -65,18 +64,23 @@ Again, let's list options.
  * *Boost RNG* - This is a standard. The boost generators
    don't skip ahead the Mersenne Twister, which is a standard generator.
    Has an R package that installs it for C++ inclusion.
+   It will skip Mersenne twister using the fast method (milliseconds)
+   if you ask for something more than 10^8 of a skip.
+   It's called `discard_many` in the source code.
 
  * *PRAND* - Barash made this library that includes a lot
    of generators. It isn't commonly used, but it has MT19937,
    which is standard.
 
  * *GSL RNG* - Also a standard, has MT19937. Has an R package
-   that installs it, which makes things easier.
+   that installs it, which makes things easier. I don't see
+   the skip-ahead in here.
 
- * *Mersenne Twister skipahead* - There are libraries that provide
-   skipahead or streams for MT19937. These may be less trusted.
-   Need to research this. We should be able to use this
-   to synchronize R's RNG with the one that C++ gets.
+ * *Mersenne Twister skipahead* - We could use something separate
+   to do the skip-ahead. The original conference proceeding,
+   by Haramoto, Matsumoto, L'Ecuyer in 2008, has code, but it
+   doesn't compile with current libraries.
+   http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/JUMP/index.html
 
  * *SPRNG* - The parallel random number generation library.
    This works for parallel or serial. It's trusted. It might
@@ -85,4 +89,21 @@ Again, let's list options.
 
  * *Agner Fog's libraries* - high quality PRNG designed in C++
    with Monte Carlo simulation in mind; has an example of an R
-   package which exports the functionality to R. Mathematically trustworthy https://www.agner.org/random/
+   package which uses these RNGs to draw from an urn (hypergeometric
+   distribution). Mathematically trustworthy https://www.agner.org/random/
+
+ * *RNGStreams* - From 1999, for parallel streams. Has C++ library
+   and is part of R in `parallel::nextRNGStream(seed)`. Isn't Mersenne
+   Twister. http://statmath.wu.ac.at/software/RngStreams/
+
+ * *randtools package* - This R package offers some different
+   generators, including an MT19937 that uses a newer initialization.
+   This might be needed if you want R and C++ to match what numbers
+   they generate.
+   
+Advice we found:
+
+ * Vigna says Mersenne Twister is awful: https://arxiv.org/abs/1910.06437
+
+ * Fog mixes Mersenne Twister with WELL.
+
