@@ -22,4 +22,7 @@ MARKOV_FLOW_OBJS = \
 	markov_flow_wrap.o \
 	RcppExports.o
 
-OBJECTS = $(MARKOV_FLOW_OBJS)
+RANDOM_GENERATOR_OBJS = \
+	random.o
+
+OBJECTS = $(MARKOV_FLOW_OBJS) $(RANDOM_GENERATOR_OBJS)
