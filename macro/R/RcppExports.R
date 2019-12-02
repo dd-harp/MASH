@@ -17,3 +17,25 @@ movements_of_human <- function(movement_list, human) {
     .Call('_macro_movements_of_human', PACKAGE = 'macro', movement_list, human)
 }
 
+#' Generate Mersenne Twister seed states skipped ahead by powers of two.
+#'
+#' A Mersenne Twister random number generator can be skipped ahead
+#' by large numbers of random numbers. This function uses the Boost
+#' implementation of that algorithm to skip ahead its version of
+#' mt19937, not mt19937_64.
+#'
+#' @param seed A single number, without too many 0 bits, to
+#'        initialize the random number generator.
+#' @param skip_size_power_two The jump will be two raised to this
+#'        power. If it is 14 or greater, it will use the
+#'        special algorithm.
+#' @param skip_count How many times to skip forward. This is
+#'        the number of simultaneous streams you want to use.
+#' @return A matrix of size 624 by skip_count. Put the 624
+#'         into the Mersenne seed in order to initialize it.
+#'
+#' @export
+skip_mersenne_twister <- function(seed, skip_size_power_two, skip_count) {
+    .Call('_macro_skip_mersenne_twister', PACKAGE = 'macro', seed, skip_size_power_two, skip_count)
+}
+

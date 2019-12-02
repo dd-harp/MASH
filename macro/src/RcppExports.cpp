@@ -52,12 +52,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// skip_mersenne_twister
+IntegerMatrix skip_mersenne_twister(int seed, int skip_size_power_two, int skip_count);
+RcppExport SEXP _macro_skip_mersenne_twister(SEXP seedSEXP, SEXP skip_size_power_twoSEXP, SEXP skip_countSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< int >::type skip_size_power_two(skip_size_power_twoSEXP);
+    Rcpp::traits::input_parameter< int >::type skip_count(skip_countSEXP);
+    rcpp_result_gen = Rcpp::wrap(skip_mersenne_twister(seed, skip_size_power_two, skip_count));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_macro_movement_init", (DL_FUNC) &_macro_movement_init, 1},
     {"_macro_movement_step", (DL_FUNC) &_macro_movement_step, 2},
     {"_macro_convert_to_r_movement", (DL_FUNC) &_macro_convert_to_r_movement, 2},
     {"_macro_movements_of_human", (DL_FUNC) &_macro_movements_of_human, 2},
+    {"_macro_skip_mersenne_twister", (DL_FUNC) &_macro_skip_mersenne_twister, 3},
     {NULL, NULL, 0}
 };
 
