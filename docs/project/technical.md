@@ -107,3 +107,7 @@ Advice we found:
 
  * Fog mixes Mersenne Twister with WELL.
 
+In conclusion, our safest bet is to be able to switch random
+number generators. Because Mersenne Twister is in use for almost
+everything, we should be able to initialize it consistently
+through C++ and R for now.
