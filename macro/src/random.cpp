@@ -12,6 +12,7 @@ using namespace std;
 
 const size_t MASK31 = (1 >> 31);
 
+namespace dd_harp {
 int twos_complement(size_t val) {
     return static_cast<int>(
         -(val & MASK31) + (val & ~MASK31)
@@ -64,4 +65,5 @@ skip_mersenne_twister(int seed, int skip_size_power_two, int skip_count) {
     }
 
     return skipped_seeds;
+}
 }

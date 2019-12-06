@@ -1,6 +1,8 @@
 #ifndef SRC_MARKOV_FLOW_H
 #define SRC_MARKOV_FLOW_H
 
+namespace dd_harp {
+
 using patch_id = int;
 using human_id = int;
 using clock_time = double;
@@ -33,11 +35,12 @@ class movement_machine {
     // so that it won't churn memory. It is read-only to others.
     movement_machine_result result;
 public:
-    void init();
+    template<PARAMETERS>
+    void init(const PARAMETERS& parameters);
 
     const movement_machine_result*
     step(double time_step);
 };
-
+} // namespace dd_harp
 
 #endif //SRC_MARKOV_FLOW_H

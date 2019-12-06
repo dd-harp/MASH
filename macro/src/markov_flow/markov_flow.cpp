@@ -3,8 +3,9 @@
 #include "boost/property_map/property_map.hpp"
 
 #include "markov_flow.h"
+#include "parameters.h"
 
-
+namespace dd_harp {
 /*!
  * The sampling trajectory of the movement machine
  * tells the human when to change biting weight on
@@ -29,6 +30,7 @@ movement_machine_result::movements_of_human(human_id query) const {
             {3, 0.8}};
 }
 
+
 movement_sequence
 movement_machine_result::duration_in_patch(human_id query) const {
     return {{4, .77},
@@ -36,7 +38,13 @@ movement_machine_result::duration_in_patch(human_id query) const {
 }
 
 
-void movement_machine::init() {}
+template<typename PARAMETERS>
+void movement_machine::init(const PARAMETERS& parameters) {
+    int human_count = dd_harp::get<int>(parameters, "human_count");
+}
+
 
 const movement_machine_result *
 movement_machine::step(double time_step) { return &result; }
+
+}

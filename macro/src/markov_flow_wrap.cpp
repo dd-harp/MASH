@@ -9,7 +9,7 @@
 
 using namespace Rcpp;
 
-
+namespace dd_harp {
 /*!
  * From R, this will look like
  *     movement <- movement_init(params)
@@ -95,3 +95,4 @@ NumericVector movements_of_human(List movement_list, IntegerVector human) {
  * We need a method that takes R simulation of movement and converts
  * it into a *subclass of* a C++ movement_machine_result.
  */
+} // namespace dd_harp
