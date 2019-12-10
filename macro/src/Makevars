@@ -13,7 +13,7 @@ PKG_LIBS += `$(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()"` $(SHLIB_OPENMP_CXXFLAG
 PKG_CXXFLAGS += -Wall $(SHLIB_OPENMP_CXXFLAGS)
 
 # to find our headers
-PKG_CPPFLAGS += -I../inst/include/ -Imarkov_flow
+PKG_CPPFLAGS += -I../inst/include/ -Imarkov_flow -I.
 
 # Include source files in subdirectories by listing
 # the object files here.
