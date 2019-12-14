@@ -3,7 +3,7 @@
 #include "boost/property_map/property_map.hpp"
 
 #include "markov_flow.h"
-#include "parameters.h"
+//#include "parameters.h"
 
 namespace dd_harp {
 /*!
