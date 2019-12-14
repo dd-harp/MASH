@@ -38,9 +38,13 @@ movement_machine_result::duration_in_patch(human_id query) const {
 }
 
 
-template<typename PARAMETERS>
-void movement_machine::init(const PARAMETERS& parameters) {
-    int human_count = dd_harp::get<int>(parameters, "human_count");
+void movement_machine::init(
+        const std::map<std::string, movement_machine_parameter>& parameters,
+        const std::vector<std::vector<int>>& initial_state
+    ) {
+    this->human_count = get<int>(parameters.at("human_count"));
+    this->flow_probability = get<arma::Row<double>>(parameters.at("flow_probability"));
+    this->patch_count = this->flow_probability.n_rows;
 }
 
 

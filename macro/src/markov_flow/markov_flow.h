@@ -1,12 +1,25 @@
 #ifndef SRC_MARKOV_FLOW_H
 #define SRC_MARKOV_FLOW_H
 
+#include <map>
+#include <vector>
+#include <variant>
+
+#include "armadillo"
+
 namespace dd_harp {
 
 using patch_id = int;
 using human_id = int;
 using clock_time = double;
 using movement_sequence = std::vector<std::tuple<patch_id,clock_time>>;
+
+
+struct no_parameter {
+    no_parameter() {};
+};
+
+using movement_machine_parameter = std::variant<no_parameter, int, arma::Row<double>>;
 
 
 class movement_machine_result {
@@ -34,12 +47,20 @@ class movement_machine {
     // The result is a buffer that is owned by the machine,
     // so that it won't churn memory. It is read-only to others.
     movement_machine_result result;
+
 public:
-    template<typename PARAMETERS>
-    void init(const PARAMETERS& parameters);
+    void init(
+            const std::map<std::string, movement_machine_parameter>& parameters,
+            const std::vector<std::vector<int>>& initial_state
+            );
 
     const movement_machine_result*
     step(double time_step);
+
+private:
+    arma::Row<double> flow_probability;
+    int patch_count;
+    int human_count;
 };
 } // namespace dd_harp
 
