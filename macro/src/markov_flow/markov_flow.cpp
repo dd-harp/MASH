@@ -1,9 +1,6 @@
 #include <vector>
 
-#include "boost/property_map/property_map.hpp"
-
 #include "markov_flow.h"
-//#include "parameters.h"
 
 namespace dd_harp {
 /*!
@@ -42,8 +39,8 @@ void movement_machine::init(
         const std::map<std::string, movement_machine_parameter>& parameters,
         const std::vector<std::vector<int>>& initial_state
     ) {
-    this->human_count = get<int>(parameters.at("human_count"));
-    this->flow_probability = get<arma::Row<double>>(parameters.at("flow_probability"));
+    this->human_count = std::get<int>(parameters.at("human_count"));
+    this->flow_probability = std::get<arma::Row<double>>(parameters.at("flow_probability"));
     this->patch_count = this->flow_probability.n_rows;
 }
 
