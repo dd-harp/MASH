@@ -1,5 +1,7 @@
 #include <vector>
 
+#include "boost/random/exponential_distribution.hpp"
+
 #include "markov_flow.h"
 
 namespace dd_harp {
@@ -49,12 +51,24 @@ namespace dd_harp {
             this->flow_cumulant.row(row_idx) = row_cumulant;
             this->flow_index.row(row_idx) = row_index;
         }
+        // Assign per-patch rate = (# people in patch) x (total movement rate from patch)
+        // Calculate total rate over all.
         this->human_location = initial_state;
     }
 
 
     const movement_machine_result *
     movement_machine::step(double time_step) {
+        double time_within_step{0};
+        while (time_within_step < time_step) {
+            double total_rate{10};  // Use calculated total rate over all.
+            double dt = boost::random::exponential_distribution<double>(total_rate)(this->rng);
+            // Choose among patches using the per-patch rate.
+            // Pick a person.
+            // Choose where they go using the multinomial choose_direction().
+            // Calculate updates to per-patch rate and total due to moving person.
+            time_within_step += dt;
+        }
 
         return &result;
     }
