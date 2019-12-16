@@ -46,7 +46,10 @@ namespace dd_harp {
 
 
     const movement_machine_result *
-    movement_machine::step(double time_step) { return &result; }
+    movement_machine::step(double time_step) {
+
+        return &result;
+    }
 
 
     std::tuple <arma::Row<double>, arma::uvec> prepare_rates(const arma::Row<double> rates) {
