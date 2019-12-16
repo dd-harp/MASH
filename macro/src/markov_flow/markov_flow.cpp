@@ -37,11 +37,19 @@ namespace dd_harp {
 
     void movement_machine::init(
             const std::map <std::string, movement_machine_parameter> &parameters,
-            const std::vector <std::vector<int>> &initial_state
+            const std::vector<std::vector<int>> &initial_state
     ) {
         this->human_count = std::get<int>(parameters.at("human_count"));
-        this->flow_probability = std::get<arma::Row<double>> (parameters.at("flow_probability"));
-        this->patch_count = this->flow_probability.n_rows;
+        arma::Mat<double> flow_probability = std::get<arma::Mat<double>>(parameters.at("flow_probability"));
+        this->patch_count = flow_probability.n_rows;
+        this->flow_cumulant.zeros(this->patch_count, this->patch_count);
+        this->flow_index.zeros(this->patch_count, this->patch_count);
+        for (int row_idx=0; row_idx < this->patch_count; ++row_idx) {
+            auto [row_cumulant, row_index] = prepare_rates(flow_probability.row(row_idx));
+            this->flow_cumulant.row(row_idx) = row_cumulant;
+            this->flow_index.row(row_idx) = row_index;
+        }
+        this->human_location = initial_state;
     }
 
 

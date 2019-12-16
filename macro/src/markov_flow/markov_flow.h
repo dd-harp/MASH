@@ -22,7 +22,7 @@ using movement_sequence = std::vector<std::tuple<patch_id,clock_time>>;
 
 struct no_parameter {};
 
-using movement_machine_parameter = std::variant<no_parameter, int, arma::Row<double>>;
+using movement_machine_parameter = std::variant<no_parameter, int, arma::Mat<double>>;
 
 
 class movement_machine_result {
@@ -62,9 +62,11 @@ public:
 
 private:
     boost::mt19937 rng;
-    arma::Row<double> flow_probability;
+    arma::Mat<double> flow_cumulant;
+    arma::umat flow_index;
     int patch_count;
     int human_count;
+    std::vector<std::vector<int>> human_location;
 };
 
 
