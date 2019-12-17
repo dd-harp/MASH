@@ -117,5 +117,24 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
     std::tuple<arma::Row<double>, arma::uvec>
     build_binary_tree(const arma::Row<double> rates);
 
+
+    template<typename RNG>
+    int sample_binary_tree(const arma::Row<double>& tree, const arma::uvec& sorted_rates_index, RNG& rng) {
+        double total_rate{tree[0]};
+        boost::random::uniform_real_distribution<double> chooser(0, total_rate);
+        auto choice = chooser(rng);
+        int n{1};
+        int chosen{0};
+        while (n < tree.n_elem) {
+            if (tree[n] < choice) {
+                choice = n;
+                n = 2 * n;
+            } else {
+                choice = n + 1;
+                n = 2 * (n + 1);
+            }
+        }
+        return sorted_rates_index[chosen];
+    }
 } // namespace dd_harp
 #endif //SRC_MARKOV_FLOW_H
