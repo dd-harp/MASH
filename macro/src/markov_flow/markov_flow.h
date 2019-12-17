@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <map>
+#include <sstream>
 #include <vector>
 #include <variant>
 
@@ -46,6 +47,14 @@ public:
 };
 
 
+/*! Markovian movement of individuals.
+ *
+ * Individuals have ids and are assigned to patches.
+ * Each patch specifies the rate of movement to other patches.
+ * The rate for an individual to leave a patch is the sum of
+ * the rates to all other patches. The rate for any individual
+ * to leave is that times the number of people in the patch.
+ */
 class movement_machine {
     // The result is a buffer that is owned by the machine,
     // so that it won't churn memory. It is read-only to others.
@@ -69,7 +78,11 @@ private:
     std::vector<std::vector<int>> human_location;
 };
 
-    int next_power_of_two(int n);
+
+//! p such that 2^(p-1) < n <= 2^p.
+int next_power_of_two(int n);
+
+
 /*! Create a data structure to enable a multinomial draw from travel rates.
  *
  * This assumes a person is going to one of the given places.
@@ -121,21 +134,37 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
 
     template<typename RNG>
     int sample_binary_tree(const arma::Row<double>& tree, const arma::uvec& sorted_rates_index, RNG& rng) {
+        int leaf_count = (tree.n_elem + 1) / 2;
+        if (leaf_count < sorted_rates_index.n_elem) {
+            std::stringstream msg;
+            msg << "The tree and its index should match: ";
+            msg << tree.n_elem << " index " << sorted_rates_index.n_elem;
+            throw std::runtime_error(msg.str());
+        }
         double total_rate{tree[0]};
         boost::random::uniform_real_distribution<double> chooser(0, total_rate);
         auto choice = chooser(rng);
         int n{1};
         int chosen{0};
         // The loop invariant is that n and n+1 are the next ones to check.
-        while (n < tree.n_elem) {
+        while (n < leaf_count - 1) {
             if (tree[n] < choice) {
                 choice -= tree[n];
-                chosen = n + 1;
                 n = 2 * n + 2;
             } else {
-                chosen = n;
                 n = 2 * n + 1;
             }
+        }
+        if (leaf_count > 1 && tree[n] < choice) {
+            chosen = n - leaf_count + 2;
+        } else {
+            chosen = n - leaf_count + 1;
+        }
+        if (chosen > sorted_rates_index.n_elem - 1) {
+            std::stringstream msg;
+            msg << "Leaf count is " << leaf_count << " rate count " << sorted_rates_index.n_elem
+                << " index chosen " << chosen;
+            throw std::runtime_error(msg.str());
         }
         return sorted_rates_index[chosen];
     }

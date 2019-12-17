@@ -54,7 +54,7 @@ std::tuple<double, double> wilson_score_interval(double p, double n, double conf
 
 
 // Test against values from a paper.
-TEST(MarkovFlowTest, WilsonCorrect) {
+TEST(MarkovFlowTest, WilsonMatchesAPaperResult) {
     auto [low, high] = wilson_score_interval(.4667, 15, .95);
     double epsilon = 1e-4;
     EXPECT_LT(abs(low - .2481), epsilon);
@@ -75,7 +75,6 @@ TEST(MarkovFlowTest, DrawMultinomial) {
         int chosen = dd_harp::choose_direction(cumulant, sorted_rates_index, rng);
         histogram[chosen] += 1;
     }
-    double epsilon = 1e-4;
     for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
         auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.95);
         EXPECT_GT(histogram[check_idx] / draw_cnt, low);
@@ -117,5 +116,26 @@ TEST(MarkovFlowTest, BinaryTreeTotalIsCorrect) {
         auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
         EXPECT_LT(std::abs(tree[0] - n * fill), epsilon);
     }
+}
+
+
+TEST(MarkovFlowTest, MultinomialBinaryTree) {
+    boost::mt19937 rng(234234243);
+    arma::Row<double> given_rates = {0.01, 0.8, 0.19};
+    arma::Row<double> rates = 10 * given_rates; // To ensure scaling to max works.
+    auto [cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
+    arma::Row<double> histogram(rates.n_elem);
+    histogram.zeros();
+
+    int draw_cnt{1000000};
+    for (int draw = 0; draw < draw_cnt ; ++draw) {
+        int chosen = dd_harp::sample_binary_tree(cumulant, sorted_rates_index, rng);
+        histogram[chosen] += 1;
+    }
+//    for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
+//    auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.95);
+//        EXPECT_GT(histogram[check_idx] / draw_cnt, low);
+//        EXPECT_LT(histogram[check_idx] / draw_cnt, high);
+//    }
 }
 
