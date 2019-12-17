@@ -88,6 +88,7 @@ std::tuple<arma::Row<double>, arma::uvec> prepare_rates(const arma::Row<double> 
 
 
 
+
 /*! Given a cumulative sum of an indexed vector, draw a random number to pick one index.
  *
  * @tparam RNG Random number generator.
@@ -125,13 +126,15 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
         auto choice = chooser(rng);
         int n{1};
         int chosen{0};
+        // The loop invariant is that n and n+1 are the next ones to check.
         while (n < tree.n_elem) {
             if (tree[n] < choice) {
-                choice = n;
-                n = 2 * n;
+                choice -= tree[n];
+                chosen = n + 1;
+                n = 2 * n + 2;
             } else {
-                choice = n + 1;
-                n = 2 * (n + 1);
+                chosen = n;
+                n = 2 * n + 1;
             }
         }
         return sorted_rates_index[chosen];
