@@ -8,7 +8,9 @@ from R to C++ and from C++ to R.
 I'd like the following to be true:
 
 * The C++ code can compile on its own.
-* Parameters could come from a file or from R.
+* Parameters could come from a file or from R. When you see each
+  possible implementation below, ask how difficult it would be
+  to read a file and set the values or read R and set values.
 * It's possible to update parameter values in the middle
   of a simulation.
 
@@ -61,6 +63,9 @@ struct Parameters {
 	bool move_was_set;
 };
 ```
+The booleans are there so that we know which parameters
+were set in this time step and which should be kept as-is.
+I don't know whether the setters and getters are necessary otherwise.
 
 ## Pass a Map of Variants
 
@@ -102,6 +107,10 @@ An advantage is that, in the middle of a simulation, you could set
 parameters on the map, and you would know which ones are set
 automatically because they are the only ones in the map.
 
+There is a Boost Variant2 type that's nicer, but it's in
+version 1.71, which isn't commonly packaged yet. Using
+the no-parameter type gets around common problems with undefined
+paramters.
 
 ## Map of Any
 
@@ -130,6 +139,11 @@ bool is_arma_matrix(const boost::any& parameter) {
 ```
 
 That showed the syntax, but use is much like the map above.
+The difference is that we check types of inputs later here,
+and you generally want to check them earlier. With the any
+type, though, it's easier to have a general parameter
+interface. It's harder to keep it from crashing due to using
+the wrong types.
 
 
 ## Boost Property Map
