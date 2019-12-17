@@ -69,7 +69,7 @@ private:
     std::vector<std::vector<int>> human_location;
 };
 
-
+    int next_power_of_two(int n);
 /*! Create a data structure to enable a multinomial draw from travel rates.
  *
  * This assumes a person is going to one of the given places.
@@ -114,7 +114,8 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
     }
     return chosen;
 }
-
+    std::tuple<arma::Row<double>, arma::uvec>
+    build_binary_tree(const arma::Row<double> rates);
 
 } // namespace dd_harp
 #endif //SRC_MARKOV_FLOW_H

@@ -1,6 +1,8 @@
 #include <map>
 #include <string>
+#include <tuple>
 #include <variant>
+#include <vector>
 
 #include "armadillo"
 #include "boost/property_map/property_map.hpp"
@@ -58,3 +60,40 @@ TEST(MarkovFlowTest, DrawMultinomial) {
         EXPECT_LT(abs(histogram[check_idx] / draw_cnt - given_rates[check_idx]), epsilon);
     }
 }
+
+
+
+TEST(MarkovFlowTest, PowerOfTwo) {
+    std::vector<std::tuple<int,int>> inout = {
+            {0, 0}, {1, 1}, {2, 2}, {3, 2}, {4, 3},
+            {5, 3}, {6, 3}, {7, 3}, {8, 4}};
+    for (auto [value, result]: inout) {
+        EXPECT_EQ(result, dd_harp::next_power_of_two(value));
+    }
+}
+
+
+TEST(MarkovFlowTest, BinaryTreeFilled) {
+    double epsilon{1e-5};
+    double fill{0.32792342};
+    arma::Row<double> given_rates(3);
+    given_rates.fill(fill);
+    auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
+    std::vector<double> expected = {3 * fill, 2 * fill, fill, fill, fill, fill, 0};
+    for (int check_idx = 0; check_idx < expected.size(); ++check_idx) {
+        EXPECT_FLOAT_EQ(tree[check_idx], expected[check_idx]);
+    }
+}
+
+
+TEST(MarkovFlowTest, BinaryTreeTotalIsCorrect) {
+    double epsilon{1e-5};
+    double fill{0.32792342};
+    for (int n = 1; n < 9; ++n) {
+        arma::Row<double> given_rates(n);
+        given_rates.fill(fill);
+        auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
+        EXPECT_LT(std::abs(tree[0] - n * fill), epsilon);
+    }
+}
+

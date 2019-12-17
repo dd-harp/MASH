@@ -1,3 +1,4 @@
+#include <cassert>
 #include <vector>
 
 #include "boost/random/exponential_distribution.hpp"
@@ -90,4 +91,61 @@ namespace dd_harp {
         return {cumulant, sorted_rates_index};
     }
 
+    /*! p, such that 2^p <= n.
+     *
+     * @param n
+     * @return
+     */
+    int next_power_of_two(int n) {
+        int i = 0;
+        while (n != 0) {
+            n >>= 1;
+            ++i;
+        }
+        return i;
+    }
+
+    /*! Builds a binary tree for rates, embedded in an single vector.
+     *
+     * If the rates aren't a power of two, they are padded with zeroes.
+     * The returned tree should have rate[n] = rate[2n] + rate[2n+1].
+     *
+     * @param rates
+     * @return
+     */
+    std::tuple<arma::Row<double>, arma::uvec>
+            build_binary_tree(const arma::Row<double> rates) {
+        arma::uvec sorted_rates_index = arma::sort_index(rates);
+        arma::Row<double> sorted_rates(rates.n_elem);
+        for (int copy_sorted = 0; copy_sorted < rates.n_elem; ++copy_sorted) {
+            sorted_rates[copy_sorted] = rates[sorted_rates_index[copy_sorted]];
+        }
+        int leaf_power{next_power_of_two(sorted_rates.n_elem)};
+        int leaf_count{1 << leaf_power};
+        int tree_count{2 * leaf_count - 1};
+        assert(leaf_count >= sorted_rates.n_elem);
+        assert(leaf_count / 2 < sorted_rates.n_elem);
+        arma::Row<double> tree(tree_count);
+
+        // The last leaf_count entries are leaves.
+        for (int leaf_index = 0; leaf_index < sorted_rates.n_elem; ++leaf_index) {
+            tree[leaf_count + leaf_index - 1] = sorted_rates[leaf_index];
+        }
+        // Some leaf values are zero because they are padding.
+        for (int zero_leaves = sorted_rates.n_elem; zero_leaves < leaf_count; ++zero_leaves) {
+            tree[leaf_count + zero_leaves - 1] = 0;
+        }
+
+        // Branches sum leaves in a binary tree.
+        for (int tier_index = leaf_power - 1; tier_index >= 0; --tier_index) {
+            int base{1 << tier_index};
+            for (int branch_index = 0; branch_index < base; ++branch_index)
+            {
+                int n = base + branch_index;
+                assert(n < leaf_count - 1);
+                tree[n - 1] = tree[2 * n - 1] + tree[2 * n];
+            }
+        }
+        return {tree, sorted_rates_index};
+    }
 }
