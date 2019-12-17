@@ -73,6 +73,8 @@ private:
     boost::mt19937 rng;
     arma::Mat<double> flow_cumulant;
     arma::umat flow_index;
+    arma::Col<double> patch_rate_with_people;
+    double total_rate;
     int patch_count;
     int human_count;
     std::vector<std::vector<int>> human_location;
@@ -98,9 +100,6 @@ int next_power_of_two(int n);
  * @return
  */
 std::tuple<arma::Row<double>, arma::uvec> prepare_rates(const arma::Row<double> rates);
-
-
-
 
 /*! Given a cumulative sum of an indexed vector, draw a random number to pick one index.
  *
@@ -168,5 +167,8 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
         }
         return sorted_rates_index[chosen];
     }
+
+    std::tuple<arma::Mat<double>, arma::Mat<arma::uword>>
+    build_multinomial_matrix(const arma::Mat<double>& flow_probability);
 } // namespace dd_harp
 #endif //SRC_MARKOV_FLOW_H

@@ -132,10 +132,10 @@ TEST(MarkovFlowTest, MultinomialBinaryTree) {
         int chosen = dd_harp::sample_binary_tree(cumulant, sorted_rates_index, rng);
         histogram[chosen] += 1;
     }
-//    for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
-//    auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.95);
-//        EXPECT_GT(histogram[check_idx] / draw_cnt, low);
-//        EXPECT_LT(histogram[check_idx] / draw_cnt, high);
-//    }
+    for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
+    auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.95);
+        EXPECT_GT(histogram[check_idx] / draw_cnt, low);
+        EXPECT_LT(histogram[check_idx] / draw_cnt, high);
+    }
 }
 

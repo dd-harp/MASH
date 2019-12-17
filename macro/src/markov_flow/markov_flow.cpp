@@ -45,16 +45,19 @@ namespace dd_harp {
         this->human_count = std::get<int>(parameters.at("human_count"));
         arma::Mat<double> flow_probability = std::get<arma::Mat<double>>(parameters.at("flow_probability"));
         this->patch_count = flow_probability.n_rows;
-        this->flow_cumulant.zeros(this->patch_count, this->patch_count);
-        this->flow_index.zeros(this->patch_count, this->patch_count);
-        for (int row_idx=0; row_idx < this->patch_count; ++row_idx) {
-            auto [row_cumulant, row_index] = prepare_rates(flow_probability.row(row_idx));
-            this->flow_cumulant.row(row_idx) = row_cumulant;
-            this->flow_index.row(row_idx) = row_index;
-        }
-        // Assign per-patch rate = (# people in patch) x (total movement rate from patch)
         // Calculate total rate over all.
         this->human_location = initial_state;
+        auto [search_matrix, index_matrix] = build_multinomial_matrix(flow_probability);
+        this->flow_cumulant = search_matrix;
+        this->flow_index = index_matrix;
+        this->patch_rate_with_people.zeros(patch_count);
+        // Assign per-patch rate = (# people in patch) x (total movement rate from patch)
+        for (int patch_rate_index = 0; patch_rate_index <  patch_count; ++patch_rate_index) {
+            patch_rate_with_people[patch_rate_index] = (
+                    flow_cumulant(0, patch_rate_index) * human_location[patch_rate_index].size()
+                    );
+        }
+        this->total_rate = arma::sum(patch_rate_with_people);
     }
 
 
@@ -62,7 +65,6 @@ namespace dd_harp {
     movement_machine::step(double time_step) {
         double time_within_step{0};
         while (time_within_step < time_step) {
-            double total_rate{10};  // Use calculated total rate over all.
             double dt = boost::random::exponential_distribution<double>(total_rate)(this->rng);
             // Choose among patches using the per-patch rate.
             // Pick a person.
@@ -147,5 +149,25 @@ namespace dd_harp {
             }
         }
         return {tree, sorted_rates_index};
+    }
+
+    std::tuple<arma::Mat<double>, arma::Mat<arma::uword>>
+            build_multinomial_matrix(const arma::Mat<double>& flow_probability) {
+        if (flow_probability.n_cols != flow_probability.n_rows) {
+            std::stringstream msg;
+            msg << "Expect the flow probability to be square but it is " <<
+                flow_probability.n_cols << "x" << flow_probability.n_rows;
+            throw std::runtime_error(msg.str());
+        }
+        int patch_count = flow_probability.n_cols;
+        int leaf_count = (1 << next_power_of_two(patch_count));
+        arma::Mat<double> tree_matrix(2 * leaf_count - 1, patch_count);
+        arma::Mat<arma::uword> sorted_rates_index(patch_count, patch_count);
+        for (int col_index = 0; col_index <= patch_count; ++col_index) {
+            auto [single_tree, single_index] = build_binary_tree(flow_probability.col(col_index).t());
+            tree_matrix.col(col_index) = single_tree.t();
+            sorted_rates_index.col(col_index) = single_index;
+        }
+        return {tree_matrix, sorted_rates_index};
     }
 }
