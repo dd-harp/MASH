@@ -1,3 +1,4 @@
+#include <cmath>
 #include <map>
 #include <string>
 #include <tuple>
@@ -5,6 +6,7 @@
 #include <vector>
 
 #include "armadillo"
+#include "boost/math/distributions/normal.hpp"
 #include "boost/property_map/property_map.hpp"
 #include "gtest/gtest.h"
 
@@ -42,6 +44,24 @@ TEST(MarkovFlowTest, VariantWorks) {
 }
 
 
+std::tuple<double, double> wilson_score_interval(double p, double n, double confidence) {
+    double z = quantile(boost::math::normal(), 0.5 * (confidence + 1));
+    double mid = p + z * z / (2 * n);
+    double diff = z * std::sqrt((p * (1 - p) + z * z / (4 * n)) / n);
+    double denominator = 1 + z * z / n;
+    return {(mid - diff) / denominator, (mid + diff) / denominator};
+}
+
+
+// Test against values from a paper.
+TEST(MarkovFlowTest, WilsonCorrect) {
+    auto [low, high] = wilson_score_interval(.4667, 15, .95);
+    double epsilon = 1e-4;
+    EXPECT_LT(abs(low - .2481), epsilon);
+    EXPECT_LT(abs(high - .6988), epsilon);
+}
+
+
 TEST(MarkovFlowTest, DrawMultinomial) {
     boost::mt19937 rng(234234243);
     arma::Row<double> given_rates = {0.01, 0.8, 0.19};
@@ -57,7 +77,9 @@ TEST(MarkovFlowTest, DrawMultinomial) {
     }
     double epsilon = 1e-4;
     for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
-        EXPECT_LT(abs(histogram[check_idx] / draw_cnt - given_rates[check_idx]), epsilon);
+        auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.95);
+        EXPECT_GT(histogram[check_idx] / draw_cnt, low);
+        EXPECT_LT(histogram[check_idx] / draw_cnt, high);
     }
 }
 
