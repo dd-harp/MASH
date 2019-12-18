@@ -84,17 +84,17 @@ TEST(MarkovFlowTest, DrawMultinomial) {
 
 
 
-TEST(MarkovFlowTest, PowerOfTwo) {
+TEST(BinaryTreeMultinomial, PowerOfTwo) {
     std::vector<std::tuple<int,int>> inout = {
-            {0, 0}, {1, 1}, {2, 2}, {3, 2}, {4, 3},
-            {5, 3}, {6, 3}, {7, 3}, {8, 4}};
+            {0, 0}, {1, 0}, {2, 1}, {3, 2}, {4, 2},
+            {5, 3}, {6, 3}, {7, 3}, {8, 3}, {9, 4}};
     for (auto [value, result]: inout) {
         EXPECT_EQ(result, dd_harp::next_power_of_two(value));
     }
 }
 
 
-TEST(MarkovFlowTest, BinaryTreeFilled) {
+TEST(BinaryTreeMultinomial, TreeFilled) {
     double epsilon{1e-5};
     double fill{0.32792342};
     arma::Row<double> given_rates(3);
@@ -107,7 +107,7 @@ TEST(MarkovFlowTest, BinaryTreeFilled) {
 }
 
 
-TEST(MarkovFlowTest, BinaryTreeTotalIsCorrect) {
+TEST(BinaryTreeMultinomial, TreeTotalIsCorrect) {
     double epsilon{1e-5};
     double fill{0.32792342};
     for (int n = 1; n < 9; ++n) {
@@ -119,7 +119,7 @@ TEST(MarkovFlowTest, BinaryTreeTotalIsCorrect) {
 }
 
 
-TEST(MarkovFlowTest, BinaryTreeSortingWorks) {
+TEST(BinaryTreeMultinomial, TreeSortingWorks) {
     arma::Row<double> rates1 = {1, 2, 3, 4, 5, 6};
     auto [cumulant1, sorted_rates_index1] = dd_harp::build_binary_tree(rates1);
     for (int order = 0; order < rates1.n_elem; ++order) {
@@ -135,7 +135,7 @@ TEST(MarkovFlowTest, BinaryTreeSortingWorks) {
 }
 
 
-TEST(MarkovFlowTest, BinaryTreeIntegrity) {
+TEST(BinaryTreeMultinomial, TreeIntegrity) {
     double epsilon{1e-5};
     double fill{0.21349780};
     for (int n = 1; n < 29; ++n) {
@@ -153,7 +153,7 @@ TEST(MarkovFlowTest, BinaryTreeIntegrity) {
 }
 
 
-TEST(MarkovFlowTest, MultinomialBinaryTree) {
+TEST(BinaryTreeMultinomial, DrawsMatchRates) {
     boost::mt19937 rng(234234243);
     for (int n = 1; n < 3; ++n) {
         arma::Row<double> rates(n, arma::fill::randu);

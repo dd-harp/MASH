@@ -114,15 +114,14 @@ namespace dd_harp {
         return {cumulant, sorted_rates_index};
     }
 
-    /*! p, such that 2^p <= n.
+    /*! p, such that 2^p <= n and 2^(p-1) < n
      *
      * @param n
      * @return
      */
     int next_power_of_two(int n) {
-        int i = 0;
-        while (n != 0) {
-            n >>= 1;
+        int i{0};
+        while ((1 << i) < n) {
             ++i;
         }
         return i;
@@ -159,18 +158,13 @@ namespace dd_harp {
             tree[leaf_count + zero_leaves - 1] = 0;
         }
 
-        // Branches sum leaves in a binary tree.
-        for (int tier_index = leaf_power - 1; tier_index >= 0; --tier_index) {
-            int base{1 << tier_index};
-            for (int branch_index = 0; branch_index < base; ++branch_index)
-            {
-                int n = base + branch_index;
-                assert(n < leaf_count - 1);
-                tree[n - 1] = tree[2 * n - 1] + tree[2 * n];
-            }
+        for (int walk_idx = leaf_count - 2; walk_idx >= 0; --walk_idx) {
+            int n{2 * walk_idx + 1};
+            tree[walk_idx] = tree[n] + tree[n + 1];
         }
         return {tree, sorted_rates_index};
     }
+
 
     std::tuple<arma::Mat<double>, arma::Mat<arma::uword>>
             build_multinomial_matrix(const arma::Mat<double>& flow_probability) {

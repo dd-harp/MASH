@@ -155,10 +155,12 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
                 n = 2 * n + 1;
             }
         }
-        if (leaf_count > 1 && tree[n] < choice) {
-            chosen = n - leaf_count + 2;
-        } else {
-            chosen = n - leaf_count + 1;
+        if (leaf_count > 1) {
+            if (tree[n] < choice) {
+                chosen = n - leaf_count + 2;
+            } else {
+                chosen = n - leaf_count + 1;
+            }
         }
         if (chosen > sorted_rates_index.n_elem - 1) {
             std::stringstream msg;
