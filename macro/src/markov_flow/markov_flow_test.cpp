@@ -1,5 +1,6 @@
 #include <cmath>
 #include <map>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <variant>
@@ -153,12 +154,24 @@ TEST(BinaryTreeMultinomial, TreeIntegrity) {
 }
 
 
+template<typename VECTOR>
+std::string vector_to_string(const VECTOR& rates) {
+    std::stringstream msg;
+    for (int msg_idx = 0; msg_idx < rates.n_elem; ++msg_idx) {
+        msg << rates[msg_idx] << " ";
+    }
+    return(msg.str());
+}
+
+
 TEST(BinaryTreeMultinomial, DrawsMatchRates) {
     boost::mt19937 rng(234234243);
-    for (int n = 1; n < 3; ++n) {
+    for (int n = 2; n < 3; ++n) {
         arma::Row<double> rates(n, arma::fill::randu);
-        arma::Row<double> given_rates = normalise(rates);
+        std::string rate_string{vector_to_string(rates)};
         auto [cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
+        std::string tree_string{vector_to_string(cumulant)};
+        std::string sorted_string{vector_to_string(sorted_rates_index)};
         arma::Row<double> histogram(rates.n_elem);
         histogram.zeros();
 
@@ -170,6 +183,7 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
         if (n == 1) {
             EXPECT_FLOAT_EQ(histogram[0], draw_cnt);
         } else {
+            arma::Row<double> given_rates = normalise(rates);
             for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
             auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.99);
                 EXPECT_GT(histogram[check_idx] / draw_cnt, low);

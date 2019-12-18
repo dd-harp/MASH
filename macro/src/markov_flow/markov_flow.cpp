@@ -137,8 +137,8 @@ namespace dd_harp {
      */
     std::tuple<arma::Row<double>, arma::uvec>
             build_binary_tree(const arma::Row<double> rates) {
-        arma::Row<double> sorted_rates(rates.n_elem);
         arma::uvec sorted_rates_index = arma::sort_index(rates);
+        arma::Row<double> sorted_rates = rates.elem(sorted_rates_index).t();
         for (int copy_sorted = 0; copy_sorted < rates.n_elem; ++copy_sorted) {
             sorted_rates[copy_sorted] = rates[sorted_rates_index[copy_sorted]];
         }
