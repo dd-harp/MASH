@@ -7,6 +7,7 @@ add_executable(markov_flow_test
 
 target_include_directories(markov_flow_test
         PRIVATE
+        ${ARMADILLO_INCLUDE_DIRS}
         "${CMAKE_SOURCE_DIR}/markov_flow"
         )
 
@@ -15,6 +16,7 @@ target_link_libraries(
         Boost::filesystem
         Boost::system
         Boost::program_options
+        ${ARMADILLO_LIBRARIES}
         gtest_main
 )
 

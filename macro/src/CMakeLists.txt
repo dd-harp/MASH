@@ -120,6 +120,7 @@ if ( NOT Boost_FOUND )
     return()
 endif()
 
+find_package(Armadillo REQUIRED)
 
 #### Now build the targets.
 add_subdirectory(markov_flow)

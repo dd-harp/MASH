@@ -50,13 +50,16 @@ namespace dd_harp {
         auto [search_matrix, index_matrix] = build_multinomial_matrix(flow_probability);
         this->flow_cumulant = search_matrix;
         this->flow_index = index_matrix;
-        this->patch_rate_with_people.zeros(patch_count);
+        arma::Col<double> patch_rate_with_people(patch_count);
         // Assign per-patch rate = (# people in patch) x (total movement rate from patch)
         for (int patch_rate_index = 0; patch_rate_index <  patch_count; ++patch_rate_index) {
             patch_rate_with_people[patch_rate_index] = (
                     flow_cumulant(0, patch_rate_index) * human_location[patch_rate_index].size()
                     );
         }
+        auto [rate_with_people, patch_index] = build_binary_tree(patch_rate_with_people.t());
+        this->patch_rate_with_people = rate_with_people.t();
+        this->patch_index = patch_index;
         this->total_rate = arma::sum(patch_rate_with_people);
     }
 
@@ -67,9 +70,27 @@ namespace dd_harp {
         while (time_within_step < time_step) {
             double dt = boost::random::exponential_distribution<double>(total_rate)(this->rng);
             // Choose among patches using the per-patch rate.
-            // Pick a person.
+//            arma::Row<double> binary_encoding = this->patch_rate_with_people.t();
+//            int source_patch = sample_binary_tree(binary_encoding, this->patch_index, this->rng);
             // Choose where they go using the multinomial choose_direction().
+//            int destination_patch = sample_binary_tree(
+//                    this->flow_cumulant.col(source_patch).t(),
+//                    this->flow_index.col(source_patch),
+//                    this->rng
+//                    );
+            // Pick a person.
+//            int who_index = boost::random::uniform_int_distribution<int>(
+//                    0, this->human_location[source_patch].size() - 1)(this->rng);
+//            this->human_location[destination_patch].push_back(who_index);
+//            this->human_location[source_patch].erase(human_location[source_patch].begin() + who_index);
             // Calculate updates to per-patch rate and total due to moving person.
+//            std::vector<std::tuple<int, double>> updates = {
+//                    {destination_patch, flow_cumulant(0, destination_patch)},
+//                    {source_patch, -flow_cumulant(0, source_patch)}
+//            };
+            // Update the binary tree with new rates. Faster to do both at once.
+            // update_binary_tree(patch_rate_with_people, updates);
+//            total_rate += flow_cumulant(0, destination_patch) - flow_cumulant(0, source_patch);
             time_within_step += dt;
         }
 
@@ -117,8 +138,8 @@ namespace dd_harp {
      */
     std::tuple<arma::Row<double>, arma::uvec>
             build_binary_tree(const arma::Row<double> rates) {
-        arma::uvec sorted_rates_index = arma::sort_index(rates);
         arma::Row<double> sorted_rates(rates.n_elem);
+        arma::uvec sorted_rates_index = arma::sort_index(rates);
         for (int copy_sorted = 0; copy_sorted < rates.n_elem; ++copy_sorted) {
             sorted_rates[copy_sorted] = rates[sorted_rates_index[copy_sorted]];
         }

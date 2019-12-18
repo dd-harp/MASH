@@ -119,23 +119,63 @@ TEST(MarkovFlowTest, BinaryTreeTotalIsCorrect) {
 }
 
 
+TEST(MarkovFlowTest, BinaryTreeSortingWorks) {
+    arma::Row<double> rates1 = {1, 2, 3, 4, 5, 6};
+    auto [cumulant1, sorted_rates_index1] = dd_harp::build_binary_tree(rates1);
+    for (int order = 0; order < rates1.n_elem; ++order) {
+        EXPECT_EQ(sorted_rates_index1[order], order);
+    }
+
+    arma::Row<double> rates2 = {5, 4, 3, 2, 1};
+    auto [cumulant2, sorted_rates_index2] = dd_harp::build_binary_tree(rates2);
+    for (int order = 0; order < rates2.n_elem; ++order) {
+        EXPECT_EQ(sorted_rates_index2[rates2.n_elem - order - 1], order);
+    }
+
+}
+
+
+TEST(MarkovFlowTest, BinaryTreeIntegrity) {
+    double epsilon{1e-5};
+    double fill{0.21349780};
+    for (int n = 1; n < 29; ++n) {
+        arma::Row<double> given_rates(n);
+        given_rates.fill(fill);
+        auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
+
+        for (int i = 0; i < tree.n_elem; ++i) {
+            int child = 2 * (i + 1) - 1;
+            if (child < tree.n_elem) {
+                EXPECT_FLOAT_EQ(tree[i], tree[child] + tree[child + 1]);
+            }
+        }
+    }
+}
+
+
 TEST(MarkovFlowTest, MultinomialBinaryTree) {
     boost::mt19937 rng(234234243);
-    arma::Row<double> given_rates = {0.01, 0.8, 0.19};
-    arma::Row<double> rates = 10 * given_rates; // To ensure scaling to max works.
-    auto [cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
-    arma::Row<double> histogram(rates.n_elem);
-    histogram.zeros();
+    for (int n = 1; n < 3; ++n) {
+        arma::Row<double> rates(n, arma::fill::randu);
+        arma::Row<double> given_rates = normalise(rates);
+        auto [cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
+        arma::Row<double> histogram(rates.n_elem);
+        histogram.zeros();
 
-    int draw_cnt{1000000};
-    for (int draw = 0; draw < draw_cnt ; ++draw) {
-        int chosen = dd_harp::sample_binary_tree(cumulant, sorted_rates_index, rng);
-        histogram[chosen] += 1;
-    }
-    for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
-    auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.95);
-        EXPECT_GT(histogram[check_idx] / draw_cnt, low);
-        EXPECT_LT(histogram[check_idx] / draw_cnt, high);
+        int draw_cnt{1000000};
+        for (int draw = 0; draw < draw_cnt ; ++draw) {
+            int chosen = dd_harp::sample_binary_tree(cumulant, sorted_rates_index, rng);
+            histogram[chosen] += 1;
+        }
+        if (n == 1) {
+            EXPECT_FLOAT_EQ(histogram[0], draw_cnt);
+        } else {
+            for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
+            auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.99);
+                EXPECT_GT(histogram[check_idx] / draw_cnt, low);
+                EXPECT_LT(histogram[check_idx] / draw_cnt, high);
+            }
+        }
     }
 }
 

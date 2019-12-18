@@ -74,6 +74,7 @@ private:
     arma::Mat<double> flow_cumulant;
     arma::umat flow_index;
     arma::Col<double> patch_rate_with_people;
+    arma::uvec patch_index;
     double total_rate;
     int patch_count;
     int human_count;
