@@ -9,6 +9,7 @@
 #include "armadillo"
 #include "boost/math/distributions/normal.hpp"
 #include "boost/property_map/property_map.hpp"
+#include "boost/random/uniform_int_distribution.hpp"
 #include "gtest/gtest.h"
 
 #include "markov_flow.h"
@@ -18,11 +19,19 @@ using namespace boost;
 
 
 TEST(MarkovFlowTest, SmokeTest) {
-    map<string, double> parameters;
-    parameters["human_count"] = 100;
-    associative_property_map parameter_map{parameters};
+    boost::mt19937 rng(23999243);
+    map<string, dd_harp::movement_machine_parameter> parameters;
+    int human_count{100};
+    parameters["human_count"] = human_count;
+    int patch_count{10};
+    parameters["flow_probability"] = arma::Mat<double>(patch_count, patch_count, arma::fill::randu);
+    std::vector<std::vector<int>> people(patch_count);
+    boost::random::uniform_int_distribution patch_gen(0, patch_count - 1);
+    for (int place_index = 0; place_index < human_count; ++place_index) {
+        people[patch_gen(rng)].push_back(place_index);
+    }
     auto m = dd_harp::movement_machine{};
-    // m.init(parameter_map);
+    m.init(parameters, people);
     auto result = m.step(0.1);
 }
 

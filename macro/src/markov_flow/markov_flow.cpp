@@ -45,6 +45,11 @@ namespace dd_harp {
         this->human_count = std::get<int>(parameters.at("human_count"));
         arma::Mat<double> flow_probability = std::get<arma::Mat<double>>(parameters.at("flow_probability"));
         this->patch_count = flow_probability.n_rows;
+        if (this->patch_count < 1) {
+            std::stringstream msg;
+            msg << "Patch count should be one or more but is " << patch_count;
+            throw std::runtime_error(msg.str());
+        }
         // Calculate total rate over all.
         this->human_location = initial_state;
         auto [search_matrix, index_matrix] = build_multinomial_matrix(flow_probability);
@@ -61,17 +66,26 @@ namespace dd_harp {
         this->patch_rate_with_people = rate_with_people.t();
         this->patch_index = patch_index;
         this->total_rate = arma::sum(patch_rate_with_people);
+        if (this->total_rate <= 0) {
+            std::stringstream msg;
+            msg << "The rate for flow should be positive but is " << total_rate;
+            throw std::runtime_error(msg.str());
+        }
+        this->initialized = true;
     }
 
 
     const movement_machine_result *
     movement_machine::step(double time_step) {
+        if (!this->initialized) {
+            throw std::runtime_error("You must initialize the class before stepping.");
+        }
         double time_within_step{0};
         while (time_within_step < time_step) {
             double dt = boost::random::exponential_distribution<double>(total_rate)(this->rng);
             // Choose among patches using the per-patch rate.
             arma::Row<double> binary_encoding = this->patch_rate_with_people.t();
-//            int source_patch = sample_binary_tree(binary_encoding, this->patch_index, this->rng);
+            int source_patch = sample_binary_tree(binary_encoding, this->patch_index, this->rng);
             // Choose where they go using the multinomial choose_direction().
 //            int destination_patch = sample_binary_tree(
 //                   this->flow_cumulant.col(source_patch).t(),
@@ -178,7 +192,7 @@ namespace dd_harp {
         int leaf_count = (1 << next_power_of_two(patch_count));
         arma::Mat<double> tree_matrix(2 * leaf_count - 1, patch_count);
         arma::Mat<arma::uword> sorted_rates_index(patch_count, patch_count);
-        for (int col_index = 0; col_index <= patch_count; ++col_index) {
+        for (int col_index = 0; col_index < patch_count; ++col_index) {
             auto [single_tree, single_index] = build_binary_tree(flow_probability.col(col_index).t());
             tree_matrix.col(col_index) = single_tree.t();
             sorted_rates_index.col(col_index) = single_index;

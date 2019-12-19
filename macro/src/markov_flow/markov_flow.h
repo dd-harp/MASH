@@ -70,6 +70,7 @@ public:
     step(double time_step);
 
 private:
+    bool initialized{false};
     boost::mt19937 rng;
     arma::Mat<double> flow_cumulant;
     arma::umat flow_index;
