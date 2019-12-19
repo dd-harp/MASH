@@ -185,4 +185,26 @@ namespace dd_harp {
         }
         return {tree_matrix, sorted_rates_index};
     }
+
+
+    int locate_in_binary_tree(const arma::Row<double>& tree, double choice) {
+        if (tree.n_elem == 1) {
+            // This changes the incoming invariant to guarantee we have
+            // at least two levels.
+            return 0;
+        }
+        int leaf_count = (tree.n_elem + 1) / 2;
+
+        int n{0};
+        while (n < leaf_count - 1) {
+            if (choice < tree[2 * n + 1]) {
+                n = 2 * n + 1;
+            } else {
+                choice -= tree[2 * n + 1];
+                n = 2 * n + 2;
+            }
+        }
+
+        return n - leaf_count + 1;
+    }
 }

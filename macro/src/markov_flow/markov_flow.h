@@ -131,6 +131,7 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
     std::tuple<arma::Row<double>, arma::uvec>
     build_binary_tree(const arma::Row<double> rates);
 
+    int locate_in_binary_tree(const arma::Row<double>& tree, double choice);
 
     template<typename RNG>
     int sample_binary_tree(const arma::Row<double>& tree, const arma::uvec& sorted_rates_index, RNG& rng) {
@@ -144,31 +145,7 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
         double total_rate{tree[0]};
         boost::random::uniform_real_distribution<double> chooser(0, total_rate);
         auto choice = chooser(rng);
-        int n{1};
-        int chosen{0};
-        // The loop invariant is that n and n+1 are the next ones to check.
-        while (n < leaf_count - 1) {
-            if (tree[n] < choice) {
-                choice -= tree[n];
-                n = 2 * n + 2;
-            } else {
-                n = 2 * n + 1;
-            }
-        }
-        if (leaf_count > 1) {
-            if (tree[n] < choice) {
-                chosen = n - leaf_count + 2;
-            } else {
-                chosen = n - leaf_count + 1;
-            }
-        }
-        if (chosen > sorted_rates_index.n_elem - 1) {
-            std::stringstream msg;
-            msg << "Leaf count is " << leaf_count << " rate count " << sorted_rates_index.n_elem
-                << " index chosen " << chosen;
-            throw std::runtime_error(msg.str());
-        }
-        return sorted_rates_index[chosen];
+        return sorted_rates_index[locate_in_binary_tree(tree, choice)];
     }
 
     std::tuple<arma::Mat<double>, arma::Mat<arma::uword>>

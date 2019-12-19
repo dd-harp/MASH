@@ -154,20 +154,57 @@ TEST(BinaryTreeMultinomial, TreeIntegrity) {
 }
 
 
+//! Convert an Armadillo vector to a string so that it shows up in debugging window.
 template<typename VECTOR>
 std::string vector_to_string(const VECTOR& rates) {
     std::stringstream msg;
     for (int msg_idx = 0; msg_idx < rates.n_elem; ++msg_idx) {
-        msg << rates[msg_idx] << " ";
+        msg << rates[msg_idx];
+        if (msg_idx + 1 < rates.n_elem) {
+            msg << " ";
+        }
     }
     return(msg.str());
 }
 
 
+
+TEST(BinaryTreeMultinomial, DeterministicDrawsWork) {
+    for (int n = 3; n < 40; ++n) {
+        arma::Row<double> rates{arma::sort(arma::Row<double>(n, arma::fill::randu))};
+        std::string rate_string{vector_to_string(rates)};
+        auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(rates);
+        EXPECT_TRUE(sorted_rates_index.is_sorted());
+        std::string tree_string{vector_to_string(tree)};
+        std::string sorted_string{vector_to_string(sorted_rates_index)};
+        arma::Row<double> histogram(rates.n_elem);
+        histogram.zeros();
+
+        double total{0};
+        for (int rate_idx = 0; rate_idx < rates.n_elem; ++rate_idx) {
+            double arate = rates[rate_idx];
+            int seq_max{6};
+            // Walk through draws that we know are firmly within a
+            // particular rate index.
+            for (int seq_idx = 1; seq_idx < seq_max; ++seq_idx) {
+                double choice{total + seq_idx * arate / seq_max};
+                EXPECT_GT(choice, total);
+                EXPECT_LT(choice, total + arate);
+                int chosen = dd_harp::locate_in_binary_tree(tree, choice);
+                EXPECT_EQ(chosen, rate_idx);
+            }
+            total += arate;
+        }
+    }
+}
+
+
 TEST(BinaryTreeMultinomial, DrawsMatchRates) {
-    boost::mt19937 rng(234234243);
-    for (int n = 2; n < 3; ++n) {
-        arma::Row<double> rates(n, arma::fill::randu);
+    boost::mt19937 rng(2342349873);
+    for (int n = 2; n < 33; ++n) {
+        arma::Row<double> unit_rates(n, arma::fill::randu);
+        // Give the rates a wide range.
+        arma::Row<double> rates = exp10(-3 + 3 * unit_rates);
         std::string rate_string{vector_to_string(rates)};
         auto [cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
         std::string tree_string{vector_to_string(cumulant)};
@@ -183,11 +220,12 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
         if (n == 1) {
             EXPECT_FLOAT_EQ(histogram[0], draw_cnt);
         } else {
-            arma::Row<double> given_rates = normalise(rates);
+            arma::Row<double> given_rates = rates / sum(rates);
+            double epsilon{3e-4};
             for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
             auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.99);
-                EXPECT_GT(histogram[check_idx] / draw_cnt, low);
-                EXPECT_LT(histogram[check_idx] / draw_cnt, high);
+                EXPECT_GT(histogram[check_idx] / draw_cnt, low - epsilon);
+                EXPECT_LT(histogram[check_idx] / draw_cnt, high + epsilon);
             }
         }
     }
