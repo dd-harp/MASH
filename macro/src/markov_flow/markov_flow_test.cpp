@@ -13,6 +13,7 @@
 #include "gtest/gtest.h"
 
 #include "markov_flow.h"
+#include "multinomial.h"
 
 using namespace std;
 using namespace boost;
@@ -74,10 +75,10 @@ TEST(MarkovFlowTest, WilsonMatchesAPaperResult) {
 
 TEST(MarkovFlowTest, DrawMultinomial) {
     boost::mt19937 rng(234234243);
-    arma::Row<double> given_rates = {0.01, 0.8, 0.19};
-    arma::Row<double> rates = 10 * given_rates; // To ensure scaling to max works.
+    arma::Col<double> given_rates = {0.01, 0.8, 0.19};
+    arma::Col<double> rates = 10 * given_rates; // To ensure scaling to max works.
     auto [cumulant, sorted_rates_index] = dd_harp::prepare_rates(rates);
-    arma::Row<double> histogram(rates.n_elem);
+    arma::Col<double> histogram(rates.n_elem);
     histogram.zeros();
 
     int draw_cnt{1000000};
@@ -107,7 +108,7 @@ TEST(BinaryTreeMultinomial, PowerOfTwo) {
 TEST(BinaryTreeMultinomial, TreeFilled) {
     double epsilon{1e-5};
     double fill{0.32792342};
-    arma::Row<double> given_rates(3);
+    arma::Col<double> given_rates(3);
     given_rates.fill(fill);
     auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
     std::vector<double> expected = {3 * fill, 2 * fill, fill, fill, fill, fill, 0};
@@ -121,7 +122,7 @@ TEST(BinaryTreeMultinomial, TreeTotalIsCorrect) {
     double epsilon{1e-5};
     double fill{0.32792342};
     for (int n = 1; n < 9; ++n) {
-        arma::Row<double> given_rates(n);
+        arma::Col<double> given_rates(n);
         given_rates.fill(fill);
         auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
         EXPECT_LT(std::abs(tree[0] - n * fill), epsilon);
@@ -130,13 +131,13 @@ TEST(BinaryTreeMultinomial, TreeTotalIsCorrect) {
 
 
 TEST(BinaryTreeMultinomial, TreeSortingWorks) {
-    arma::Row<double> rates1 = {1, 2, 3, 4, 5, 6};
+    arma::Col<double> rates1 = {1, 2, 3, 4, 5, 6};
     auto [cumulant1, sorted_rates_index1] = dd_harp::build_binary_tree(rates1);
     for (int order = 0; order < rates1.n_elem; ++order) {
         EXPECT_EQ(sorted_rates_index1[order], order);
     }
 
-    arma::Row<double> rates2 = {5, 4, 3, 2, 1};
+    arma::Col<double> rates2 = {5, 4, 3, 2, 1};
     auto [cumulant2, sorted_rates_index2] = dd_harp::build_binary_tree(rates2);
     for (int order = 0; order < rates2.n_elem; ++order) {
         EXPECT_EQ(sorted_rates_index2[rates2.n_elem - order - 1], order);
@@ -149,7 +150,7 @@ TEST(BinaryTreeMultinomial, TreeIntegrity) {
     double epsilon{1e-5};
     double fill{0.21349780};
     for (int n = 1; n < 29; ++n) {
-        arma::Row<double> given_rates(n);
+        arma::Col<double> given_rates(n);
         given_rates.fill(fill);
         auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(given_rates);
 
@@ -180,13 +181,13 @@ std::string vector_to_string(const VECTOR& rates) {
 
 TEST(BinaryTreeMultinomial, DeterministicDrawsWork) {
     for (int n = 3; n < 40; ++n) {
-        arma::Row<double> rates{arma::sort(arma::Row<double>(n, arma::fill::randu))};
+        arma::Col<double> rates{arma::sort(arma::Col<double>(n, arma::fill::randu))};
         std::string rate_string{vector_to_string(rates)};
         auto [tree, sorted_rates_index] = dd_harp::build_binary_tree(rates);
         EXPECT_TRUE(sorted_rates_index.is_sorted());
         std::string tree_string{vector_to_string(tree)};
         std::string sorted_string{vector_to_string(sorted_rates_index)};
-        arma::Row<double> histogram(rates.n_elem);
+        arma::Col<double> histogram(rates.n_elem);
         histogram.zeros();
 
         double total{0};
@@ -211,14 +212,14 @@ TEST(BinaryTreeMultinomial, DeterministicDrawsWork) {
 TEST(BinaryTreeMultinomial, DrawsMatchRates) {
     boost::mt19937 rng(2342349873);
     for (int n = 2; n < 33; ++n) {
-        arma::Row<double> unit_rates(n, arma::fill::randu);
+        arma::Col<double> unit_rates(n, arma::fill::randu);
         // Give the rates a wide range.
-        arma::Row<double> rates = exp10(-3 + 3 * unit_rates);
+        arma::Col<double> rates = exp10(-3 + 3 * unit_rates);
         std::string rate_string{vector_to_string(rates)};
         auto[cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
         std::string tree_string{vector_to_string(cumulant)};
         std::string sorted_string{vector_to_string(sorted_rates_index)};
-        arma::Row<double> histogram(rates.n_elem);
+        arma::Col<double> histogram(rates.n_elem);
         histogram.zeros();
 
         int draw_cnt{1000000};
@@ -229,7 +230,7 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
         if (n == 1) {
             EXPECT_FLOAT_EQ(histogram[0], draw_cnt);
         } else {
-            arma::Row<double> given_rates = rates / sum(rates);
+            arma::Col<double> given_rates = rates / sum(rates);
             double epsilon{3e-4};
             for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
                 auto[low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.99);
@@ -242,7 +243,7 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
 
 
 TEST(BinaryTreeMultinomial, UpdateBinaryTreeSingle) {
-    arma::Row<double> tree = {10, 6, 4, 4, 2, 1, 3};
+    arma::Col<double> tree = {10, 6, 4, 4, 2, 1, 3};
     dd_harp::update_binary_tree(
             tree,
             {{0, 1}});
@@ -251,7 +252,7 @@ TEST(BinaryTreeMultinomial, UpdateBinaryTreeSingle) {
 
 
 TEST(BinaryTreeMultinomial, UpdateBinaryTreeDouble) {
-    arma::Row<double> tree = {10, 6, 4, 4, 2, 1, 3};
+    arma::Col<double> tree = {10, 6, 4, 4, 2, 1, 3};
     dd_harp::update_binary_tree(
             tree,
             {{0, 1}, {2, 2}});

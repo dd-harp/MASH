@@ -3,6 +3,8 @@ add_executable(markov_flow_test
         markov_flow.cpp
         markov_flow_test.cpp
         markov_flow.h
+        multinomial.cpp
+        multinomial.h
         )
 
 target_include_directories(markov_flow_test
