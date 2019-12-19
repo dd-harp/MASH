@@ -70,11 +70,11 @@ namespace dd_harp {
         while (time_within_step < time_step) {
             double dt = boost::random::exponential_distribution<double>(total_rate)(this->rng);
             // Choose among patches using the per-patch rate.
-//            arma::Row<double> binary_encoding = this->patch_rate_with_people.t();
+            arma::Row<double> binary_encoding = this->patch_rate_with_people.t();
 //            int source_patch = sample_binary_tree(binary_encoding, this->patch_index, this->rng);
             // Choose where they go using the multinomial choose_direction().
 //            int destination_patch = sample_binary_tree(
-//                    this->flow_cumulant.col(source_patch).t(),
+//                   this->flow_cumulant.col(source_patch).t(),
 //                    this->flow_index.col(source_patch),
 //                    this->rng
 //                    );

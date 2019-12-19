@@ -145,6 +145,10 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
         double total_rate{tree[0]};
         boost::random::uniform_real_distribution<double> chooser(0, total_rate);
         auto choice = chooser(rng);
+        if (choice >= total_rate) {
+            // The RNG can return a number at or near the total rate. Avoid that.
+            return sorted_rates_index[sorted_rates_index.n_elem - 1];
+        }
         return sorted_rates_index[locate_in_binary_tree(tree, choice)];
     }
 
