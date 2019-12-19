@@ -215,14 +215,14 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
         // Give the rates a wide range.
         arma::Row<double> rates = exp10(-3 + 3 * unit_rates);
         std::string rate_string{vector_to_string(rates)};
-        auto [cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
+        auto[cumulant, sorted_rates_index] = dd_harp::build_binary_tree(rates);
         std::string tree_string{vector_to_string(cumulant)};
         std::string sorted_string{vector_to_string(sorted_rates_index)};
         arma::Row<double> histogram(rates.n_elem);
         histogram.zeros();
 
         int draw_cnt{1000000};
-        for (int draw = 0; draw < draw_cnt ; ++draw) {
+        for (int draw = 0; draw < draw_cnt; ++draw) {
             int chosen = dd_harp::sample_binary_tree(cumulant, sorted_rates_index, rng);
             histogram[chosen] += 1;
         }
@@ -232,7 +232,7 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
             arma::Row<double> given_rates = rates / sum(rates);
             double epsilon{3e-4};
             for (int check_idx = 0; check_idx < given_rates.n_elem; ++check_idx) {
-            auto [low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.99);
+                auto[low, high] = wilson_score_interval(given_rates[check_idx], draw_cnt, 0.99);
                 EXPECT_GT(histogram[check_idx] / draw_cnt, low - epsilon);
                 EXPECT_LT(histogram[check_idx] / draw_cnt, high + epsilon);
             }
@@ -240,3 +240,20 @@ TEST(BinaryTreeMultinomial, DrawsMatchRates) {
     }
 }
 
+
+TEST(BinaryTreeMultinomial, UpdateBinaryTreeSingle) {
+    arma::Row<double> tree = {10, 6, 4, 4, 2, 1, 3};
+    dd_harp::update_binary_tree(
+            tree,
+            {{0, 1}});
+    EXPECT_FLOAT_EQ(tree[0], 7);
+}
+
+
+TEST(BinaryTreeMultinomial, UpdateBinaryTreeDouble) {
+    arma::Row<double> tree = {10, 6, 4, 4, 2, 1, 3};
+    dd_harp::update_binary_tree(
+            tree,
+            {{0, 1}, {2, 2}});
+    EXPECT_FLOAT_EQ(tree[0], 8);
+}

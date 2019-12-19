@@ -1,4 +1,5 @@
 #include <cassert>
+#include <unordered_set>
 #include <vector>
 
 #include "boost/random/exponential_distribution.hpp"
@@ -25,18 +26,20 @@ namespace dd_harp {
  */
     movement_sequence
     movement_machine_result::movements_of_human(human_id query) const {
-        return {{3, 0.02},
-                {4, 0.05},
-                {3, 0.8}};
+        return this->human_location[query];
     }
 
 
-    movement_sequence
-    movement_machine_result::duration_in_patch(human_id query) const {
-        return {{4, .77},
-                {3, .23}};
+    patch_sequence
+    movement_machine_result::duration_in_patch(patch_id query) const {
+        return this->patch_state[query];
     }
 
+
+    void movement_machine_result::allocate(human_id human_count, patch_id patch_count) {
+        this->human_location.resize(human_count);
+        this->patch_state.resize(patch_count);
+    }
 
     void movement_machine::init(
             const std::map <std::string, movement_machine_parameter> &parameters,
@@ -71,6 +74,7 @@ namespace dd_harp {
             msg << "The rate for flow should be positive but is " << total_rate;
             throw std::runtime_error(msg.str());
         }
+        this->result.allocate(this->human_count, this->patch_count);
         this->initialized = true;
     }
 
@@ -87,25 +91,30 @@ namespace dd_harp {
             arma::Row<double> binary_encoding = this->patch_rate_with_people.t();
             int source_patch = sample_binary_tree(binary_encoding, this->patch_index, this->rng);
             // Choose where they go using the multinomial choose_direction().
-//            int destination_patch = sample_binary_tree(
-//                   this->flow_cumulant.col(source_patch).t(),
-//                    this->flow_index.col(source_patch),
-//                    this->rng
-//                    );
+            int destination_patch = sample_binary_tree(
+                   this->flow_cumulant.col(source_patch).t(),
+                    this->flow_index.col(source_patch),
+                    this->rng
+                    );
             // Pick a person.
-//            int who_index = boost::random::uniform_int_distribution<int>(
-//                    0, this->human_location[source_patch].size() - 1)(this->rng);
-//            this->human_location[destination_patch].push_back(who_index);
-//            this->human_location[source_patch].erase(human_location[source_patch].begin() + who_index);
+            int who_index = boost::random::uniform_int_distribution<int>(
+                    0, this->human_location[source_patch].size() - 1)(this->rng);
+            this->human_location[destination_patch].push_back(who_index);
+            this->human_location[source_patch].erase(human_location[source_patch].begin() + who_index);
             // Calculate updates to per-patch rate and total due to moving person.
-//            std::vector<std::tuple<int, double>> updates = {
-//                    {destination_patch, flow_cumulant(0, destination_patch)},
-//                    {source_patch, -flow_cumulant(0, source_patch)}
-//            };
+            std::vector<std::tuple<int, double>> updates = {
+                    {destination_patch, flow_cumulant(0, destination_patch)},
+                    {source_patch, -flow_cumulant(0, source_patch)}
+            };
             // Update the binary tree with new rates. Faster to do both at once.
             // update_binary_tree(patch_rate_with_people, updates);
-//            total_rate += flow_cumulant(0, destination_patch) - flow_cumulant(0, source_patch);
+            total_rate += flow_cumulant(0, destination_patch) - flow_cumulant(0, source_patch);
+
             time_within_step += dt;
+            // Record the change.
+            this->result.human_location[who_index].push_back({destination_patch, time_within_step});
+            this->result.patch_state[source_patch].push_back({who_index, false, time_within_step});
+            this->result.patch_state[destination_patch].push_back({who_index, true, time_within_step});
         }
 
         return &result;
@@ -220,5 +229,32 @@ namespace dd_harp {
         }
 
         return n - leaf_count + 1;
+    }
+
+    //! Given a binary tree, update changes to several rates.
+    //! The updates are new values, not changes to values.
+    void update_binary_tree(
+            arma::Row<double>& tree,
+            const std::vector<std::tuple<int, double>>& updates
+            ) {
+        int leaf_count = (tree.n_elem + 1) / 2;
+        std::array<std::unordered_set<int>, 2> changes;
+        int change_idx{0};
+        for (auto [index, value]: updates) {
+            int n{leaf_count + index - 1};
+            tree[n] = value;
+            changes[change_idx].emplace((n - 1) / 2);
+        }
+        while (!changes[change_idx].empty()) {
+            for (auto index: changes[change_idx]) {
+                int left{2 * index + 1};
+                tree[index] = tree[left] + tree[left + 1];
+                if (index > 0) {
+                    changes[1 - change_idx].emplace((index - 1) / 2);
+                }
+            }
+            changes[change_idx].clear();
+            change_idx = 1 - change_idx;
+        }
     }
 }

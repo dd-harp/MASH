@@ -19,12 +19,14 @@ using patch_id = int;
 using human_id = int;
 using clock_time = double;
 using movement_sequence = std::vector<std::tuple<patch_id,clock_time>>;
+using patch_sequence = std::vector<std::tuple<human_id, bool, clock_time>>;
 
 
 struct no_parameter {};
 
 using movement_machine_parameter = std::variant<no_parameter, int, arma::Mat<double>>;
 
+class movement_machine;  // Forward declaration for friending.
 
 class movement_machine_result {
 public:
@@ -42,8 +44,14 @@ public:
     movement_sequence
     movements_of_human(human_id query) const;
 
-    movement_sequence
-    duration_in_patch(human_id query) const;
+    patch_sequence
+    duration_in_patch(patch_id query) const;
+
+    void allocate(human_id human_count, patch_id patch_count);
+    friend class movement_machine;
+private:
+    std::vector<movement_sequence> human_location;
+    std::vector<patch_sequence> patch_state;
 };
 
 
@@ -155,5 +163,9 @@ int choose_direction(const arma::Row<double>& cumulant, const arma::uvec& sorted
 
     std::tuple<arma::Mat<double>, arma::Mat<arma::uword>>
     build_multinomial_matrix(const arma::Mat<double>& flow_probability);
+    void update_binary_tree(
+            arma::Row<double>& tree,
+            const std::vector<std::tuple<int, double>>& updates
+    );
 } // namespace dd_harp
 #endif //SRC_MARKOV_FLOW_H
