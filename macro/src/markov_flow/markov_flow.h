@@ -48,6 +48,8 @@ public:
     duration_in_patch(patch_id query) const;
 
     void allocate(human_id human_count, patch_id patch_count);
+    //! Remove events without resizing the event queue storage.
+    void clear();
     friend class movement_machine;
 private:
     std::vector<movement_sequence> human_location;

@@ -6,7 +6,6 @@
 #include <map>
 #include <sstream>
 #include <vector>
-#include <variant>
 
 #include "armadillo"
 #include "boost/random/binomial_distribution.hpp"

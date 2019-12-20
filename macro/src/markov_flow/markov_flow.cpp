@@ -1,4 +1,3 @@
-#include <cassert>
 #include <unordered_set>
 #include <vector>
 
@@ -43,8 +42,17 @@ namespace dd_harp {
         this->patch_state.resize(patch_count);
     }
 
+    void movement_machine_result::clear() {
+        for (auto& human: this->human_location) {
+            human.clear();
+        }
+        for (auto& patch: this->patch_state) {
+            patch.clear();
+        }
+    }
+
     void movement_machine::init(
-            const std::map <std::string, movement_machine_parameter> &parameters,
+            const std::map<std::string, movement_machine_parameter> &parameters,
             const std::vector<std::vector<int>> &initial_state
     ) {
         this->human_count = std::get<int>(parameters.at("human_count"));
@@ -86,6 +94,7 @@ namespace dd_harp {
         if (!this->initialized) {
             throw std::runtime_error("You must initialize the class before stepping.");
         }
+        this->result.clear();
         double time_within_step{0};
         while (time_within_step < time_step) {
             double dt = boost::random::exponential_distribution<double>(total_rate)(this->rng);
@@ -110,7 +119,6 @@ namespace dd_harp {
             };
             // Update the binary tree with new rates. Faster to do both at once.
             update_binary_tree(patch_rate_with_people, updates);
-            // update_binary_tree(patch_rate_with_people, updates);
             total_rate = patch_rate_with_people[0];
 
             time_within_step += dt;
