@@ -7,13 +7,14 @@
 using namespace Rcpp;
 
 // movement_init
-List movement_init(List parameters);
-RcppExport SEXP _macro_movement_init(SEXP parametersSEXP) {
+List movement_init(List parameters, List initial_location);
+RcppExport SEXP _macro_movement_init(SEXP parametersSEXP, SEXP initial_locationSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type parameters(parametersSEXP);
-    rcpp_result_gen = Rcpp::wrap(movement_init(parameters));
+    Rcpp::traits::input_parameter< List >::type initial_location(initial_locationSEXP);
+    rcpp_result_gen = Rcpp::wrap(movement_init(parameters, initial_location));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -67,7 +68,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_macro_movement_init", (DL_FUNC) &_macro_movement_init, 1},
+    {"_macro_movement_init", (DL_FUNC) &_macro_movement_init, 2},
     {"_macro_movement_step", (DL_FUNC) &_macro_movement_step, 2},
     {"_macro_convert_to_r_movement", (DL_FUNC) &_macro_convert_to_r_movement, 2},
     {"_macro_movements_of_human", (DL_FUNC) &_macro_movements_of_human, 2},

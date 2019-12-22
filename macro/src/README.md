@@ -5,6 +5,11 @@ either for R or for standalone use.
 
 ## Building for R with Rcpp
 
+If you modify the Rcpp wrapper, then rerun
+
+    Rcpp::compileAttributes()
+
+That rebuilds the C++ wrapper.
 
 ## Building for C++
 

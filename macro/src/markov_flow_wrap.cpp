@@ -2,14 +2,17 @@
 
 #include <vector>
 
+#include "armadillo"
 #include "boost/property_map/property_map.hpp"
 #include "Rcpp.h"
 
 #include "markov_flow.h"
 
+// We can't put movement_init into namespace dd_harp because Rcpp's
+// wrapping functions don't pick up the namespace.
+using namespace dd_harp;
 using namespace Rcpp;
 
-namespace dd_harp {
 /*!
  * From R, this will look like
  *     movement <- movement_init(params)
@@ -18,9 +21,30 @@ namespace dd_harp {
  *     person <- human_model(moves, time_step)
  */
 // [[Rcpp::export]]
-List movement_init(List parameters) {
+List movement_init(List parameters, List initial_location) {
     auto movement = new movement_machine{};
-    movement->init();
+    std::map<std::string, movement_machine_parameter> cparameters;
+    int human_count = as<int>(parameters["human_count"]);
+    cparameters["human_count"] = human_count;
+    int patch_count = as<int>(parameters["patch_count"]);
+    cparameters["patch_count"] = patch_count;
+    NumericVector flux_matrix = parameters["flow_probability"];
+    // Make one copy of the matrix and then work with a reference to it.
+    cparameters["flow_probability"] = arma::Mat<double>(patch_count, patch_count);
+    arma::Mat<double>& flow_probability = get<arma::Mat<double>>(cparameters["flow_probability"]);
+    for (int from_idx = 0; from_idx < patch_count; ++from_idx) {
+        for (int to_idx = 0; to_idx < patch_count; ++to_idx) {
+            flow_probability(to_idx, from_idx) = flux_matrix[from_idx * patch_count + to_idx];
+        }
+    }
+
+    std::vector<std::vector<int>> initial_state{patch_count};
+    NumericVector locations = initial_location["human_locations"];
+    // Check locations length is same as humans.
+    for (int place_idx = 0; place_idx < human_count; ++place_idx) {
+        initial_state[locations[place_idx]].push_back(place_idx);
+    }
+    movement->init(cparameters, initial_state);
 
     XPtr<movement_machine> handle_ptr(movement);
     auto movement_object = List::create(
@@ -95,4 +119,3 @@ NumericVector movements_of_human(List movement_list, IntegerVector human) {
  * We need a method that takes R simulation of movement and converts
  * it into a *subclass of* a C++ movement_machine_result.
  */
-} // namespace dd_harp

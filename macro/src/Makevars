@@ -17,12 +17,16 @@ PKG_CPPFLAGS += -I../inst/include/ -Imarkov_flow -I.
 
 # Include source files in subdirectories by listing
 # the object files here.
+# The file markov_flow_wrap.cpp is in the main directory, instead of
+# the markov_flow directory, so that the Rcpp scanner can find it
+# in order to build the RcppExports file. There is no other way to
+# ensure the scanner finds it.
 MARKOV_FLOW_OBJS = \
 	markov_flow/markov_flow.o \
-	markov_flow_wrap.o \
-	RcppExports.o
+	markov_flow/multinomial.o \
+	markov_flow_wrap.o
 
 RANDOM_GENERATOR_OBJS = \
 	random.o
 
-OBJECTS = $(MARKOV_FLOW_OBJS) $(RANDOM_GENERATOR_OBJS)
+OBJECTS = $(MARKOV_FLOW_OBJS) $(RANDOM_GENERATOR_OBJS) RcppExports.o

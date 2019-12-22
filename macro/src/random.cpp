@@ -18,7 +18,7 @@ int twos_complement(size_t val) {
         -(val & MASK31) + (val & ~MASK31)
     );
 }
-
+}
 
 //' Generate Mersenne Twister seed states skipped ahead by powers of two.
 //'
@@ -60,10 +60,10 @@ skip_mersenne_twister(int seed, int skip_size_power_two, int skip_count) {
         }
 
         for (int state_idx=0; state_idx < generator.state_size; ++state_idx) {
-            skipped_seeds(state_idx, skip_idx) = twos_complement(seed_buffer[state_idx]);
+            skipped_seeds(state_idx, skip_idx) = dd_harp::twos_complement(seed_buffer[state_idx]);
         }
     }
 
     return skipped_seeds;
 }
-}
+
