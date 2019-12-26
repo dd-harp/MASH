@@ -115,21 +115,17 @@ List convert_to_r_movement(List movement, IntegerVector human) {
         moves.push_back(Rcpp::clone(vector));
     }
     Rcpp::List movement_list;
-    movement_list["handle"] = movement["handle"];
-    movement_list.push_back(Rcpp::clone(moves));
+    movement_list[CharacterVector::create("handle")] = result;
     movement_list[CharacterVector::create("moves")] = moves;
     return movement_list;
 }
 
 
-/*!
- * When you ask for movements for a particular human using R, it translates
- * the sample trajectory into an R list for easier processing.
- *
- * @param movement_list
- * @param human
- * @return
- */
+//' Extract human movements from the result of a movement step.
+//'
+//' @param movement_list The movement result object.
+//' @param human A list of the humans for whom you want the movements.
+//' @return A vector that's two wide.
 // [[Rcpp::export]]
 NumericVector movements_of_human(List movement_list, IntegerVector human) {
     auto result = as<XPtr<const flux_movement_result>>(movement_list["handle"]);

@@ -42,6 +42,11 @@ convert_to_r_movement <- function(movement, human) {
     .Call('_macro_convert_to_r_movement', PACKAGE = 'macro', movement, human)
 }
 
+#' Extract human movements from the result of a movement step.
+#'
+#' @param movement_list The movement result object.
+#' @param human A list of the humans for whom you want the movements.
+#' @return A vector that's two wide.
 movements_of_human <- function(movement_list, human) {
     .Call('_macro_movements_of_human', PACKAGE = 'macro', movement_list, human)
 }
