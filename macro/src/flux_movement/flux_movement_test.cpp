@@ -12,7 +12,7 @@
 #include "boost/random/uniform_int_distribution.hpp"
 #include "gtest/gtest.h"
 
-#include "markov_flow.h"
+#include "flux_movement.h"
 #include "multinomial.h"
 
 using namespace std;
@@ -21,7 +21,7 @@ using namespace boost;
 
 TEST(MarkovFlowTest, SmokeTest) {
     boost::mt19937 rng(23999243);
-    map<string, dd_harp::movement_machine_parameter> parameters;
+    map<string, dd_harp::flux_movement_parameter> parameters;
     int human_count{100};
     parameters["human_count"] = human_count;
     int patch_count{10};
@@ -31,7 +31,7 @@ TEST(MarkovFlowTest, SmokeTest) {
     for (int place_index = 0; place_index < human_count; ++place_index) {
         people[patch_gen(rng)].push_back(place_index);
     }
-    auto m = dd_harp::movement_machine{};
+    auto m = dd_harp::flux_movement{};
     m.init(parameters, people);
     auto result = m.step(0.1);
 }

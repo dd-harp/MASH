@@ -123,4 +123,4 @@ endif()
 find_package(Armadillo REQUIRED)
 
 #### Now build the targets.
-add_subdirectory(markov_flow)
+add_subdirectory(flux_movement)

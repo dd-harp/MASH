@@ -24,11 +24,11 @@ using patch_sequence = std::vector<std::tuple<human_id, bool, clock_time>>;
 
 struct no_parameter {};
 
-using movement_machine_parameter = std::variant<no_parameter, int, arma::Mat<double>>;
+using flux_movement_parameter = std::variant<no_parameter, int, arma::Mat<double>>;
 
-class movement_machine;  // Forward declaration for friending.
+class flux_movement;  // Forward declaration for friending.
 
-class movement_machine_result {
+class flux_movement_result {
 public:
     patch_id starting_patch(human_id query) const;
 
@@ -50,7 +50,7 @@ public:
     void allocate(human_id human_count, patch_id patch_count);
     //! Remove events without resizing the event queue storage.
     void clear();
-    friend class movement_machine;
+    friend class flux_movement;
 private:
     std::vector<movement_sequence> human_location;
     std::vector<patch_sequence> patch_state;
@@ -65,18 +65,18 @@ private:
  * the rates to all other patches. The rate for any individual
  * to leave is that times the number of people in the patch.
  */
-class movement_machine {
+class flux_movement {
     // The result is a buffer that is owned by the machine,
     // so that it won't churn memory. It is read-only to others.
-    movement_machine_result result;
+    flux_movement_result result;
 
 public:
     void init(
-            const std::map<std::string, movement_machine_parameter>& parameters,
+            const std::map<std::string, flux_movement_parameter>& parameters,
             const std::vector<std::vector<int>>& initial_state
             );
 
-    const movement_machine_result*
+    const flux_movement_result*
     step(double time_step);
 
 private:

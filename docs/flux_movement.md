@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Todo
 
 1. Rename markov_movement to flux_movement.
+1a. Use shared_ptr instead of a bare pointer.
 2. Test that transfer of parameters gets matrix order correct.
 3. Add test for running a step.
 4. Add test for reading results of a step.

@@ -6,7 +6,7 @@
 #include "boost/property_map/property_map.hpp"
 #include "Rcpp.h"
 
-#include "markov_flow.h"
+#include "flux_movement.h"
 
 // We can't put movement_init into namespace dd_harp because Rcpp's
 // wrapping functions don't pick up the namespace.
@@ -21,9 +21,9 @@ using namespace Rcpp;
  *     person <- human_model(moves, time_step)
  */
 // [[Rcpp::export]]
-List movement_init(List parameters, List initial_location) {
-    auto movement = new movement_machine{};
-    std::map<std::string, movement_machine_parameter> cparameters;
+List flux_movement_init(List parameters, List initial_location) {
+    auto movement = new flux_movement{};
+    std::map<std::string, flux_movement_parameter> cparameters;
     int human_count = as<int>(parameters["human_count"]);
     cparameters["human_count"] = human_count;
     int patch_count = as<int>(parameters["patch_count"]);
@@ -47,7 +47,7 @@ List movement_init(List parameters, List initial_location) {
     }
     movement->init(cparameters, initial_state);
 
-    XPtr<movement_machine> handle_ptr(movement);
+    XPtr<flux_movement> handle_ptr(movement);
     auto movement_object = List::create(
             Named("handle") = handle_ptr,
             Named("parameters") = parameters
@@ -58,11 +58,11 @@ List movement_init(List parameters, List initial_location) {
 
 
 // [[Rcpp::export]]
-List movement_step(List module, NumericVector time_step) {
-    auto movement_machine_handle = as<XPtr<movement_machine>>(module["handle"]);
-    auto result = movement_machine_handle->step(as<double>(time_step));
+List flux_movement_step(List module, NumericVector time_step) {
+    auto flux_movement_handle = as<XPtr<flux_movement>>(module["handle"]);
+    auto result = flux_movement_handle->step(as<double>(time_step));
     return List::create(
-            Named("handle") = XPtr<const movement_machine_result>(result)
+            Named("handle") = XPtr<const flux_movement_result>(result)
     );
 }
 
@@ -76,7 +76,7 @@ List movement_step(List module, NumericVector time_step) {
  */
 // [[Rcpp::export]]
 void convert_to_r_movement(List movement_list, Rcpp::IntegerVector human) {
-    auto result = as<XPtr<const movement_machine_result>>(movement_list["handle"]);
+    auto result = as<XPtr<const flux_movement_result>>(movement_list["handle"]);
     Rcpp::List moves;
     for (int person_idx = 0; person_idx < result->human_count(); ++person_idx) {
         auto sequence = result->movements_of_human(human[0]);
@@ -104,7 +104,7 @@ void convert_to_r_movement(List movement_list, Rcpp::IntegerVector human) {
  */
 // [[Rcpp::export]]
 NumericVector movements_of_human(List movement_list, IntegerVector human) {
-    auto result = as<XPtr<const movement_machine_result>>(movement_list["handle"]);
+    auto result = as<XPtr<const flux_movement_result>>(movement_list["handle"]);
     auto sequence = result->movements_of_human(human[0]);
     // auto vector = NumericVector(Dimension(sequence.size(), 2));
     Rcpp::NumericMatrix vector(sequence.size(),2);
@@ -118,5 +118,5 @@ NumericVector movements_of_human(List movement_list, IntegerVector human) {
 
 /*!
  * We need a method that takes R simulation of movement and converts
- * it into a *subclass of* a C++ movement_machine_result.
+ * it into a *subclass of* a C++ flux_movement_result.
  */

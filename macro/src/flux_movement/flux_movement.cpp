@@ -3,7 +3,7 @@
 
 #include "boost/random/exponential_distribution.hpp"
 
-#include "markov_flow.h"
+#include "flux_movement.h"
 #include "multinomial.h"
 
 
@@ -14,9 +14,9 @@ namespace dd_harp {
  * a patch and where they have hazard of being
  * bitten.
  */
-    patch_id movement_machine_result::starting_patch(human_id query) const { return 4; };
+    patch_id flux_movement_result::starting_patch(human_id query) const { return 4; };
 
-    size_t movement_machine_result::human_count() const { return 10; }
+    size_t flux_movement_result::human_count() const { return 10; }
 
 /*!
  * For the human, the movement sequence will be a
@@ -26,23 +26,23 @@ namespace dd_harp {
  * @return movement_sequence - The set of patches and times.
  */
     movement_sequence
-    movement_machine_result::movements_of_human(human_id query) const {
+    flux_movement_result::movements_of_human(human_id query) const {
         return this->human_location[query];
     }
 
 
     patch_sequence
-    movement_machine_result::duration_in_patch(patch_id query) const {
+    flux_movement_result::duration_in_patch(patch_id query) const {
         return this->patch_state[query];
     }
 
 
-    void movement_machine_result::allocate(human_id human_count, patch_id patch_count) {
+    void flux_movement_result::allocate(human_id human_count, patch_id patch_count) {
         this->human_location.resize(human_count);
         this->patch_state.resize(patch_count);
     }
 
-    void movement_machine_result::clear() {
+    void flux_movement_result::clear() {
         for (auto& human: this->human_location) {
             human.clear();
         }
@@ -51,8 +51,8 @@ namespace dd_harp {
         }
     }
 
-    void movement_machine::init(
-            const std::map<std::string, movement_machine_parameter> &parameters,
+    void flux_movement::init(
+            const std::map<std::string, flux_movement_parameter> &parameters,
             const std::vector<std::vector<int>> &initial_state
     ) {
         this->human_count = std::get<int>(parameters.at("human_count"));
@@ -89,8 +89,8 @@ namespace dd_harp {
     }
 
 
-    const movement_machine_result *
-    movement_machine::step(double time_step) {
+    const flux_movement_result *
+    flux_movement::step(double time_step) {
         if (!this->initialized) {
             throw std::runtime_error("You must initialize the class before stepping.");
         }

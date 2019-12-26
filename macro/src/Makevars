@@ -13,20 +13,20 @@ PKG_LIBS += `$(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()"` $(SHLIB_OPENMP_CXXFLAG
 PKG_CXXFLAGS += -Wall $(SHLIB_OPENMP_CXXFLAGS)
 
 # to find our headers
-PKG_CPPFLAGS += -I../inst/include/ -Imarkov_flow -I.
+PKG_CPPFLAGS += -I../inst/include/ -Iflux_movement -I.
 
 # Include source files in subdirectories by listing
 # the object files here.
-# The file markov_flow_wrap.cpp is in the main directory, instead of
-# the markov_flow directory, so that the Rcpp scanner can find it
+# The file flux_movement_wrap.cpp is in the main directory, instead of
+# the flux_movement directory, so that the Rcpp scanner can find it
 # in order to build the RcppExports file. There is no other way to
 # ensure the scanner finds it.
-MARKOV_FLOW_OBJS = \
-	markov_flow/markov_flow.o \
-	markov_flow/multinomial.o \
-	markov_flow_wrap.o
+flux_movement_OBJS = \
+	flux_movement/flux_movement.o \
+	flux_movement/multinomial.o \
+	flux_movement_wrap.o
 
 RANDOM_GENERATOR_OBJS = \
 	random.o
 
-OBJECTS = $(MARKOV_FLOW_OBJS) $(RANDOM_GENERATOR_OBJS) RcppExports.o
+OBJECTS = $(flux_movement_OBJS) $(RANDOM_GENERATOR_OBJS) RcppExports.o

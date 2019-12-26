@@ -11,6 +11,6 @@ test_that("markov_flow initializes", {
   initial_state <- list(
     human_locations = rep(1:patch_count, ceiling(human_count / patch_count))[1:human_count]
   )
-  movement <- movement_init(parameters, initial_state)
+  movement <- flux_movement_init(parameters, initial_state)
   expect_false(is.null(movement))
 })
