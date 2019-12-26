@@ -24,7 +24,7 @@ SystemRequirements: C++17
 Imports: Rcpp
 Depends: RcppProgress
 LinkingTo: BH, Rcpp, RcppArmadillo, RcppProgress
-RoxygenNote: 7.0.0
+RoxygenNote: 7.0.1
 Suggests: 
     knitr,
     rmarkdown,

@@ -13,13 +13,21 @@
 using namespace dd_harp;
 using namespace Rcpp;
 
-/*!
- * From R, this will look like
- *     movement <- movement_init(params)
- *     time_step <- 0.1
- *     moves <- movement_step(movement, time_step)
- *     person <- human_model(moves, time_step)
- */
+//' Initialize Flux Movement module
+//'
+//' This function returns a flux movement module.
+//'
+//' @param parameters A list containing random_seed, random_stream,
+//'        human_count, patch_count, and a flow_probability vector.
+//' @param initial_location A vector saying in which patch each human is located.
+//'
+//' @examples
+//' \dontrun{
+//' movement <- movement_init(params)
+//' time_step <- 0.1
+//' moves <- movement_step(movement, time_step)
+//' person <- human_model(moves, time_step)
+//' }
 // [[Rcpp::export]]
 List flux_movement_init(List parameters, List initial_location) {
     auto movement = new flux_movement{};
@@ -61,6 +69,11 @@ List flux_movement_init(List parameters, List initial_location) {
 }
 
 
+//' Time step for a flux movement module.
+//'
+//' @param module The flux movement list
+//' @param time_step A floating point time.
+//' @return A result list that is opaque.
 // [[Rcpp::export]]
 List flux_movement_step(List module, NumericVector time_step) {
     auto flux_movement_handle = as<XPtr<flux_movement>>(module["handle"]);
@@ -71,30 +84,41 @@ List flux_movement_step(List module, NumericVector time_step) {
 }
 
 
-/*!
- * This approach copies all data out of C++ into the R space because it's
- * the transition from R - C++ and back that takes all the time.
- *
- * @param movement_list - This gets modified in place, so that it now has
- *     a list of trajectories for each person, enumerated by the person id.
- */
+//' Convert movement result to R data
+//'
+//' The result of a movement object is in C++. This extracts
+//' it into an R list. The result is added to the original
+//' list that was passed in.
+//'
+//' @param movement The movement module object
+//' @param human An integer vector of which human positions to extract.
+//' @returns Movement list with a "moves" list that has human locations.
 // [[Rcpp::export]]
-void convert_to_r_movement(List movement_list, Rcpp::IntegerVector human) {
-    auto result = as<XPtr<const flux_movement_result>>(movement_list["handle"]);
+List convert_to_r_movement(List movement, IntegerVector human) {
+    auto result = as<XPtr<const flux_movement_result>>(movement["handle"]);
     Rcpp::List moves;
-    for (int person_idx = 0; person_idx < result->human_count(); ++person_idx) {
-        auto sequence = result->movements_of_human(human[0]);
-        // auto sequence = result->movements_of_human(0);
+    for (int person_idx = 0; person_idx < human.size(); ++person_idx) {
+        int human_idx = human[person_idx];
+        if (human_idx > result->human_count()) {
+            std::stringstream msg;
+            msg << "Looking for a human past end of list " << human_idx
+                << " in a list of length " << result->human_count();
+            throw std::runtime_error(msg.str());
+        }
+        const int zero_based_indexing{-1};
+        auto sequence = result->movements_of_human(human_idx + zero_based_indexing);
         Rcpp::NumericMatrix vector(sequence.size(),2);
         for (int i = 0; i < sequence.size(); ++i) {
-            vector[i, 0] = std::get<0>(sequence[i]);
-            vector[i, 1] = std::get<1>(sequence[i]);
+            vector[i, 0] = std::get<0>(sequence[i]);  // patch_id
+            vector[i, 1] = std::get<1>(sequence[i]);  // clock_time
         }
         moves.push_back(Rcpp::clone(vector));
     }
+    Rcpp::List movement_list;
+    movement_list["handle"] = movement["handle"];
     movement_list.push_back(Rcpp::clone(moves));
-    movement_list.names() = Rcpp::CharacterVector::create("handle","moves");
-    // movement_list[CharacterVector::create("moves")] = moves;
+    movement_list[CharacterVector::create("moves")] = moves;
+    return movement_list;
 }
 
 

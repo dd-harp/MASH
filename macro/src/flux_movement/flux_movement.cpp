@@ -16,7 +16,9 @@ namespace dd_harp {
  */
     patch_id flux_movement_result::starting_patch(human_id query) const { return 4; };
 
-    size_t flux_movement_result::human_count() const { return 10; }
+    size_t flux_movement_result::human_count() const {
+        return human_location.size();
+    }
 
 /*!
  * For the human, the movement sequence will be a

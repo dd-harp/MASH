@@ -22,9 +22,10 @@ using movement_sequence = std::vector<std::tuple<patch_id,clock_time>>;
 using patch_sequence = std::vector<std::tuple<human_id, bool, clock_time>>;
 
 
+// This type is a sentinel that a variant has not been set.
 struct no_parameter {};
 
-using flux_movement_parameter = std::variant<no_parameter, int, arma::Mat<double>>;
+using flux_movement_parameter = std::variant<no_parameter, int, double, arma::Mat<double>>;
 
 class flux_movement;  // Forward declaration for friending.
 

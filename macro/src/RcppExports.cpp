@@ -31,14 +31,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // convert_to_r_movement
-void convert_to_r_movement(List movement_list, Rcpp::IntegerVector human);
-RcppExport SEXP _macro_convert_to_r_movement(SEXP movement_listSEXP, SEXP humanSEXP) {
+List convert_to_r_movement(List movement, IntegerVector human);
+RcppExport SEXP _macro_convert_to_r_movement(SEXP movementSEXP, SEXP humanSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type movement_list(movement_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type human(humanSEXP);
-    convert_to_r_movement(movement_list, human);
-    return R_NilValue;
+    Rcpp::traits::input_parameter< List >::type movement(movementSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type human(humanSEXP);
+    rcpp_result_gen = Rcpp::wrap(convert_to_r_movement(movement, human));
+    return rcpp_result_gen;
 END_RCPP
 }
 // movements_of_human
