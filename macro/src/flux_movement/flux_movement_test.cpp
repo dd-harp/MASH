@@ -22,6 +22,8 @@ using namespace boost;
 TEST(MarkovFlowTest, SmokeTest) {
     boost::mt19937 rng(23999243);
     map<string, dd_harp::flux_movement_parameter> parameters;
+    parameters["random_seed"] = 2399243;
+    parameters["random_stream"] = 1;
     int human_count{100};
     parameters["human_count"] = human_count;
     int patch_count{10};

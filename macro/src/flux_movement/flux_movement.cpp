@@ -55,6 +55,11 @@ namespace dd_harp {
             const std::map<std::string, flux_movement_parameter> &parameters,
             const std::vector<std::vector<int>> &initial_state
     ) {
+        int rng_seed = std::get<int>(parameters.at("random_seed"));
+        int rng_stream = std::get<int>(parameters.at("random_stream"));
+        this->rng = boost::random::mt19937(rng_seed);
+        this->rng.discard(rng_stream * (1 << 17));
+
         this->human_count = std::get<int>(parameters.at("human_count"));
         arma::Mat<double> flow_probability = std::get<arma::Mat<double>>(parameters.at("flow_probability"));
         this->patch_count = flow_probability.n_rows;

@@ -24,6 +24,10 @@ using namespace Rcpp;
 List flux_movement_init(List parameters, List initial_location) {
     auto movement = new flux_movement{};
     std::map<std::string, flux_movement_parameter> cparameters;
+    int random_seed = as<int>(parameters["random_seed"]);
+    cparameters["random_seed"] = random_seed;
+    int random_stream = as<int>(parameters["random_stream"]);
+    cparameters["random_stream"] = random_stream;
     int human_count = as<int>(parameters["human_count"]);
     cparameters["human_count"] = human_count;
     int patch_count = as<int>(parameters["patch_count"]);

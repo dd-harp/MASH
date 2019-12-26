@@ -5,7 +5,9 @@ test_that("markov_flow initializes", {
     # Equal probability for any patch.
     flow_probability = matrix(data = 0.03, nrow = patch_count, ncol = patch_count),
     human_count = human_count,
-    patch_count = patch_count
+    patch_count = patch_count,
+    random_seed = 9928374293,
+    random_stream = 3
   )
   # Round-robin placement of humans.
   initial_state <- list(
