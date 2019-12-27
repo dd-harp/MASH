@@ -53,8 +53,8 @@ List flux_movement_init(List parameters, List initial_location) {
     }
 
     int zero_based_indexing{-1};
-    std::vector<std::vector<int>> initial_state{patch_count};
-    NumericVector locations = initial_location["human_locations"];
+    std::vector<std::vector<int>> initial_state(patch_count);
+    std::vector<int> locations = Rcpp::as<std::vector<int>>(initial_location["human_locations"]);
     // Check locations length is same as humans.
     for (int place_idx = 0; place_idx < locations.size(); ++place_idx) {
         initial_state[locations[place_idx] + zero_based_indexing].push_back(place_idx);

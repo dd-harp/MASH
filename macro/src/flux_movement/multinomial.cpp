@@ -2,6 +2,7 @@
 #include <cassert>
 #include <unordered_set>
 #include <vector>
+#include <array>
 
 #include "boost/random/exponential_distribution.hpp"
 
