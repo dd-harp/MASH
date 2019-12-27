@@ -16,6 +16,8 @@
 #' moves <- movement_step(movement, time_step)
 #' person <- human_model(moves, time_step)
 #' }
+#'
+#' @export
 flux_movement_init <- function(parameters, initial_location) {
     .Call('_macro_flux_movement_init', PACKAGE = 'macro', parameters, initial_location)
 }
@@ -25,6 +27,8 @@ flux_movement_init <- function(parameters, initial_location) {
 #' @param module The flux movement list
 #' @param time_step A floating point time.
 #' @return A result list that is opaque.
+#'
+#' @export
 flux_movement_step <- function(module, time_step) {
     .Call('_macro_flux_movement_step', PACKAGE = 'macro', module, time_step)
 }
@@ -38,6 +42,8 @@ flux_movement_step <- function(module, time_step) {
 #' @param movement The movement module object
 #' @param human An integer vector of which human positions to extract.
 #' @returns Movement list with a "moves" list that has human locations.
+#'
+#' @export
 convert_to_r_movement <- function(movement, human) {
     .Call('_macro_convert_to_r_movement', PACKAGE = 'macro', movement, human)
 }
@@ -47,6 +53,8 @@ convert_to_r_movement <- function(movement, human) {
 #' @param movement_list The movement result object.
 #' @param human A list of the humans for whom you want the movements.
 #' @return A vector that's two wide.
+#'
+#' @export
 movements_of_human <- function(movement_list, human) {
     .Call('_macro_movements_of_human', PACKAGE = 'macro', movement_list, human)
 }

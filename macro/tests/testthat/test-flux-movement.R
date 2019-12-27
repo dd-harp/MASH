@@ -37,11 +37,9 @@ test_that("flux_movement returns human locations", {
   )
   movement <- flux_movement_init(parameters, initial_state)
   expect_false(is.null(movement))
-  result <- flux_movement_step(movement, 0.01)
+  result <- flux_movement_step(movement, 0.1)
   expect_false(is.null(result))
-  # locations <- convert_to_r_movement(result, 1:human_count)
-  # moves <- locations$moves
-  # cat(head(moves))
-  # expect_true(length(moves) == human_count)
-  # cat(head[moves[1]])
+  locations <- convert_to_r_movement(result, 1:human_count)
+  moves <- locations$moves
+  expect_true(length(moves) == human_count)
 })

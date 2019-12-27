@@ -28,6 +28,8 @@ using namespace Rcpp;
 //' moves <- movement_step(movement, time_step)
 //' person <- human_model(moves, time_step)
 //' }
+//'
+//' @export
 // [[Rcpp::export]]
 List flux_movement_init(List parameters, List initial_location) {
     auto movement = new flux_movement{};
@@ -74,6 +76,8 @@ List flux_movement_init(List parameters, List initial_location) {
 //' @param module The flux movement list
 //' @param time_step A floating point time.
 //' @return A result list that is opaque.
+//'
+//' @export
 // [[Rcpp::export]]
 List flux_movement_step(List module, NumericVector time_step) {
     auto flux_movement_handle = as<XPtr<flux_movement>>(module["handle"]);
@@ -93,9 +97,12 @@ List flux_movement_step(List module, NumericVector time_step) {
 //' @param movement The movement module object
 //' @param human An integer vector of which human positions to extract.
 //' @returns Movement list with a "moves" list that has human locations.
+//'
+//' @export
 // [[Rcpp::export]]
 List convert_to_r_movement(List movement, IntegerVector human) {
-    auto result = as<XPtr<const flux_movement_result>>(movement["handle"]);
+    using result_ptr = XPtr<const flux_movement_result>;
+    result_ptr result = as<result_ptr>(movement["handle"]);
     Rcpp::List moves;
     for (int person_idx = 0; person_idx < human.size(); ++person_idx) {
         int human_idx = human[person_idx];
@@ -109,14 +116,14 @@ List convert_to_r_movement(List movement, IntegerVector human) {
         auto sequence = result->movements_of_human(human_idx + zero_based_indexing);
         Rcpp::NumericMatrix vector(sequence.size(),2);
         for (int i = 0; i < sequence.size(); ++i) {
-            vector[i, 0] = std::get<0>(sequence[i]);  // patch_id
-            vector[i, 1] = std::get<1>(sequence[i]);  // clock_time
+            vector(i, 0) = std::get<0>(sequence[i]);  // patch_id
+            vector(i, 1) = std::get<1>(sequence[i]);  // clock_time
         }
         moves.push_back(Rcpp::clone(vector));
     }
     Rcpp::List movement_list;
-    movement_list[CharacterVector::create("handle")] = result;
-    movement_list[CharacterVector::create("moves")] = moves;
+    movement_list["handle"] = result;
+    movement_list["moves"] = moves;
     return movement_list;
 }
 
@@ -126,6 +133,8 @@ List convert_to_r_movement(List movement, IntegerVector human) {
 //' @param movement_list The movement result object.
 //' @param human A list of the humans for whom you want the movements.
 //' @return A vector that's two wide.
+//'
+//' @export
 // [[Rcpp::export]]
 NumericVector movements_of_human(List movement_list, IntegerVector human) {
     auto result = as<XPtr<const flux_movement_result>>(movement_list["handle"]);
