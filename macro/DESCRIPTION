@@ -3,7 +3,7 @@ Title: Modular Simulation of Malaria
 Version: 0.0.0.9000
 Author: IHME Malaria Team
 Maintainer: IHME Malaria Team <smitdave@uw.edu>
-Authors@R: 
+Authors@R:
     person(given = "David",
            family = "Smith",
            role = c("aut", "cre"),
@@ -20,12 +20,13 @@ Authors@R:
            comment = c(ORCID = "0000-0002-6477-7981"))
 Description: Simulates malaria in a spatial community.
 License: MIT + file LICENSE
+NeedsCompilation: yes
 SystemRequirements: C++17
 Imports: Rcpp
 Depends: RcppProgress
 LinkingTo: BH, Rcpp, RcppArmadillo, RcppProgress
 RoxygenNote: 7.0.2
-Suggests: 
+Suggests:
     knitr,
     rmarkdown,
     testthat (>= 2.1.0)
