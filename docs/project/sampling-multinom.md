@@ -9,11 +9,11 @@ The file `multinomial.h` contains several functions.
 
   * `prepare_rates`: the caller provides a vector of rates, and the function returns the sorted rates and their cumulative sum
   * `choose_direction`: using the output of `prepare_rates` and a Boost RNG object, choose one event and return its index
-  * `build_binary_tree`: construct a binary tree of reaction propensities for sampling
-  * `locate_in_binary_tree`: given a random value `r*a0` where `r ~ Unif(0,1)` and `a0` is the cumulative sum, sample an event stored in a binary tree via discrete binary search
+  * [`build_binary_tree`](#build-the-binary-tree): construct a binary tree of reaction propensities for sampling
+  * [`locate_in_binary_tree`](#locate-in-binary-tree): given a random value `r*a0` where `r ~ Unif(0,1)` and `a0` is the cumulative sum, sample an event stored in a binary tree via discrete binary search
   * `sample_binary_tree`: a convenient wrapper for `locate_in_binary_tree` taking the tree and its sorted rates index, and a Boost RNG object; it returns the index of the sampled event
-  * `build_multinomial_matrix`: given a stochastic matrix with `n` rows and columns (cols sum to one), build `n` binary trees stored in an Armadillo matrix and their associated sorted rates.
-  * `update_binary_tree`: if propensities change, update the tree
+  * [`build_multinomial_matrix`](#build-multinomial-matrix): given a stochastic matrix with `n` rows and columns (cols sum to one), build `n` binary trees stored in an Armadillo matrix and their associated sorted rates.
+  * [`update_binary_tree`](#update-system-state): if propensities change, update the tree
 
 #### Build Multinomial Matrix
 
