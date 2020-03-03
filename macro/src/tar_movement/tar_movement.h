@@ -1,3 +1,11 @@
+/* --------------------------------------------------------------------------------
+#
+#   TaR movement model
+#   Sean Wu (slwu89@berkeley.edu)
+#   March 2020
+#
+-------------------------------------------------------------------------------- */
+
 #ifndef SRC_MARKOV_TAR_H
 #define SRC_MARKOV_TAR_H
 
@@ -70,7 +78,10 @@ private:
 class tar_movement {
 
 public:
-  void init();
+  void init(
+    const std::map<std::string, tar_movement_parameter> &parameters,
+    const std::vector<std::vector<int>> &initial_location
+  );
 
 
 private:
@@ -79,8 +90,13 @@ private:
   bool                initialized{false};
   boost::mt19937      rng;
 
-  /* parameters of the simulation */
-  
+  /* parameters of the simulation: n = number of patches, p = number of humans */
+  arma::Mat<double>   move_probs; // (n,n)
+  arma::Mat<double>   trip_duration; // (n-1,p)
+  arma::Col<double>   home_duration; // (p)
+
+  int                 p;
+  int                 n;
 
 };
 

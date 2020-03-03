@@ -13,6 +13,7 @@ Each individual needs:
       end
       ```
   * scalar giving the length of duration of time they stay home between trips
+  * int telling us where their home is
 
 There are global parameters:
   * matrix `n x n` giving destinations when each individual leaves their home patch
