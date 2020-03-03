@@ -9,10 +9,16 @@ Each individual needs:
       if i < j
         return vec[i];
       else
-        reutnr vec[i-1];
+        return vec[i-1];
       end
       ```
   * scalar giving the length of duration of time they stay home between trips
 
 There are global parameters:
   * matrix `n x n` giving destinations when each individual leaves their home patch
+
+## Design
+
+There are two classes.
+  * `tar_movement`: once initialized it hangs around for the duration of the simulation.
+  * `tar_movement_result`: lives within `tar_movement`, which is its friend so `tar_movement` has full access to all members of `tar_movement_result` objects.

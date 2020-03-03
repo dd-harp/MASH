@@ -31,9 +31,9 @@ struct no_parameter {};
 
 using tar_movement_parameter = std::variant<no_parameter, int, double, arma::Mat<double>>;
 
-class flux_movement;  // Forward declaration for friending.
+class tar_movement;  // Forward declaration for friending.
 
-class flux_movement_result {
+class tar_movement_result {
 public:
     patch_id starting_patch(human_id query) const;
 
@@ -46,19 +46,19 @@ public:
      * @param query - Which human's movements we want.
      * @return movement_sequence - The set of patches and times.
      */
-    movement_sequence
-    movements_of_human(human_id query) const;
+    movement_sequence movements_of_human(human_id query) const;
 
-    patch_sequence
-    duration_in_patch(patch_id query) const;
+    patch_sequence duration_in_patch(patch_id query) const;
 
     void allocate(human_id human_count, patch_id patch_count);
+
     //! Remove events without resizing the event queue storage.
     void clear();
-    friend class flux_movement;
+
+    friend class tar_movement;
 private:
     std::vector<movement_sequence> human_location;
-    std::vector<patch_sequence> patch_state;
+    std::vector<patch_sequence>    human_trajectory;
 };
 
 
@@ -70,9 +70,17 @@ private:
 class tar_movement {
 
 public:
+  void init();
 
 
 private:
+
+  /**/
+  bool                initialized{false};
+  boost::mt19937      rng;
+
+  /* parameters of the simulation */
+  
 
 };
 
