@@ -11,6 +11,7 @@
 
 #include <exception>
 #include <map>
+#include <tuple>
 #include <sstream>
 #include <vector>
 #include <variant>
@@ -28,6 +29,15 @@ using human_id = int;
 using clock_time = double;
 using movement_sequence = std::vector<std::tuple<patch_id,clock_time>>;
 using patch_sequence = std::vector<std::tuple<human_id, bool, clock_time>>;
+
+
+/* --------------------------------------------------------------------------------
+#   each person has a next-event list
+-------------------------------------------------------------------------------- */
+
+enum class event_type {take_trip, return_home};
+
+using next_event =
 
 
 /* --------------------------------------------------------------------------------
@@ -65,8 +75,8 @@ public:
 
     friend class tar_movement;
 private:
-    std::vector<movement_sequence> human_location;
-    std::vector<patch_sequence>    human_trajectory;
+    std::vector<movement_sequence> human_events;  // p
+    std::vector<patch_sequence>    patch_events;  // n
 };
 
 
@@ -86,9 +96,12 @@ public:
 
 private:
 
-  /**/
+  /* essentials */
   bool                initialized{false};
   boost::mt19937      rng;
+
+  /* everyone's next event */
+
 
   /* parameters of the simulation: n = number of patches, p = number of humans */
   arma::Mat<double>   move_probs; // (n,n)
@@ -97,6 +110,9 @@ private:
 
   int                 p;
   int                 n;
+
+  /* data structures to hold sorted arrays for sampling */
+
 
 };
 
