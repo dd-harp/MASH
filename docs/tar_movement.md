@@ -23,3 +23,8 @@ There are global parameters:
 There are two classes.
   * `tar_movement`: once initialized it hangs around for the duration of the simulation.
   * `tar_movement_result`: lives within `tar_movement`, which is its friend so `tar_movement` has full access to all members of `tar_movement_result` objects.
+
+## `tar_movement`
+
+The data members are described here:
+  * 

@@ -37,7 +37,8 @@ using patch_sequence = std::vector<std::tuple<human_id, bool, clock_time>>;
 
 enum class event_type {take_trip, return_home};
 
-using next_event =
+// next event gives: time it will fire, what type of event, and destination patch if taking a trip
+using next_event = std::tuple<double,event_type,int>;
 
 
 /* --------------------------------------------------------------------------------
@@ -57,28 +58,21 @@ public:
 
     size_t human_count() const;
 
-    /*!
-     * For the human, the movement sequence will be a
-     * set of events with predetermined times.
-     *
-     * @param query - Which human's movements we want.
-     * @return movement_sequence - The set of patches and times.
-     */
+
     movement_sequence movements_of_human(human_id query) const;
 
     patch_sequence duration_in_patch(patch_id query) const;
 
     void allocate(human_id human_count, patch_id patch_count);
 
-    //! Remove events without resizing the event queue storage.
+    // Remove events without resizing the event queue storage.
     void clear();
 
     friend class tar_movement;
 private:
-    std::vector<movement_sequence> human_events;  // p
-    std::vector<patch_sequence>    patch_events;  // n
+    std::vector<movement_sequence> human_events;  // (p)
+    std::vector<patch_sequence>    patch_events;  // (n)
 };
-
 
 
 /* --------------------------------------------------------------------------------
@@ -88,6 +82,8 @@ private:
 class tar_movement {
 
 public:
+
+  // initialize the object
   void init(
     const std::map<std::string, tar_movement_parameter> &parameters,
     const std::vector<std::vector<int>> &initial_location
@@ -97,26 +93,28 @@ public:
 private:
 
   /* essentials */
-  bool                initialized{false};
-  boost::mt19937      rng;
+  bool                      initialized{false}; // ask drew, why init here, not ctor? when is this line run??
+  boost::mt19937            rng;
 
   /* everyone's next event */
-
+  std::vector<next_event>   event_queue; // (p)
+  std::vector<int>          human_location; // (p)
 
   /* parameters of the simulation: n = number of patches, p = number of humans */
-  arma::Mat<double>   move_probs; // (n,n)
-  arma::Mat<double>   trip_duration; // (n-1,p)
-  arma::Col<double>   home_duration; // (p)
+  arma::Mat<double>         move_probs; // (n,n)
+  arma::Mat<double>         trip_duration; // (n-1,p)
+  arma::Col<double>         home_duration; // (p)
 
-  int                 p;
-  int                 n;
+  int                       p;
+  int                       n;
 
   /* data structures to hold sorted arrays for sampling */
-
+  arma::Mat<double>         movement_tree;
+  arma::umat                movement_tree_idx;
 
 };
 
-}
+} // end dd_harp namespace
 
 
 #endif
