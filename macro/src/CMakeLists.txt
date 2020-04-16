@@ -13,6 +13,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 message(STATUS "Cmake module path ${CMAKE_MODULE_PATH}")
 
+# Record provenance by embedding the git version in a header file.
 find_package(Git QUIET)
 if(GIT_FOUND)
     execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --always
@@ -34,20 +35,21 @@ project(mash
         DESCRIPTION "Determine patches from a landscape"
         LANGUAGES CXX)
 
-# Set language standards
+# Add compiler flags to enable C++17.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
-# Includes
+# Check compiler compatibility with the CheckCXXCompilerFlag library.
 include(CheckCXXCompilerFlag)
+# Make prettier debug printing for CMake itself.
 include(CMakePrintHelpers)
 
-# Default to a release build.
-# Use `cmake -DCMAKE_BUILD_TYPE=Debug` to override this.
-set(default_build_type "Release")
+# Default to a debug.
+# If you want to compile for debug, build with `cmake -DCMAKE_BUILD_TYPE=Release`.
+set(default_build_type "Debug")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+    message(STATUS "Setting build type to '${default_build_type}' because none was specified.")
     set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
             STRING "Choose the type of build." FORCE)
     # Set the possible values of build type for cmake-gui
@@ -56,7 +58,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # Using native architecture can speed up the code.
-# Turn this off if you are using a hodge-podge cluster.
+# Turn this off if you are using a cluster with heterogeneous processor architectures.
 option(COMPILE_NATIVE "Compile for this exact processor" ON)
 if(COMPILE_NATIVE)
     check_cxx_compiler_flag("-march=native" _march_native_works)
@@ -73,7 +75,8 @@ endif(COMPILE_NATIVE)
 # it helps to export everything.
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-####### GoogleTest Boilerplate
+####### GoogleTest Boilerplate BEGIN
+# https://github.com/google/googletest/blob/master/googletest/README.md
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -111,7 +114,7 @@ endif()
 #### Find libraries for the source code.
 
 # Boost and its components. Minimum version specified.
-find_package( Boost 1.65 REQUIRED
+find_package(Boost 1.65 REQUIRED
         COMPONENTS filesystem system program_options
         )
 

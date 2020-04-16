@@ -1,0 +1,370 @@
+---
+title: "Human Module with SI Dynamics"
+output:
+  html_notebook:
+    df_print: paged
+  pdf_document:
+    toc: true
+    df_print: kable
+    number_sections: yes
+header-includes:
+  - \usepackage{palatino}
+bibliography: pfSI.bib
+---
+```{r load_libraries, include = FALSE}
+library(data.table)
+```
+
+# Overview
+
+This notebook describes a MASH module for humans who can be
+either susceptible or infectious. We call it `pfSI`.
+
+There is an existing module in a former implementation of MASH,
+so this document will walk through that implementation in order
+to write out this one.
+
+We ask here the questions we ask of any model, be it discrete, continuous,
+deterministic or stochastic. What are the states,
+what are the transitions, and how do you initialize the model?
+The implementation given is continuous time, so it creates individual events,
+which should make it easier to track what's happening.
+
+
+# Problem Description
+
+## State Space
+
+The first thing to define for this model is the set of possible
+states a human can be in. We split these into three categories.
+Some properties of a person are unchanging, and we call them
+_frailty._ Some properties of a person can be figured out. For instance,
+if biting weight is a function of age, then you can figure it out from
+the age without storing biting weight. We call these _predictable variables._
+The rest is state.
+
+* Frailty
+  + birth date
+  + mosquito-to-human transmission efficiency, _b_
+  + human-to-mosquito transmission efficiency, _c_
+* State
+  + alive or dead - a boolean.
+  + disease status - as susceptible, latent, infectious, or protected from infection
+  + fever - reachable from the infectious state (or latent?)
+  + PE vaccination - lowers biting weight by factor (1 - pe_block_pf)
+* Predictable Variables
+  + biting weight - this represents the amount of skin this person has,
+    so it changes with age. Lowered by PE vaccination
+  + kappa - if the person is infected and _not in a resevoir,_ this is c x (biting weight).
+    Lowered by GS vaccination by a factor c = c x (1 - gs_block_pf).
+  + EIR - the rate the person is getting bitten. For someone in a resevoir,
+    this is the resevoir EIR. For someone not in a resevoir, this
+    is max(0, beta x biting_weight / patch_biting_weight).
+  + incidence - the number of infectious people in a patch. This is the sum of all infectious.
+
+
+## Event Space
+
+Here, variable names are sometimes shortened. Mean is mn, and variance is vr.
+There is a notation for events that says what state you leave and what
+you enter. The minus is leave and the + is enter. For instance, if a single
+person leaves the latent stage and enters the infectious stage, the
+notation is (-L, +I). If they have to be in a stage in order for something else
+to run, you will see (-I, +F, +I), meaning fever can't happen unless the person
+is infected, but they stay infectious.
+
+* Infection
+  + infection - from state L to I (-L, +I), exponential with rate duration
+  + clearance - from state I to S (-I, +S), exponential with rate duration_pf
+  + fever - (-I, +F, +I), exponential distribution with rate mnFever, but its
+    CDF f(infinity) = fever_pf. That is, there is a bernouilli probability of fever_pf
+    that this fires.
+  + treatment - (-I, +T) rate mnTreatPF
+  + recover - (-I, +S). This is also called clearance.
+* Chemoprophylaxis
+  + treatment - seek treatment, (-I, +P)
+  + chemoprophylaxis - duration of prophylaxis, (-P, +S), rate mnChemoprophylaxisPf
+* Vaccination
+  + PE - sporozooite-blocking vaccination, incomplete by U(0, 1) < pe_protect_pf.
+    Lowers biting weight, b.
+  + PE with treatment - same as PE, but it starts chemoprophylaxis.
+  + GS - gametocyte-blocking vaccination. incomplete by U(0, 1) < gs_protect_pf. Lowers
+    c, the probability to infect mosquitoes.
+  + GS with treatment.
+  + wane PE - (-PE, +S) distributed as normal(mnPE_PF, vr_PE_Pf). Sets b back to full power.
+  + wane GS - (-GS, +S) distributed as normal(mnGE_PF, vr_GE_Pf). Sets c back to full power.
+* Bites - These will move to another module, the biting module.
+  + The biting algorithm returns a number of bites for this person.
+  + The biting hazard is incomplete. There is a probability draw that
+    U(0, 1) < b to create move the person to the latent state.
+
+
+# Continuous Time Model
+
+A continuous-time algorithm is a good choice when there will be few events in
+each time step. In this case, most processes are slow relative to a day, so we
+suspect continuous-time is a good choice, even in R where a single time step can 
+be expensive.
+
+We can make a back-of-the-envelope calculation by assuming larger numbers for
+each possible event. If each person gets ten bouts of
+malaria in their lifetime, that's infection, treatment, and back to susceptible, for
+thirty events. If we consider infectious bites, it's either those same infection events
+or we're counting a lot more bites, in the thousands. For a ten year simulation, it's
+3600 days in ten years. We either have events in 30/3600 days or over one per day.
+In the former case, continuous time would likely be faster. In the latter case, discrete
+time may be faster.
+
+
+## Implementation
+
+We can represent the state above as a disease state, treatment state,
+and scheduled bites.
+```{r list_state}
+individual <- list(
+  disease = factor("S", levels = c("S", "I")),
+  treatment = factor("U", levels = c("U", "PE", "GS")),
+  bites = c(0.1, 0.4, 5.7, 7.4)
+  )
+```
+Then we have thirteen transitions. We usually think about these rules
+as, "when this happens, then that can happen," but we can, alternatively,
+think about each transition as a separate entity that can happen whenever
+the state allows it. In this case, each one is defined by
+
+- is_enabled, a rule to determine from the new state whether the
+  transition could happen.
+- when, a function that reads the current state to draw a next time to fire.
+  If the distribution is incomplete, this returns infinity for not firing.
+- fire, a function that modifies the state when this fires.
+
+This kind of definition decouples the transitions from each other.
+It gets rid of questions about disabling from the queue, at the expense
+of checking, at every time step, which is enabled.
+
+We could store these as named lists.
+```{r transition_list}
+program_globals <- new.env()
+program_globals$b <- 0.2
+program_globals$c <- 3.7
+
+is_enabled <- list(
+  infect = function(state) with(state, disease == "S"),
+  recover = function(state) with(state, disease == "I")
+)
+when <- list(
+  infect = function(state) rexp(1, 1/50),
+  recover = function(state) rexp(1, 1/200)
+)
+fire <- list(
+  infect = function(state, time) {
+    b <<- 0.3
+    within(state, {disease = "I"})
+    },
+  recover = function(state, time) {
+    b <<- 0.25
+    within(state, {disease = "S"})
+    }
+)
+for (set_env_idx in 1:length(fire)) {
+  environment(fire[[set_env_idx]]) <- program_globals
+}
+```
+For this individual, simulation is a loop that checks
+every transitions enabling every time. The logic for this comes
+from papers in chemical simulation that show that the first reaction
+method is much faster than optimized direct or next reaction methods
+when there are few transitions.
+```{r simulate_individual}
+# The current time and next firing times are part of the next state of the system.
+# If a firing time is Inf, that means it isn't scheduled.
+current_time <- 0
+times <- vapply(
+  when,
+  FUN = function(x) x(individual),
+  FUN.VALUE = vector(mode = "numeric", length = 1))
+
+step_cnt <- 5
+trajectory <- vector(mode = "list", length = step_cnt)
+for (step_idx in 1:step_cnt) {
+  to_fire <- which.min(times)
+  if (is.infinite(to_fire)) break
+  current_time <- times[[to_fire]]
+  trajectory[[step_idx]] <- list(event = names(to_fire), when = current_time)
+  individual <- fire[[to_fire]](individual, current_time)
+  was_enabled <- is.finite(times)
+  newly_enabled <- vapply(
+    is_enabled,
+    FUN = function(x) x(individual),
+    FUN.VALUE = vector(mode = "logical", length = 1))
+  times[was_enabled & !newly_enabled] <- Inf
+  newly_enabled <- when[!was_enabled & newly_enabled]
+  new_times <- current_time +
+    vapply(
+      newly_enabled,
+      FUN = function(x) x(individual),
+      FUN.VALUE = vector(mode = "numeric", length = 1))
+  times[names(new_times)] <- new_times
+}
+do.call(rbind, trajectory)
+```
+```{r}
+ls.str(program_globals)
+```
+
+That's all fun. So what I propose is to use a data.table because
+it can be automatically sorted by time. Put the times of transitions into
+each table row, along with individual state. The next-to-fire
+will be the next-individual-to-fire.
+```{r table_of_individuals}
+individuals <- data.table(
+  disease = factor(c("S", "I"), levels = c("S", "I")),
+  treatment = factor(c("U", "U"), levels = c("U", "PE", "GS")),
+  bites = list(c(0.1, 0.4, 5.7, 7.4), c(0.2, 0.3)),
+  when = rep(Inf, 2),
+  infect = rep(Inf, 2),
+  recover = rep(Inf, 2)
+  )
+setorder(individuals, when)
+```
+Then we modify our algorithm above to use the first individual, because they
+are sorted. The next steps follow as above.
+
+
+# Discrete Time Model
+
+We can think of a stochastic simulation as having a two parts,
+how you update the state and how you sample what fires.
+In order to update the state efficiently in R, it will help to represent
+the state as a vector. R doesn't like loops. Let's use
+a vector addition system (VAS).
+
+## Update of the State
+For a vector addition system, the state is a vector.
+```{r human_state}
+state <- c(S = 1, L = 0, I = 0, P = 0)
+```
+
+Then you create a set of transitions that reduce one part
+of the vector and add to another. We can think of these as a matrix
+where a -1 means you take from that state and a +1 means you add
+to that state.
+```{r human_transitions}
+transitions <- matrix(
+  c(
+    -1, 1, 0, 0,
+    0, -1, 1, 0,
+    1, 0, -1, 0,
+    1, 0, 0, -1,
+    -1, 0, 0, 1,
+    0, -1, 0, 1,
+    0, 0, -1, 1
+  ),
+  nrow = length(state),
+  dimnames = list(names(state), c("infect", "infectious", "recover", "unprotect",
+                                  "protects", "protectl", "protecti"))
+)
+```
+If we want to represent a self-transition, from protected to protected,
+it would need to have a -1 and a 1 in the same matrix entry.
+We can't represent it in this one matrix, but you'll see below
+that we could represent it by using one matrix for the -1 and one for the 1.
+A transition is enabled if it the state is nonzero
+where there is a -1.
+```{r find_enabled}
+enable <- function(transitions) {
+  transitions[transitions >= 0] <- 0
+  -transitions
+}
+enable(transitions)
+```
+Then use that to find the enabled transitions.
+```{r enabled_multiply}
+enabled <- state %*% enable(transitions)
+enabled
+```
+```{r show_enabled}
+transitions[, enabled > 0]
+```
+Firing looks like, well, vector addition.
+```{r fire_example2}
+state + transitions[, enabled > 0]
+```
+
+## Sampling the probability distribution
+
+Most of the distributions in the current PfSI are exponential distributions.
+This version would be in discrete time, so the equivalent is a geometric
+distribution. Sampling geometric distributions is particularly simple,
+because you draw from the same binomial distribution for each time step.
+Not all of the distributions are geometric, though, so we have to figure out
+a more general strategy.
+
+### Marginal vs Conditional
+
+A discrete probability distribution is of the form $P[X=k]$, where the random
+variable $X$ is the time step when the event occurs, counting from the time
+step when the transition is enabled. We disallow $k=0$ because it confuses our
+definition of what is one event or part of an event.
+
+When we simulate from a discrete
+probability distribution, we have two choices. We can draw $P[X=k]$ directly, as
+the time, $t+x$, at which the event will happen. We can alternatively draw
+$P[Y=t+x_i|i>=i-1]$ at each time step. This conditional sample asks, what is the probability
+that the event happens now given that it has not yet happened? For a geometric
+distribution, this is a sample from a Bernoulli distribution. For other distributions,
+the conditional sample can be more difficult to calculate.
+
+There is a little more information in the conditional sample because it tells
+you the probability for firing at each time step. That extra information would
+make it possible to generate a discrete hazard rate and look at likelihood.
+We aren't doing that now.
+
+The two ways to draw change how we define the state of the system.
+If we draw $P[X=k]$ directly, then the state of the system is the state of
+individuals and the time at which all enabled transitions will fire.
+If we use a conditional sample, then the state of the system is the state
+of individuals and the time at which each enabled transition became
+enabled.
+
+
+### Conflicts
+
+What if one transition removes an individual but another recovers
+that individual, in the same time step? These conflicts happen all of
+the time in discrete simulation, and we decide each conflict either
+by creating rules about who goes first or by calculating the probability
+of either outcome, given the simulation's inputs.
+
+A rule could say that, if an individual can recover or be removed, they
+will always be removed. Every possible conflict in the system needs a
+rule. One way to state those rules is to rank which transitions precede
+each other. The earlier rule is the one that fires, and the later rule
+does not get to fire for this particular time step.
+
+The other way to resolve conflicts is to treat each transition probability
+as a conditional statement. It's the probability someone would be removed
+if there were no recovery. It's the possibility of recovery
+if there were no removal. Given that the probability distributions come
+from survival analysis on patient data, or some equivalent, each transition's
+distribution is a conditional probability, so that's appropriate.
+If you start from this assumption, write out the conditional probability,
+and combine it with completeness relations, you can use some algebra
+to derive the marginal probability of recovery or removal. In the end,
+it becomes a coin flip between the two. This method is covered in [@Molloy1985-bk].
+
+There is a quick fix to conflicts, which is to precalculate a probability
+that, given two events in conflict, one fires before the other. Remember that
+the conditional probability of firing on any one time step changes,
+unless the distributions are exactly geometric, so that precalculation will,
+in general, be an approximation. Still, it can offer a little better
+result than using a simple precedence rule.
+
+Keep in mind that the standard way to deal with conflicts is to reduce the
+time step low enough that conflicts are rare.
+
+
+
+
+
+# Bibliography
