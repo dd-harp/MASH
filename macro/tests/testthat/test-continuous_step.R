@@ -22,6 +22,8 @@ test_that("can use data.table", {
       within(state, {disease = "S"})
     }
   )
+  # Setting the environment of a function gives it access to the environment
+  # through the <<- assignment operator.
   for (set_env_idx in 1:length(fire)) {
     environment(fire[[set_env_idx]]) <- program_globals
   }

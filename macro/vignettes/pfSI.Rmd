@@ -4,6 +4,7 @@ output:
   html_notebook:
     df_print: paged
   pdf_document:
+    toc: true
     df_print: kable
     number_sections: yes
 header-includes:
@@ -66,13 +67,19 @@ The rest is state.
 
 Here, variable names are sometimes shortened. Mean is mn, and variance is vr.
 There is a notation for events that says what state you leave and what
-you enter. The minus is leave and the + is enter.
+you enter. The minus is leave and the + is enter. For instance, if a single
+person leaves the latent stage and enters the infectious stage, the
+notation is (-L, +I). If they have to be in a stage in order for something else
+to run, you will see (-I, +F, +I), meaning fever can't happen unless the person
+is infected, but they stay infectious.
 
 * Infection
   + infection - from state L to I (-L, +I), exponential with rate duration
   + clearance - from state I to S (-I, +S), exponential with rate duration_pf
-  + fever - (-I, +F, +I), exponential with rate mnFever, which is incomplete by U(0, 1) < fever_pf.
-  + treatment - (-I, +T, +I) rate mnTreatPF
+  + fever - (-I, +F, +I), exponential distribution with rate mnFever, but its
+    CDF f(infinity) = fever_pf. That is, there is a bernouilli probability of fever_pf
+    that this fires.
+  + treatment - (-I, +T) rate mnTreatPF
   + recover - (-I, +S). This is also called clearance.
 * Chemoprophylaxis
   + treatment - seek treatment, (-I, +P)
@@ -84,34 +91,12 @@ you enter. The minus is leave and the + is enter.
   + GS - gametocyte-blocking vaccination. incomplete by U(0, 1) < gs_protect_pf. Lowers
     c, the probability to infect mosquitoes.
   + GS with treatment.
-  + wane PE - (-PE, +S) rate normal(mnPE_PF, vr_PE_Pf). Sets b back to full power.
-  + wane GS - (-GS, +S) rate normal(mnGE_PF, vr_GE_Pf). Sets c back to full power.
+  + wane PE - (-PE, +S) distributed as normal(mnPE_PF, vr_PE_Pf). Sets b back to full power.
+  + wane GS - (-GS, +S) distributed as normal(mnGE_PF, vr_GE_Pf). Sets c back to full power.
 * Bites - These will move to another module, the biting module.
   + The biting algorithm returns a number of bites for this person.
   + The biting hazard is incomplete. There is a probability draw that
     U(0, 1) < b to create move the person to the latent state.
-
-
-## Class of problems
-
-The pfSI described above fits into a particularly restrictive class of models
-because its state space is discrete and entirely Markovian.
-We have examples of simulations we'd like to write that don't fit those
-requirements. Let's look at some examples.
-
-Consider the case of assigning infectious bites to a person.
-We would like to draw the probability that a bite is infectious and the
-queue the event only if it is infectious. The way this is done for a Markov process
-is to specify the distribution of bite times as an incomplete distribution,
-meaning the maximum cumulative probability is the binomial probability that
-the bite is infectious. Maybe that's harder to figure out than thinking of it
-as two draws.
-
-Another case is when a change of state can lead to one of multiple transitions.
-In a Markov process, we would enumerate possible outcome states so that it's clear
-the system can't go to more than one. Then schedule them as competing processes.
-It can be easier to implement this behavior as a multinomial draw followed
-by scheduling the chosen event.
 
 
 # Continuous Time Model
@@ -127,8 +112,8 @@ malaria in their lifetime, that's infection, treatment, and back to susceptible,
 thirty events. If we consider infectious bites, it's either those same infection events
 or we're counting a lot more bites, in the thousands. For a ten year simulation, it's
 3600 days in ten years. We either have events in 30/3600 days or over one per day.
-In the former case, continuous time would likely do better. In the latter case, discrete
-time has an advantage.
+In the former case, continuous time would likely be faster. In the latter case, discrete
+time may be faster.
 
 
 ## Implementation
@@ -142,7 +127,7 @@ individual <- list(
   bites = c(0.1, 0.4, 5.7, 7.4)
   )
 ```
-Then we have about twelve transitions. We usually think about these rules
+Then we have thirteen transitions. We usually think about these rules
 as, "when this happens, then that can happen," but we can, alternatively,
 think about each transition as a separate entity that can happen whenever
 the state allows it. In this case, each one is defined by
