@@ -87,6 +87,7 @@ check_continuous_setup <- function(individuals, is_enabled, when, fire) {
 #' @param is_enabled a list of enabling functions.
 #' @param when a list of functions that return firing times when enabled
 #' @param fire a list of functions that say when to fire.
+#' @param end_time is a time beyond which nothing should fire
 #' @return a trajectory
 #' @export
 continuous_step <- function(individuals, is_enabled, when, fire) {
