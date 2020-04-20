@@ -76,19 +76,22 @@ fire <- function(transition, individual, when, variables = NULL) {
 initialize_times <- function(individuals, transitions) {
   is_enabled <- transitions$is_enabled
   when <- transitions$when
+  curtime <- 0
   for (person_idx in 1:nrow(individuals)) {
     state <- as.list(individuals[person_idx])
     newly_enabled <- vapply(
       is_enabled,
-      FUN = function(x) x(state),
+      FUN = function(x) x(state, curtime),
       FUN.VALUE = vector(mode = "logical", length = 1))
-    new_when <- vapply(
-      when[newly_enabled],
-      FUN = function(x) x(state),
-      FUN.VALUE = vector(mode = "numeric", length = 1))
-    state[names(new_when)] <- new_when
-    state["when"] <- min(new_when)
-    individuals[person_idx, ] <- state
+    if (any(newly_enabled)) {
+      new_when <- vapply(
+        when[newly_enabled],
+        FUN = function(x) x(state, curtime),
+        FUN.VALUE = vector(mode = "numeric", length = 1))
+      state[names(new_when)] <- new_when
+      state["when"] <- min(new_when)
+      individuals[person_idx, ] <- state
+    }  # else nothing enabled for this person.
   }
   individuals
 }
@@ -121,7 +124,7 @@ update_individual <- function(state, transitions, observe) {
   was_enabled <- is.finite(times)
   enabled <- vapply(
     is_enabled,
-    FUN = function(x) x(new_state),
+    FUN = function(x) x(new_state, current_time),
     FUN.VALUE = vector(mode = "logical", length = 1))
   times[!enabled] <- Inf  # disable competing transitions
 
@@ -131,12 +134,12 @@ update_individual <- function(state, transitions, observe) {
     new_times <- current_time +
       vapply(
         when[newly_enabled],
-        FUN = function(x) x(new_state),
+        FUN = function(x) x(new_state, current_time),
         FUN.VALUE = vector(mode = "numeric", length = 1))
     times[newly_enabled] <- new_times
   }
   new_state[when_col:length(new_state)] <- c(min(times), times)
-  list(individual = new_state, time = current_time, entry = trajectory_entry)
+  list(individual = new_state, curtime = current_time, entry = trajectory_entry)
 }
 
 
@@ -193,7 +196,6 @@ continuous_step <- function(individuals, transitions) {
 #' @return A simulation object, as a list.
 #' @export
 continuous_simulation <- function(individuals, transitions, observer, variables = NULL) {
-  browser()
   # The simulation needs lists of kinds of transitions, so unwrap what we're given.
   internal_transitions <- list(
     is_enabled = as.list(setNames(names(transitions), names(transitions))),
@@ -207,11 +209,11 @@ continuous_simulation <- function(individuals, transitions, observer, variables 
     if (!is.null(named_transitions)) {
       for (internal_name in names(internal_transitions)) {
         internal_transitions[[internal_name]][[transition_name]] <-
-          named_transitions[[internal_name]]
+          transition_triple[[internal_name]]
       }
     } else {
       for (trans_idx in 1:length(internal_transitions)) {
-        internal_transitions[[internal_name]][[trans_idx]] <- named_transitions[[trans_idx]]
+        internal_transitions[[internal_name]][[trans_idx]] <- transition_triple[[trans_idx]]
       }
     }
   }
@@ -226,19 +228,19 @@ continuous_simulation <- function(individuals, transitions, observer, variables 
 
   time_names <- c("when", names(transitions))
   time_columns <- matrix(Inf, nrow = nrow(individuals), ncol = length(time_names))
-  physical_state <- individuals[, time_names] := time_columns
+  individuals[, time_names] <- data.table::as.data.table(time_columns)
   # Data.table will sort by firing time very quickly if we set this key.
-  data.table::setkey(physical_state, when)
+  data.table::setkey(individuals, when)
 
-  check_continuous_setup(physical_state, internal_transitions)
+  check_continuous_setup(individuals, internal_transitions)
 
   list(
-    state = physical_state,
+    state = individuals,
     transitions = internal_transitions,
     variables = variables,
     observer = observer,
     time = 0,
-    trajectory = vector(mode = "list", length = 100),
+    trajectory = vector(mode = "list", length = 100L),
     trajectory_cnt = 0L
     )
 }
@@ -252,7 +254,7 @@ init_simulation <- function(simulation) {
   transitions <- simulation$transitions
   # The current time and next firing times are part of the next state of the system.
   # If a firing time is Inf, that means it isn't scheduled.
-  simulation$individuals <- initialize_times(simulation$state, transitions)
+  simulation$state <- initialize_times(simulation$state, transitions)
   simulation
 }
 
@@ -269,6 +271,8 @@ next_step_over_time <- function(duration) {
 #' The memory use of this method could be improved. We could construct a
 #' data.table into which to store the trajectory, so that it overwrites
 #' lines in the data.table. By returning lists, we're churning memory.
+#'
+#' You may want to augment this to record the id of the individual.
 #'
 #' @param transition_name The string name of the transition.
 #' @param former_state a list describing the individual's state before the transition
@@ -292,27 +296,38 @@ run_simulation <- function(simulation, duration) {
   current_time <- 0
   stop_condition <- next_step_over_time(duration)
   observer <- observe_continuous
-  individuals <- simulation$individuals
-  trajectory <- simulation$trajectory
-  trajectory_cnt <- simulation$trajectory_cnt
+  individuals <- simulation$state
+  if ("trajectory" %in% names(simulation)) {
+    trajectory <- simulation$trajectory
+  } else {
+    trajectory <- vector(mode = "list", length = 256L)
+  }
+  # Use the count of trajectory entries in case someone calls this without
+  # clearing the trajectory. This lets us tack onto the end of the trajectory.
+  if ("trajectory_cnt" %in% names(simulation)) {
+    trajectory_cnt <- simulation$trajectory_cnt
+  } else {
+    trajectory_cnt <- 0
+  }
   while (TRUE) {
     individual <- as.list(individuals[order(when)][1])
     should_end <- stop_condition(individuals, step_idx, current_time, individual$when)
     if (is.infinite(individual$when) || should_end) {
       break
     }
-    if (is.infinite(individual$when)) break
     new_state <- update_individual(individual, simulation$transitions, observer)
     individuals[order(when)][1] <- new_state$individual
-    current_time <- new_state$time
-    if (step_idx > trajectory_cnt) {
-      trajectory <- rep(trajectory, 2)
-      trajectory_cnt <- 2 * trajectory_cnt
-    }
+    current_time <- new_state$curtime
     step_idx <- step_idx + 1L
-    trajectory[[step_idx]] <- new_state$entry
+    trajectory_cnt <- trajectory_cnt + 1L
+    if (trajectory_cnt > length(trajectory)) {
+      trajectory <- rep(trajectory, 2)
+    }
+    trajectory[[trajectory_cnt]] <- new_state$entry
   }
+  simulation$state <- individuals
   simulation$trajectory <- trajectory
   simulation$trajectory_cnt <- trajectory_cnt
-  trajectory[1:step_idx]
+  simulation$time <- current_time
+  simulation
 }

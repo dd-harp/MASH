@@ -8,12 +8,19 @@
 #' @export
 forced_si_infect <- function() {
   list(
-    is_enabled = function(state, time) with(state, disease == "S" && bites[length(bites)] > time),
-    when = function(state, time) with(state, {
-      next_bite <- which(bites > time)
-      ifelse(length(next_bite) > 0L, bites[next_bite], Inf)
+    is_enabled = function(state, curtime) with(
+      state,
+      {
+        bite_vec <- bites[[1]]
+        disease == "S" && (length(bite_vec) > 0) && (bite_vec[length(bite_vec)] > curtime)
+      }
+      ),
+    when = function(state, curtime) with(state, {
+      bite_vec <- bites[[1]]
+      next_bite <- which(bite_vec > curtime)
+      ifelse(length(next_bite) > 0L, bite_vec[next_bite[1]], Inf)
     }),
-    fire = function(state, time) within(state, {disease = "I"})
+    fire = function(state, curtime) within(state, {disease = "I"})
   )
 }
 
@@ -25,9 +32,9 @@ forced_si_infect <- function() {
 #' @export
 forced_si_recover <- function(rate) {
   list(
-    is_enabled = function(state, time) with(state, disease == "I"),
-    when = function(state, time) rexp(1, rate),
-    fire = function(state, time) within(state, {disease = "S"})
+    is_enabled = function(state, curtime) with(state, disease == "I"),
+    when = function(state, curtime) rexp(1, rate),
+    fire = function(state, curtime) within(state, {disease = "S"})
   )
 }
 
@@ -41,9 +48,29 @@ forced_si_recover <- function(rate) {
 #' @export
 forced_si_population <- function(people_cnt, pfpr) {
   data.table::data.table(
+    who = 1L:people_cnt,  # identify each person.
     disease = factor(ifelse(rbinom(people_cnt, 1, 0.4), "I", "S"), levels = c("S", "I")),
     bites = lapply(1:people_cnt, function(x) numeric(0))
     )
+}
+
+
+#' Observe each transition.
+#'
+#' The memory use of this method could be improved. We could construct a
+#' data.table into which to store the trajectory, so that it overwrites
+#' lines in the data.table. By returning lists, we're churning memory.
+#'
+#' You may want to augment this to record the id of the individual.
+#'
+#' @param transition_name The string name of the transition.
+#' @param former_state a list describing the individual's state before the transition
+#' @param new_state a list describing the individual's state after the transition
+#' @param curtime The time at which this transition fires.
+#' @return a list with the name and time.
+#' @export
+forced_si_observer <- function(transition_name, former_state, new_state, curtime) {
+  list(name = transition_name, curtime = curtime, id = former_state[["who"]])
 }
 
 

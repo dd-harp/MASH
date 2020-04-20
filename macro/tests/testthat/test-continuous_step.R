@@ -1,12 +1,12 @@
 test_that("individual two state bounce", {
   set.seed(32432)
   is_enabled <- list(
-    infect = function(state) with(state, disease == "S"),
-    recover = function(state) with(state, disease == "I")
+    infect = function(state, time) with(state, disease == "S"),
+    recover = function(state, time) with(state, disease == "I")
   )
   when <- list(
-    infect = function(state) rexp(1, 1/50),
-    recover = function(state) rexp(1, 1/200)
+    infect = function(state, time) rexp(1, 1/50),
+    recover = function(state, time) rexp(1, 1/200)
   )
   fire <- list(
     infect = function(state, time) {within(state, {disease = "I"})},
@@ -37,10 +37,10 @@ test_that("individual two state bounce", {
 test_that("individual removed goes to inf", {
   set.seed(32432)
   is_enabled <- list(
-    infect = function(state) with(state, disease == "S")
+    infect = function(state, time) with(state, disease == "S")
   )
   when <- list(
-    infect = function(state) rexp(1, 1/50)
+    infect = function(state, time) rexp(1, 1/50)
   )
   fire <- list(
     infect = function(state, time) {within(state, {disease = "I"})}
@@ -62,10 +62,10 @@ test_that("individual removed goes to inf", {
 test_that("individual transition fires again", {
   set.seed(32432)
   is_enabled <- list(
-    infect = function(state) with(state, disease == "S")
+    infect = function(state, time) with(state, disease == "S")
   )
   when <- list(
-    infect = function(state) rexp(1, 1/50)
+    infect = function(state, time) rexp(1, 1/50)
   )
   # Returns to same state when it fires.
   fire <- list(
@@ -92,16 +92,16 @@ test_that("can use data.table", {
 
   transitions <- list(
     infect = list(
-      is_enabled = function(state) with(state, disease == "S"),
-      when = function(state) rexp(1, 1/50),
+      is_enabled = function(state, time) with(state, disease == "S"),
+      when = function(state, time) rexp(1, 1/50),
       fire = function(state, time) {
         b <<- 0.3
         within(state, {disease = "I"})
       }
     ),
     recover = list(
-      is_enabled = function(state) with(state, disease == "I"),
-      when = function(state) rexp(1, 1/200),
+      is_enabled = function(state, time) with(state, disease == "I"),
+      when = function(state, time) rexp(1, 1/200),
       fire = function(state, time) {
         b <<- 0.25
         within(state, {disease = "S"})
@@ -120,7 +120,11 @@ test_that("can use data.table", {
     observe_continuous,
     program_globals
   )
-  simulation <- init_simulation(init_simulation)
-  trajectory <- run_simulation(simulation, 14)
-  expect_equal(length(trajectory), 2 * 5)
+  simulation <- init_simulation(simulation)
+  simulation <- run_simulation(simulation, 200)
+  trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
+  expect_gt(length(trajectory), 1)
+  for (check_idx in 1:length(trajectory)) {
+    expect_true(trajectory[[check_idx]]$name %in% c("infect", "recover"))
+  }
 })
