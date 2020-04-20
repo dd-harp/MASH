@@ -4,16 +4,14 @@
 \alias{update_individual}
 \title{Update one individual}
 \usage{
-update_individual(next_person, is_enabled, when, fire)
+update_individual(state, transitions, observe)
 }
 \arguments{
-\item{next_person}{a list of their traits and times}
+\item{state}{a list of their traits and times}
 
-\item{is_enabled}{a list of functions to determine enabling}
+\item{transitions}{a list of transitions for enabling and firing times}
 
-\item{when}{a list of functions to determine when to fire}
-
-\item{fire}{a list of functions to determine firing}
+\item{observe}{A function that records the transition.}
 }
 \value{
 a list with the individual a trajectory entry, and a new time

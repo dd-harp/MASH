@@ -4,14 +4,12 @@
 \alias{initialize_times}
 \title{Set up firing times given an initial state.}
 \usage{
-initialize_times(individuals, is_enabled, when)
+initialize_times(individuals, transitions)
 }
 \arguments{
 \item{individuals}{a data frame of individuals, including columns for times.}
 
-\item{is_enabled}{a list of functions that say when transitions are enabled}
-
-\item{when}{a list of functions that return times when enabled}
+\item{transitions}{a list of transitions for enabling and firing times}
 }
 \value{
 a data frame of individuals, with times filled in
