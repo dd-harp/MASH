@@ -1,0 +1,81 @@
+---
+title: "Mainloop Design"
+output:
+  html_notebook:
+    df_print: paged
+  pdf_document:
+    toc: true
+    df_print: kable
+    number_sections: yes
+header-includes:
+  - \usepackage{palatino}
+---
+
+```{r load_libraries, hide = TRUE}
+library(igraph)
+```
+
+We have to run a mainloop that has a bunch of modules that pass data to each other.
+There could be four of them, but there could be four hundred, if we separate each patch
+into a separate module.
+
+Therefore, represent the execution graph of the modules as a graph and use
+that graph to run them and pass data. None of these graphs will have any cycles.
+Start with a graph that is linear.
+
+```{r make_igraph}
+module_graph <- graph_from_literal(bite1 -+ human1, human1 -+ move,
+                                   bite2 -+ human2, human2 -+ move)
+```
+
+We need algorithms that
+
+* determine where to start computing
+* determine runnable modules so that they can run in parallel
+* know when to get rid of data from memory, if possible.
+
+We can order the modules such that running them in this order will always work.
+```{r ordered}
+names(topo_sort(module_graph))
+```
+We can get incident edges of one vertex.
+```{r}
+incident(module_graph, V(module_graph)["move"], mode = "in")
+```
+or get multiple incident edges
+```{r}
+incident_edges(module_graph, V(module_graph)["move"], mode = "in")
+```
+Which have no incident edges?
+```{r}
+incident_cnt <- lapply(incident_edges(module_graph, V(module_graph), mode = "in"), length)
+t(as.data.frame(incident_cnt))
+```
+Can we use the graph data structure while we do our computation, to keep track
+of what has been computed and what can be thrown away?
+```{r}
+vertex_attr(module_graph, "done") <- FALSE
+vertex.attributes(module_graph)
+```
+Let's mark the bite1 as done. Then can we figure out that it's OK to run
+human1?
+```{r}
+V(module_graph)["bite1"]$done <- TRUE
+adjacent_vertices(module_graph, V(module_graph)["bite1"], mode = "out")
+```
+That returns the next vertex, but what if the next vertex depends on multiple
+inputs? I'd like to query for all vertices whose input vertices are marked done.
+```{r}
+madj <- as_adjacency_matrix(module_graph)
+```
+That's the adjacency matrix. If we premultiply by the list of what is done,
+changing it to 1 for done, 0 for not done, we get.
+```{r}
+inputs_available <- c(1, 0, 0, 0, 0) %*% madj
+```
+Wherever that value is less than the incidence for the vertex, it's ready to run.
+```{r}
+ready_to_run <- inputs_available == Matrix::Matrix(as.numeric(incident_cnt), nrow = 1)
+ready_to_run
+```
+
