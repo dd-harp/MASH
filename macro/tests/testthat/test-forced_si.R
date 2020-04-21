@@ -69,3 +69,21 @@ test_that("forced si example runs", {
   trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
   expect_gt(length(trajectory), 1)
 })
+
+
+test_that("runs as a module", {
+  parameters <- list(
+    recovery_rate = 1 / 200,
+    people_cnt = 100,
+    duration_days = 14
+  )
+  simulation <- forced_si_module(parameters)
+  for (i in 1:4) {
+    current_time <- parameters$duration_days * (i - 1)
+    bites <- forced_si_create_bites(
+      parameters$people_cnt, 1/20, current_time, parameters$duration_days)
+    simulation <- step_si_module(simulation, bites)
+    trajectory <- trajectory_si_module(simulation)
+    expect_gt(length(trajectory), 0)
+  }
+})

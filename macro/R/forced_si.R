@@ -11,6 +11,8 @@ forced_si_infect <- function() {
     is_enabled = function(state, curtime) with(
       state,
       {
+        # The bites are a vector of biting times, but we assume they are packed into
+        # a list because this is how they have to be stored in a dataframe.
         bite_vec <- bites[[1]]
         disease == "S" && (length(bite_vec) > 0) && (bite_vec[length(bite_vec)] > curtime)
       }
@@ -83,7 +85,7 @@ forced_si_observer <- function(transition_name, former_state, new_state, curtime
 #' @return a list of arrays of bite times
 #' @example
 #' pop <- forced_si_population(5L, 0.4)
-#' pop[, "bites"] <- forced_si_create_bites(nrow(pop), 0.2, 14)
+#' pop[, "bites"] <- forced_si_create_bites(nrow(pop), 0.2, 0, 14)
 #'
 #' @export
 forced_si_create_bites <- function(people_cnt, bite_rate, current_time, duration) {
@@ -93,3 +95,68 @@ forced_si_create_bites <- function(people_cnt, bite_rate, current_time, duration
   })
 }
 
+
+
+#' Creates a MASH module that runs forced SI.
+#'
+#' This module drives infection by supplying bites.
+#'
+#' @param parameters These are simulation parameters. They are
+#'     \code{recovery_rate} for recovery, \code{people_cnt} for
+#'     the number of individuals, \code{duration_days} for the number
+#'     of days per time step. If there are too few or too many parameters,
+#'     then this rejects the argument. We disallow extra parameters so that
+#'     misnamed parameters don't go unnoticed.
+#' @return A simulation object, which is a list.
+#' @export
+forced_si_module <- function(parameters) {
+  expected_parameters <- c("recovery_rate", "people_cnt", "duration_days")
+  stopifnot(all(names(parameters) %in% expected_parameters))
+  stopifnot(all(expected_parameters %in% names(parameters)))
+
+  transitions <- list(
+    infect = forced_si_infect(),
+    recover = forced_si_recover(parameters$recovery_rate)
+  )
+  people_cnt <- parameters$people_cnt
+  pfpr <- parameters$initial_pfpr
+  individuals <- forced_si_population(people_cnt, pfpr)
+
+  simulation <- continuous_simulation(
+    individuals,
+    transitions,
+    forced_si_observer
+  )
+  simulation[["parameters"]] <- parameters
+  simulation <- init_simulation(simulation)
+}
+
+
+#' Takes one time step of the discrete time step.
+#'
+#' @param simulation A forced-SI model.
+#' @param bites A list of bites for each person. Each item in the list is a vector
+#'     of times when an infectious bite happens.
+#' @return a simulation object
+#' @examples
+#' \dontrun{
+#' step_si_module(simulation, forced_si_create_bites(100, 1/20, current_time, 14))
+#' }
+#' @export
+step_si_module <- function(simulation, bites) {
+  duration_days <- simulation$parameters$duration_days
+  simulation$state[, "bites"] <- bites
+  run_simulation(simulation, duration_days)
+}
+
+
+#' Extract the trajectory from the simulation
+#'
+#' @param simulation a forced-SI model.
+#' @return a list of trajectory entries.
+#' @export
+trajectory_si_module <- function(simulation) {
+  trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
+  simulation$trajectory_cnt <- 0
+  trajectory
+}
