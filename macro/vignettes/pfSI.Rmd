@@ -115,6 +115,55 @@ or we're counting a lot more bites, in the thousands. For a ten year simulation,
 In the former case, continuous time would likely be faster. In the latter case, discrete
 time may be faster.
 
+Given the many ways to implement continous-time models, our design will emphasize
+a) getting the calculation correct and b) being able to make a new simulation by 
+changing parts of an old simulation. The design will take advantage of an important
+constraint on the system, that the same model is applied across individuals.
+
+We won't use the most practical design, where one event adds the next possible
+events to a queue. For instance, an SEIR model might have an infection transition that
+fires like this.
+```{r usual_firing, eval = FALSE}
+fire_infect <- function(state, individual) {
+  state[individual, "disease"] <- "infected"
+  add_to_queue(recovery_of(individual))
+  add_to_queue(fever_of(individual))
+  remove_from_queue(chemoprotection_of(individual))
+}
+```
+That function gets the job done, but it combines the infection process with
+assumptions about what other transitions are in the system. You can't define just
+infection. You'd have to create a new infection transition for a system that doesn't
+model fever.
+
+Here's what we will do instead. Our continuous time algorithm will represent each
+individual as a row in a data.table. We will find the next transition to fire by finding
+the next individual whose soonest transition is next to fire. This is an old trick,
+that the minimum time is the minimum of minima. This trick is helpful here because
+the data.table class, as opposed to the base::data.frame class, has a feature that makes
+it very fast to find the minimum of a sorted column.
+
+If we can find the next individual to have a transition, then the code can look
+just at firing times for this individual in order to determine which event is next.
+At each time step, we ask every possible transition for the chosen individual whether
+it would like to be enabled, or whether it is still enabled.
+The algorithm, in pseudocode, is
+```{r, eval = FALSE}
+transition_to_fire <- which.min(individual_firing_times)
+individual_state <- fire(transition_to_fire, individual_state)
+disable(individual_firing_times, transition_to_fire)
+previously_enabled <- enabled(individual_firing_times)
+now_enabled <- apply(enabling_functions, individual_state)
+update_firing_times(!previously_enabled & now_enabled)
+disable(individual_firing_times, !now_enabled)
+```
+Compared to the algorithm that adds and removes from the queue, this algorithm
+doesn't know, beforehand, which transitions to add or remove. It might be slower,
+however, it is less likely we will forget to add or remove from the queue and we
+can write transitions that are less tightly-coupled to one another. Moreover,
+this style of update was shown, for chemical simulations, to be faster for small numbers
+of transitions because simplicity of the code wins over algorithmic order.
+
 
 ## Implementation
 
