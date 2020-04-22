@@ -128,7 +128,8 @@ forced_si_module <- function(parameters) {
     forced_si_observer
   )
   simulation[["parameters"]] <- parameters
-  simulation <- init_simulation(simulation)
+  initialized_simulation <- init_continuous(simulation)
+  initialized_simulation
 }
 
 
@@ -145,8 +146,8 @@ forced_si_module <- function(parameters) {
 #' @export
 step_si_module <- function(simulation, bites) {
   duration_days <- simulation$parameters$duration_days
-  simulation$state[, "bites"] <- bites
-  run_simulation(simulation, duration_days)
+  simulation$state$bites <- bites
+  run_continuous(simulation, duration_days)
 }
 
 

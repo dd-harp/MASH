@@ -120,8 +120,8 @@ test_that("can use data.table", {
     observe_continuous,
     program_globals
   )
-  simulation <- init_simulation(simulation)
-  simulation <- run_simulation(simulation, 200)
+  simulation <- init_continuous(simulation)
+  simulation <- run_continuous(simulation, 200)
   trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
   expect_gt(length(trajectory), 1)
   for (check_idx in 1:length(trajectory)) {

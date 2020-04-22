@@ -78,7 +78,7 @@ initialize_times <- function(individuals, transitions) {
   when <- transitions$when
   curtime <- 0
   for (person_idx in 1:nrow(individuals)) {
-    state <- as.list(individuals[person_idx])
+    state <- as.list(individuals[person_idx,])
     newly_enabled <- vapply(
       is_enabled,
       FUN = function(x) x(state, curtime),
@@ -116,6 +116,7 @@ update_individual <- function(state, transitions, observe) {
 
   # Fire!
   to_fire <- which.min(times)
+  stopifnot(is.finite(times[to_fire]))
   new_state <- fire[[to_fire]](state, current_time)
   times[to_fire] <- Inf  # mark the one that fired as not being enabled so it can fire next.
   trajectory_entry <- observe(names(to_fire), state, new_state, current_time)
@@ -174,11 +175,12 @@ continuous_step <- function(individuals, transitions) {
   step_cnt <- 5
   trajectory <- vector(mode = "list", length = step_cnt)
   for (step_idx in 1:step_cnt) {
-    individual <- as.list(individuals[order(when)][1])
+    soonest <- order(individuals$when)[1]
+    individual <- as.list(individuals[soonest, ])
     if (is.infinite(individual$when)) break
     new_state <- update_individual(individual, transitions, function(...) {})
     trajectory[[step_idx]] <- new_state$trajectory
-    individuals[order(when)][1] <- new_state$individual
+    individuals[soonest, ] <- new_state$individual
   }
   do.call(rbind, trajectory)
 }
@@ -250,7 +252,7 @@ continuous_simulation <- function(individuals, transitions, observer, variables 
 #'
 #' @param simulation This object is created by \code{\link{continuous_simulation}}
 #' @export
-init_simulation <- function(simulation) {
+init_continuous <- function(simulation) {
   transitions <- simulation$transitions
   # The current time and next firing times are part of the next state of the system.
   # If a firing time is Inf, that means it isn't scheduled.
@@ -291,7 +293,7 @@ observe_continuous <- function(transition_name, former_state, new_state, time) {
 #' @param duration How long to run
 #' @return The trajectory of the run.
 #' @export
-run_simulation <- function(simulation, duration) {
+run_continuous <- function(simulation, duration) {
   step_idx <- 0L
   current_time <- 0
   stop_condition <- next_step_over_time(duration)
@@ -310,18 +312,19 @@ run_simulation <- function(simulation, duration) {
     trajectory_cnt <- 0
   }
   while (TRUE) {
-    individual <- as.list(individuals[order(when)][1])
+    soonest <- order(individuals$when)[1]
+    individual <- as.list(individuals[soonest, ])
     should_end <- stop_condition(individuals, step_idx, current_time, individual$when)
     if (is.infinite(individual$when) || should_end) {
       break
     }
     new_state <- update_individual(individual, simulation$transitions, observer)
-    individuals[order(when)][1] <- new_state$individual
+    individuals[soonest, ] <- new_state$individual
     current_time <- new_state$curtime
     step_idx <- step_idx + 1L
     trajectory_cnt <- trajectory_cnt + 1L
     if (trajectory_cnt > length(trajectory)) {
-      trajectory <- rep(trajectory, 2)
+      trajectory <- rep(trajectory, 2L)
     }
     trajectory[[trajectory_cnt]] <- new_state$entry
   }
