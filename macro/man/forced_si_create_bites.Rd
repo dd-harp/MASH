@@ -21,3 +21,9 @@ a list of arrays of bite times
 \description{
 Generate bites for a population of a forced_si model.
 }
+\examples{
+\dontrun{
+pop <- forced_si_population(5L, 0.4)
+pop[, "bites"] <- forced_si_create_bites(nrow(pop), 0.2, 0, 14)
+}
+}

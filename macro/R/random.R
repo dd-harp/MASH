@@ -6,8 +6,11 @@
 #' copies <- skip_mersenne_twister(4789, 17, 100)
 #' this_run <- 1 # Out of 100 copies we run.
 #' set_mersenne_seed(copies[, this_run])
+#'
+#' @param seed_vector An array of seed values.
+#' @export
 set_mersenne_seed <- function(seed_vector) {
-  RNGkind(kind="Mersenne-Twister")
+  RNGkind(kind = "Mersenne-Twister")
   offset <- length(.Random.seed) - length(seed_vector)
   .Random.seed[(1 + offset):(offset + length(seed_vector))] <<-
     seed_vector

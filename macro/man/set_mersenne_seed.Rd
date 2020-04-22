@@ -6,6 +6,9 @@
 \usage{
 set_mersenne_seed(seed_vector)
 }
+\arguments{
+\item{seed_vector}{An array of seed values.}
+}
 \description{
 The input is a vector of 624 integers, used to initialize
 an exact state for MT19937. We assume it comes from

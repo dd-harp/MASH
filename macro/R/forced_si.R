@@ -83,10 +83,11 @@ forced_si_observer <- function(transition_name, former_state, new_state, curtime
 #' @param current_time The start time for bite events
 #' @param duration in days
 #' @return a list of arrays of bite times
-#' @example
+#' @examples
+#' \dontrun{
 #' pop <- forced_si_population(5L, 0.4)
 #' pop[, "bites"] <- forced_si_create_bites(nrow(pop), 0.2, 0, 14)
-#'
+#' }
 #' @export
 forced_si_create_bites <- function(people_cnt, bite_rate, current_time, duration) {
   lapply(1:people_cnt, function(x) {
