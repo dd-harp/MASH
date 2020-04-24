@@ -13,5 +13,5 @@ an exact state for MT19937. We assume it comes from
 \details{
 copies <- skip_mersenne_twister(4789, 17, 100)
 this_run <- 1 # Out of 100 copies we run.
-set_mersenne_seed(copies[, this_run])
+set_mersenne_seed(copies\link{, this_run})
 }
