@@ -33,7 +33,9 @@ simple_trip_transitions <- function(){
     },
     fire = function(state,time){
       dest <- sample.int(n=npatch,size=1,prob=trip_dest[state$home,])
-      state$current <- dest
+      within(state,{
+        current <- dest
+      })
     }
   )
 
@@ -47,9 +49,31 @@ simple_trip_transitions <- function(){
       rexp(n=1,rate=return_home_rate[state$home,state$current])
     },
     fire = function(state,time){
-      state$current <- state$home
+      within(state,{
+        current <- home
+      })
     }
   )
 
   return(transitions)
+}
+
+#' Movement: Simple 'Simple Trip' Observer
+#'
+#' The memory use of this method could be improved. We could construct a
+#' data.table into which to store the trajectory, so that it overwrites
+#' lines in the data.table. By returning lists, we're churning memory.
+#'
+#' Currently this is identical to \code{\link[macro]{forced_si_observer}}
+#'
+#' You may want to augment this to record the id of the individual.
+#'
+#' @param transition_name The string name of the transition.
+#' @param former_state a list describing the individual's state before the transition
+#' @param new_state a list describing the individual's state after the transition
+#' @param curtime The time at which this transition fires.
+#' @return a list with the name and time.
+#' @export
+simple_trip_observer <- function(transition_name, former_state, new_state, curtime) {
+  list(name = transition_name, curtime = curtime, id = former_state[["who"]], location = new_state[["current"]])
 }

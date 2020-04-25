@@ -297,7 +297,14 @@ run_continuous <- function(simulation, duration) {
   step_idx <- 0L
   current_time <- 0
   stop_condition <- next_step_over_time(duration)
-  observer <- observe_continuous
+  if(is.null(simulation$observer)){
+    observer <- observe_continuous
+  } else {
+    if(!is.function(simulation$observer)){
+      stop("if 'observer' slot in simulation is not NULL, please provide it a function")
+    }
+    observer <- simulation$observer
+  }
   individuals <- simulation$state
   if ("trajectory" %in% names(simulation)) {
     trajectory <- simulation$trajectory
@@ -324,7 +331,7 @@ run_continuous <- function(simulation, duration) {
     step_idx <- step_idx + 1L
     trajectory_cnt <- trajectory_cnt + 1L
     if (trajectory_cnt > length(trajectory)) {
-      trajectory <- rep(trajectory, 2L)
+      trajectory <- c(trajectory,replicate(n=trajectory_cnt,expr={NULL}))
     }
     trajectory[[trajectory_cnt]] <- new_state$entry
   }

@@ -1,4 +1,4 @@
-<!-- ---
+---
 title: "Human Module with SI Dynamics"
 output:
   html_notebook:
@@ -416,4 +416,4 @@ time step low enough that conflicts are rare.
 
 
 
-# Bibliography -->
+# Bibliography
