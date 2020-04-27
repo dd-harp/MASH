@@ -1,12 +1,13 @@
 ---
 title: "Mainloop Design"
 output:
-  html_notebook:
-    df_print: paged
   pdf_document:
     toc: true
     df_print: kable
     number_sections: yes
+    dev: png
+  html_notebook:
+    df_print: paged
 header-includes:
   - \usepackage{palatino}
 ---
@@ -78,4 +79,50 @@ Wherever that value is less than the incidence for the vertex, it's ready to run
 ready_to_run <- inputs_available == Matrix::Matrix(as.numeric(incident_cnt), nrow = 1)
 ready_to_run
 ```
+
+```{r}
+require(igraph)
+vertex_cnt <- 5
+# a complete graph has n (n-1) / 2 edges.
+edge_max <- 6
+gg <- make_empty_graph(n = vertex_cnt)
+for (add_idx in 1:5000) {
+  candidate <- sample(1:vertex_cnt, 2)
+  existing <- E(gg)[.from(candidate[1]) & .to(candidate[2])]
+  if (length(existing) == 0) {
+    added <- add.edges(gg, candidate)
+    if (is.dag(added)) {
+      gg <- added
+      if (ecount(gg) == edge_max) break
+    }
+  }
+}
+```
+
+What if we write the main loop and give ourselves a way to re-execute it
+later?
+```{r}
+bite <- function() "bite1"
+human <- function(bite) "human1"
+move <- function(human) "move1"
+example_main <- function(delayed) {
+  b <- delayed(bite)()
+  h <- delayed(human)(b)
+  m <- delayed(move)(h)
+  m
+}
+no_delay <- function(x) x
+example_main(no_delay)
+```
+Try this again with a recording.
+```{r}
+delay <- function(f) {
+  arguments <- names(as.list(f))
+  arguments <- arguments[arguments != ""]
+  function(...) {
+    3
+  }
+}
+```
+
 
