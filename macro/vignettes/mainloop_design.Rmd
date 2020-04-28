@@ -16,6 +16,68 @@ header-includes:
 library(igraph)
 ```
 
+# Overview
+
+The MASH simulation iterates over four steps, simulating human health, human movement,
+mosquito lifecycle, and bloodmeals. These four steps could be implemented so separately
+that they are in different languages, different computer programs, or computed remotely.
+That separate implementation creates risk for how we write and run the loop that calls
+each of those steps.
+
+While the initial loop has four steps, there are useful simulations that may run two
+modules together or combine a different and larger set of modules. We should be able
+to write different main loops.
+
+The main loop becomes useful when we can compare the effect of substituting one
+location module for another or one bloodmeal module for another. We will be able
+to substitute modules when they expect the same kinds of inputs and outputs. For instance,
+a bloodmeal module needs to know how many food sources are in a location
+and how many have parasites. We have to encode that information in a way that all
+comparable bloodmeal modules can read. You can make a bloodmeal module that uses
+different information, but it will have a different contract with the location module
+providing that information. These contracts are our most expert product.
+
+Meanwhile, there is a small matter of how to write this code in R.
+We need a way to encode the relationships just discussed. We also
+need quotidien affordances to read parameters and write results.
+The most difficult question for the R implementation will be how we handle
+running modules that can be unkind. They may use more memory and time. They
+may raise warnings or exceptions. The degree to which we can treat modules as
+components, in the software engineering sense, will guard the effort we put
+into savvy contracts from the failings of lackadaisical coding.
+
+
+# Explicit Calls with S3 Method Dispatch
+
+We can express the main loop directly by writing code that passes data
+from module to module, as described in the TWICE document. Ignore, for the moment,
+how we create the modules and how we read results.
+
+Here, a MASH step is a fourteen-day time step. A path is the results of a time
+step, formatted in a way the next module needs to read them.
+```{r, eval = FALSE}
+location <- mash_step(location, health_path)
+location_path <- location_path(location)
+bloodmeal <- mash_step(bloodmeal, location_path, health_path)
+bloodmeal_path <- infects_human_path(bloodmeal)
+health <- mash_step(health, bloodmeal_path)
+health_path <- human_disease_path(health)
+```
+If we define a location module as an S3 class, such as `single_location`,
+we can write for it a method that returns that single location for each person.
+```{r, eval = FALSE}
+location_path.single_location <- function(location_module) rep(1, location_module$people_cnt)
+```
+
+We are using S3 just for its method dispatch. We're not using objects in a meaningful way
+because each of these modules will be, we assume, implemented in their own
+colorful manner, be it an R script or a Fortran program. There will be only a few
+calls to these modules, one for initialization, one to step, and one or two to extract
+results paths.
+
+
+
+# Explicit Graph of Loop Order
 We have to run a mainloop that has a bunch of modules that pass data to each other.
 There could be four of them, but there could be four hundred, if we separate each patch
 into a separate module.

@@ -1,7 +1,10 @@
 #' Increments a MASH module by one discrete time step.
 #'
 #' An S3 method to advance a module by whatever is the simulation
-#' time step.
+#' time step. We could create a separate time step function for
+#' each of the kinds of modules. We could make one for a health time
+#' step, one for a location time step, and so on. This would
+#' allow us to skip the `...` below and give an actual argument list.
 #'
 #' @export
 mash_step <- function(mash_module, ...) {
