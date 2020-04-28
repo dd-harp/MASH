@@ -8,7 +8,7 @@ exponential_bite_module <- function(parameters) {
   stopifnot(names(parameters) %in% params)
   stopifnot(params %in% names(parameters))
 
-  list(parameters = parameters, bites = NULL, step_cnt = 0)
+  structure(list(parameters = parameters, bites = NULL, step_cnt = 0), class = "exponential_bite")
 }
 
 
@@ -17,7 +17,7 @@ exponential_bite_module <- function(parameters) {
 #' @param simulation the simulation object.
 #' @return a modified simulation object
 #' @export
-step_exponential_bite_module <- function(simulation) {
+mash_step.exponential_bite <- function(simulation) {
   simulation$bites <- with(simulation$parameters, {
     current_time <- duration * simulation$step_cnt
     forced_si_create_bites(people_cnt, bite_rate, current_time, duration)
@@ -33,6 +33,6 @@ step_exponential_bite_module <- function(simulation) {
 #' @param simulation an exponential bites simulation object.
 #' @return bites a list with an entry for each person containing a vector of bite times.
 #' @export
-trajectory_exponential_bite_module <- function(simulation) {
+infects_human_path.exponential_bite <- function(simulation) {
   simulation$bites
 }

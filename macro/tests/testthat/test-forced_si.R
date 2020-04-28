@@ -83,9 +83,9 @@ test_that("runs as a module", {
     current_time <- parameters$duration_days * (i - 1)
     bites <- forced_si_create_bites(
       parameters$people_cnt, 1/20, current_time, parameters$duration_days)
-    stepped <- step_si_module(simulation, bites)
+    stepped <- mash_step(simulation, bites)
     simulation <- stepped
-    trajectory <- trajectory_si_module(simulation)
+    trajectory <- human_disease_path(simulation)
     expect_gt(length(trajectory), 0)
   }
 })

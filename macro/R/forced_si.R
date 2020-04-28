@@ -130,6 +130,7 @@ forced_si_module <- function(parameters) {
   )
   simulation[["parameters"]] <- parameters
   initialized_simulation <- init_continuous(simulation)
+  class(initialized_simulation) <- "forced_si"
   initialized_simulation
 }
 
@@ -145,7 +146,7 @@ forced_si_module <- function(parameters) {
 #' step_si_module(simulation, forced_si_create_bites(100, 1/20, current_time, 14))
 #' }
 #' @export
-step_si_module <- function(simulation, bites) {
+mash_step.forced_si <- function(simulation, bites) {
   duration_days <- simulation$parameters$duration_days
   simulation$state$bites <- bites
   run_continuous(simulation, duration_days)
@@ -157,7 +158,7 @@ step_si_module <- function(simulation, bites) {
 #' @param simulation a forced-SI model.
 #' @return a list of trajectory entries.
 #' @export
-trajectory_si_module <- function(simulation) {
+human_disease_path.forced_si <- function(simulation) {
   trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
   simulation$trajectory_cnt <- 0
   trajectory
