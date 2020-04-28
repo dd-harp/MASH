@@ -14,11 +14,14 @@ This function is responsible for calling the modules in the correct
 order and for passing the results of one module to others.
 We call the results of a module's time step a path because it is
 the route that the simulation took over the time step.
+
 It assumes that each module implements S3 methods for the
 \code{\link{mash_step}}, which simulates the next discrete time step.
 Each module will also implement S3 methods that extract results
 of the time step so that they can be passed, by this function, to
-the modules that need them as inputs.}
+the modules that need them as inputs. There isn't a single function to
+extract paths because some modules can produce more than one
+kind of path for other modules to use.}
 }
 \description{
 Main loop for a MASH simulation to run a discrete time step.

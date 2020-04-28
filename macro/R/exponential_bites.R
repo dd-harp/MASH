@@ -4,7 +4,7 @@
 #' @return A bite module.
 #' @export
 exponential_bite_module <- function(parameters) {
-  params <- c("people_cnt", "bite_rate", "duration")
+  params <- c("people_cnt", "bite_rate", "duration_days")
   stopifnot(names(parameters) %in% params)
   stopifnot(params %in% names(parameters))
 
@@ -17,10 +17,10 @@ exponential_bite_module <- function(parameters) {
 #' @param simulation the simulation object.
 #' @return a modified simulation object
 #' @export
-mash_step.exponential_bite <- function(simulation) {
+mash_step.exponential_bite <- function(simulation, location_path, health_path) {
   simulation$bites <- with(simulation$parameters, {
-    current_time <- duration * simulation$step_cnt
-    forced_si_create_bites(people_cnt, bite_rate, current_time, duration)
+    current_time <- duration_days * simulation$step_cnt
+    forced_si_create_bites(people_cnt, bite_rate, current_time, duration_days)
     }
   )
   simulation$step_cnt <- simulation$step_cnt + 1

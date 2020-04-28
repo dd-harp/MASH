@@ -67,26 +67,33 @@ human_disease_path <- function(human_module) {
 #' order and for passing the results of one module to others.
 #' We call the results of a module's time step a path because it is
 #' the route that the simulation took over the time step.
+#'
 #' It assumes that each module implements S3 methods for the
 #' \code{\link{mash_step}}, which simulates the next discrete time step.
 #' Each module will also implement S3 methods that extract results
 #' of the time step so that they can be passed, by this function, to
-#' the modules that need them as inputs.
+#' the modules that need them as inputs. There isn't a single function to
+#' extract paths because some modules can produce more than one
+#' kind of path for other modules to use.
 #'
 #' @seealso \code{\link{location_path}}, \code{\link{person_path}},
 #'     \code{\link{human_disease_path}}, \code{\link{infects_mosquito_path}},
 #'     \code{\link{human_infection_path}}
 #' @export
-step_mainloop <- function(modules) {
-  health_path <- NULL
-  within(modules, {
-    for (step_idx in 1:2) {
-      location <- mash_step(location, health_path)
-      location_path <- location_path(location)
-      bloodmeal <- mash_step(bloodmeal, location_path, health_path)
-      bloodmeal_path <- infects_human_path(bloodmeal)
-      health <- mash_step(health, bloodmeal_path)
-      health_path <- human_disease_path(health)
-    }
-  })
+step_mainloop <- function(modules, step_cnt = 1) {
+  location <- modules$location
+  bloodmeal <- modules$bloodmeal
+  health <- modules$health
+
+  health_path <- human_disease_path(health)
+  for (step_idx in 1:step_cnt) {
+    location <- mash_step(location, health_path)
+    location_path <- location_path(location)
+    bloodmeal <- mash_step(bloodmeal, location_path, health_path)
+    bloodmeal_path <- infects_human_path(bloodmeal)
+    health <- mash_step(health, bloodmeal_path)
+    health_path <- human_disease_path(health)
+  }
+
+  list(location = location, bloodmeal = bloodmeal, health = health)
 }
