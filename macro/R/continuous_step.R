@@ -332,7 +332,7 @@ run_continuous <- function(simulation, duration) {
     step_idx <- step_idx + 1L
     trajectory_cnt <- trajectory_cnt + 1L
     if (trajectory_cnt > length(trajectory)) {
-      trajectory <- c(trajectory,replicate(n=trajectory_cnt,expr={NULL}))
+      trajectory <- c(trajectory, replicate(n = trajectory_cnt, expr = {NULL}))
     }
     trajectory[[trajectory_cnt]] <- new_state$entry
   }
