@@ -297,13 +297,14 @@ run_continuous <- function(simulation, duration) {
   step_idx <- 0L
   current_time <- 0
   stop_condition <- next_step_over_time(duration)
-  if(is.null(simulation$observer)){
+  if (is.null(simulation$observer)) {
     observer <- observe_continuous
   } else {
-    if(!is.function(simulation$observer)){
+    if (!is.function(simulation$observer)) {
       stop("if 'observer' slot in simulation is not NULL, please provide it a function")
+    } else {
+      observer <- simulation$observer
     }
-    observer <- simulation$observer
   }
   individuals <- simulation$state
   if ("trajectory" %in% names(simulation)) {

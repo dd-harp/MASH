@@ -7,7 +7,7 @@
 simple_trip_transitions()
 }
 \value{
-a list
+a list of transitions
 }
 \description{
 This function makes the set of transitions for the 'simple trip' model of movement;

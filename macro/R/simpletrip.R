@@ -1,7 +1,6 @@
 # --------------------------------------------------------------------------------
 #
 #   Simple Trip model
-#   Sean L. Wu (slwu89@berkeley.edu)
 #   April 2020
 #
 # --------------------------------------------------------------------------------
@@ -14,42 +13,41 @@
 #' patches the state space is \eqn{N^{2}} as we track what patches residents of patch \eqn{i}
 #' are at.
 #'
-#'
-#' @return a list
+#' @return a list of transitions
 #'
 #' @export
-simple_trip_transitions <- function(){
+simple_trip_transitions <- function() {
 
   transitions <- list()
 
   transitions$take_trip <- list(
-    is_enabled = function(state,time){
-      with(state,{
+    is_enabled = function(state, time) {
+      with(state, {
         return(home == current)
       })
     },
-    when = function(state,time){
-      rexp(n=1,rate=trip_rate[state$home])
+    when = function(state, time) {
+      rexp(n = 1, rate = trip_rate[state$home])
     },
-    fire = function(state,time){
-      dest <- sample.int(n=npatch,size=1,prob=trip_dest[state$home,])
-      within(state,{
+    fire = function(state, time) {
+      dest <- sample.int(n = npatch, size = 1, prob = trip_dest[state$home, ])
+      within(state, {
         current <- dest
       })
     }
   )
 
   transitions$return_home <- list(
-    is_enabled = function(state,time){
-      with(state,{
+    is_enabled = function(state, time) {
+      with(state, {
         return(home != current)
       })
     },
-    when = function(state,time){
-      rexp(n=1,rate=return_home_rate[state$home,state$current])
+    when = function(state, time) {
+      rexp(n = 1, rate = return_home_rate[state$home, state$current])
     },
-    fire = function(state,time){
-      within(state,{
+    fire = function(state, time) {
+      within(state, {
         current <- home
       })
     }
@@ -75,5 +73,86 @@ simple_trip_transitions <- function(){
 #' @return a list with the name and time.
 #' @export
 simple_trip_observer <- function(transition_name, former_state, new_state, curtime) {
-  list(name = transition_name, curtime = curtime, id = former_state[["who"]], location = new_state[["current"]])
+  list(
+    name = transition_name,
+    curtime = curtime,
+    id = former_state[["who"]],
+    location = new_state[["current"]]
+  )
+}
+
+
+#' Movement: Simple Trip Trajectory to State occupancy
+#'
+#' This is an internal function used to verify that the 'simple trip'
+#' model is functioning correctly. See the simple trip vignette
+#' for more details.
+#'
+#' @param trajectory the output of \code{\link[macro]{run_continuous}}
+#' @param init_state the initial state (S1,S2,S3,S4)
+#' @return a vector of time-averaged state occupancy probabilities
+simple_trip_stateoutput <- function(trajectory, init_state) {
+
+  stopifnot(init_state %in% c("S1","S2","S3","S4"))
+
+  state_trans <- function(current, id, loc) {
+    if(current == "S1"){
+      if(id==1 & loc==2){
+        return("S2")
+      } else if(id==2 & loc==2){
+        return("S3")
+      } else {
+        cat("illegal value\n")
+        browser()
+      }
+    } else if(current == "S2"){
+      if(id==1 & loc==1){
+        return("S1")
+      } else if(id==2 & loc==2){
+        return("S4")
+      } else {
+        cat("illegal value\n")
+        browser()
+      }
+    } else if(current == "S3"){
+      if(id==1 & loc==2){
+        return("S4")
+      } else if(id==2 & loc==1){
+        return("S1")
+      } else {
+        cat("illegal value\n")
+        browser()
+      }
+    } else if(current == "S4"){
+      if(id==1 & loc==1){
+        return("S3")
+      } else if(id==2 & loc==1){
+        return("S2")
+      } else {
+        cat("illegal value\n")
+        browser()
+      }
+    } else {
+      cat("illegal value\n")
+      browser()
+    }
+  }
+
+  state_occupancy <- rep(0,4)
+  state_occupancy <- setNames(state_occupancy,paste0("S",1:4))
+  curr_state <- init_state
+
+  for(i in 1:nrow(trajectory)){
+    if(i==1){
+      state_occupancy[curr_state] <- state_occupancy[curr_state] + trajectory[i,"curtime"]
+      curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"location"])
+    } else {
+      state_occupancy[curr_state] <- state_occupancy[curr_state] + (trajectory[i,"curtime"] - trajectory[i-1,"curtime"])
+      curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"location"])
+    }
+  }
+
+  state_occupancy <- state_occupancy / tail(trajectory,1)[["curtime"]]
+
+  return(state_occupancy)
 }

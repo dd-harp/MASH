@@ -38,7 +38,7 @@ We can heuristically derive the master equations to describe this stochastic mod
 $$
 \frac{d}{dt}P(S_{1}) = -(\phi_{12} + \tau_{21})P(S_{1}) + \tau_{12}P(S_{2}) + \phi_{21}P(S_{3}) \\
 \frac{d}{dt}P(S_{2}) = -(\tau_{12} + \tau_{21})P(S_{2}) + \phi_{12}P(S_{1}) + \phi_{21}P(S_{4}) \\
-\frac{d}{dt}P(S_{3}) = -(\phi_{12} + \phi_{21})P(S_{3}) + \tau{12}P(S_{4}) + \tau_{21}P(S_{1}) \\
+\frac{d}{dt}P(S_{3}) = -(\phi_{12} + \phi_{21})P(S_{3}) + \tau_{12}P(S_{4}) + \tau_{21}P(S_{1}) \\
 \frac{d}{dt}P(S_{4}) = -(\tau_{12} + \phi_{21})P(S_{4}) + \phi_{12}P(S_{3}) + \tau_{21}P(S_{2})
 $$
 
@@ -87,7 +87,7 @@ phi12 <- parameters$trip_rate[1] * parameters$trip_dest[1,2]
 phi21 <- parameters$trip_rate[2] * parameters$trip_dest[2,1]
 ```
 
-Now we can set up and run the model.
+Now we can set up and run the model. We create the list of transitions using the function `simple_trip_transitions` provided in the package. Using the API for continuous time discrete event simulation provided in the package, we use `continuous_simulation` to set up the simulation object, `init_continuous` to sample the initial event times, and then `run_continuous` to run the simulation. We will run for 20,000 days, as we want a trajectory long enough to meaningfully compare to the stationary distribution we worked out above (it should reach the stationary distribution).
 
 ```{r}
 # set up the population
@@ -107,7 +107,7 @@ simulation <- continuous_simulation(
 )
 
 simulation <- init_continuous(simulation)
-simulation <- run_continuous(simulation,1e4)
+simulation <- run_continuous(simulation,2e4)
 ```
 
 After simulating the model, we are going to want to compare the simulated trajectory to the exact stationary probability vector we worked out earlier. To do that we'll write some code that takes the output trajectory of events and turns it into cumulative time spent in each state, to compare to the stationary vector $\pi$.
@@ -195,4 +195,10 @@ Now that we've simulated a long trajectory through this state space ($\mathcal{S
 
 ```{r comment='', echo=FALSE, results='asis'}
  knitr::kable(compare, caption = "Comparison of Analytic versus Simulated Results", floating.environment="sidewaystable")
+```
+
+To do this comparison in a statistically reasonable manner we'll use a Chi-squared test. We should get a p-value close to 1, indicating that there is close to no evidence that these two PMFs (simulated and analytic) came from different distributions.
+
+```{r}
+stats::chisq.test(x = state_occupancy, p = pivec, simulate.p.value = TRUE)
 ```
