@@ -45,7 +45,7 @@ test_that("simple trip model matches theoretical expectations", {
     location=unlist(trajectory[,"location"])
   )
 
-  avg_state <- simple_trip_stateoutput(trajectory,"S3")
+  avg_state <- macro:::simple_trip_stateoutput(trajectory,"S3")
 
   pivec <- rep(0,4)
   pivec[1] <- (phi21*tau12)/((phi12+tau12)*(phi21+tau21))
@@ -53,6 +53,7 @@ test_that("simple trip model matches theoretical expectations", {
   pivec[3] <- (tau12*tau21)/((phi12+tau12)*(phi21+tau21))
   pivec[4] <- (phi12*tau21)/((phi12+tau12)*(phi21+tau21))
 
-  tst <- stats::chisq.test(x = state_occupancy, p = pivec, simulate.p.value = TRUE)
-  expect_condition(tst$p.value > 0.98)
+  tst <- stats::chisq.test(x = avg_state, p = pivec, simulate.p.value = TRUE)
+  res <- tst$p.value > 0.98
+  expect_true(res)
 })
