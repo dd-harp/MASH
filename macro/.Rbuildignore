@@ -7,3 +7,5 @@
 ^cmake$
 \.Rproj\.user
 ^CMakeLists\.txt$
+^doc$
+^Meta$

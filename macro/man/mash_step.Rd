@@ -8,5 +8,8 @@ mash_step(mash_module, ...)
 }
 \description{
 An S3 method to advance a module by whatever is the simulation
-time step.
+time step. We could create a separate time step function for
+each of the kinds of modules. We could make one for a health time
+step, one for a location time step, and so on. This would
+allow us to skip the \code{...} below and give an actual argument list.
 }

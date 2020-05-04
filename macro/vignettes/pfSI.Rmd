@@ -103,7 +103,7 @@ is infected, but they stay infectious.
 
 A continuous-time algorithm is a good choice when there will be few events in
 each time step. In this case, most processes are slow relative to a day, so we
-suspect continuous-time is a good choice, even in R where a single time step can 
+suspect continuous-time is a good choice, even in R where a single time step can
 be expensive.
 
 We can make a back-of-the-envelope calculation by assuming larger numbers for
@@ -116,7 +116,7 @@ In the former case, continuous time would likely be faster. In the latter case, 
 time may be faster.
 
 Given the many ways to implement continous-time models, our design will emphasize
-a) getting the calculation correct and b) being able to make a new simulation by 
+a) getting the calculation correct and b) being able to make a new simulation by
 changing parts of an old simulation. The design will take advantage of an important
 constraint on the system, that the same model is applied across individuals.
 

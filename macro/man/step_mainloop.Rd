@@ -4,11 +4,11 @@
 \alias{step_mainloop}
 \title{Main loop for a MASH simulation to run a discrete time step.}
 \usage{
-step_mainloop(modules)
+step_mainloop(modules, step_cnt = 1)
 }
 \arguments{
-\item{modules}{A list of modules, named `location`, `bloodmeal`,
-    and `health`.
+\item{modules}{A list of modules, named \code{location}, \code{bloodmeal},
+and \code{health}.
 
 This function is responsible for calling the modules in the correct
 order and for passing the results of one module to others.
@@ -28,6 +28,6 @@ Main loop for a MASH simulation to run a discrete time step.
 }
 \seealso{
 \code{\link{location_path}}, \code{\link{person_path}},
-    \code{\link{human_disease_path}}, \code{\link{infects_mosquito_path}},
-    \code{\link{human_infection_path}}
+\code{\link{human_disease_path}}, \code{\link{infects_mosquito_path}},
+\code{\link{human_infection_path}}
 }

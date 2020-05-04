@@ -13,7 +13,7 @@ forced_si_population(people_cnt, pfpr)
 }
 \value{
 a data.table with columns disease=factor(S, I) and bites,
-    which is an empty list.
+which is an empty list.
 }
 \description{
 Create a population of individuals for forced-SI

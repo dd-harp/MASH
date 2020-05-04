@@ -19,7 +19,7 @@ the number of simultaneous streams you want to use.}
 }
 \value{
 A matrix of size 624 by skip_count. Put the 624
-        into the Mersenne seed in order to initialize it.
+into the Mersenne seed in order to initialize it.
 }
 \description{
 A Mersenne Twister random number generator can be skipped ahead
