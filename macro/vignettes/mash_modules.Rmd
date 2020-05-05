@@ -1,0 +1,58 @@
+---
+title: "MASH Modules"
+output:
+  pdf_document:
+    toc: true
+    df_print: kable
+    number_sections: yes
+    dev: png
+  html_notebook:
+    df_print: paged
+header-includes:
+  - \usepackage{palatino}
+---
+
+# Overview
+These are the MASH modules that are implemented now.
+
+
+# Health Modules
+
+These represent human health states.
+
+## Forced SI
+
+A human is susceptible or infected. A susceptible person can recover. A person
+becomes infected only if they receive an infectious bites. This module assumes
+it will receive a list of infectious bites at the start of each time step.
+
+There are no interventions possible.
+
+# Location Modules
+
+## Single Location
+
+Everybody is in one location, all the time. This is a well-mixed system.
+
+## Simple Trip
+
+Each person lives somewhere, but they travel to another place and, after
+a waiting time, travel home.
+
+## Markov Flow
+
+There is a transition rate from one location to another, and individuals
+drift around according to those transitions rates, with no place to call home.
+
+
+# Bloodmeal Modules
+
+## Exponential Bites
+
+There is a steady stream of bites with some biting rate.
+Each location has a biting rate that is predetermined.
+
+
+# Mosquito Modules
+
+None yet.
