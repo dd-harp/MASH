@@ -33,7 +33,7 @@ $$
 
 In this set up, $S_{1}$ is the state where the resident of patch 1 is at home but resident of patch 2 is away. $S_{2}$ is where neither is home. $S_{3}$ is where both are home. $S_{4}$ is where the resident of patch 1 is away but resident of patch 2 is home.
 
-We can heuristically derive the master equations to describe this stochastic model by remembering that as $dt\rightarrow 0$ only single particle jumps are allowed.
+We can heuristically derive the master equations to describe this stochastic model by remembering that as $dt\rightarrow 0$ only no more than one event is allowed to happen at a time. This means that the master equations can't allow, for example, for resident 1 to take a trip and resident 2 to go home at the exact same point in time.
 
 $$
 \frac{d}{dt}P(S_{1}) = -(\phi_{12} + \tau_{21})P(S_{1}) + \tau_{12}P(S_{2}) + \phi_{21}P(S_{3}) \\
@@ -107,7 +107,9 @@ simulation <- continuous_simulation(
 )
 
 simulation <- init_continuous(simulation)
-simulation <- run_continuous(simulation,2e4)
+simulation <- run_continuous(simulation,1e4)
+
+
 ```
 
 After simulating the model, we are going to want to compare the simulated trajectory to the exact stationary probability vector we worked out earlier. To do that we'll write some code that takes the output trajectory of events and turns it into cumulative time spent in each state, to compare to the stationary vector $\pi$.
@@ -119,7 +121,7 @@ trajectory <- data.frame(
   name=unlist(trajectory[,"name"]),
   curtime=unlist(trajectory[,"curtime"]),
   id=unlist(trajectory[,"id"]),
-  location=unlist(trajectory[,"location"])
+  curr_location=unlist(trajectory[,"curr_location"])
 )
 
 state_occupancy <- rep(0,4)
@@ -172,10 +174,10 @@ state_trans <- function(current,id,loc){
 for(i in 1:nrow(trajectory)){
   if(i==1){
     state_occupancy[curr_state] <- state_occupancy[curr_state] + trajectory[i,"curtime"]
-    curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"location"])
+    curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"curr_location"])
   } else {
     state_occupancy[curr_state] <- state_occupancy[curr_state] + (trajectory[i,"curtime"] - trajectory[i-1,"curtime"])
-    curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"location"])
+    curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"curr_location"])
   }
 }
 

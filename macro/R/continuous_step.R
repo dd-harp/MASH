@@ -257,6 +257,17 @@ init_continuous <- function(simulation) {
   # The current time and next firing times are part of the next state of the system.
   # If a firing time is Inf, that means it isn't scheduled.
   simulation$state <- initialize_times(simulation$state, transitions)
+
+  # set up the observer
+  if (is.null(simulation$observer)) {
+    simulation$observer <- observe_continuous
+  } else {
+    if (!is.function(simulation$observer)) {
+      stop("if 'observer' slot in simulation is not NULL, please provide it a function")
+    }
+  }
+
+  # return the simulation object
   simulation
 }
 
@@ -295,17 +306,10 @@ observe_continuous <- function(transition_name, former_state, new_state, time) {
 #' @export
 run_continuous <- function(simulation, duration) {
   step_idx <- 0L
-  current_time <- 0
-  stop_condition <- next_step_over_time(duration)
-  if (is.null(simulation$observer)) {
-    observer <- observe_continuous
-  } else {
-    if (!is.function(simulation$observer)) {
-      stop("if 'observer' slot in simulation is not NULL, please provide it a function")
-    } else {
-      observer <- simulation$observer
-    }
-  }
+  current_time <- simulation$time
+  stop_time <- current_time + duration
+  stop_condition <- next_step_over_time(stop_time)
+  observer <- simulation$observer
   individuals <- simulation$state
   if ("trajectory" %in% names(simulation)) {
     trajectory <- simulation$trajectory

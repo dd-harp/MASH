@@ -77,9 +77,97 @@ simple_trip_observer <- function(transition_name, former_state, new_state, curti
     name = transition_name,
     curtime = curtime,
     id = former_state[["who"]],
-    location = new_state[["current"]]
+    prev_location = former_state[["current"]],
+    curr_location = new_state[["current"]]
   )
 }
+
+
+#' Creates a MASH module that runs Simple Trip
+#'
+#' This module simulates movement according to a 'simple trip' model, where everybody
+#' has a home which they leave to go on trips according to some rate. When they arrive at
+#' a place they stay there for some time before returning home, upon which they schedule the
+#' next trip.
+#'
+#'  The input \code{parameters} must have the following *named* members:
+#'    * \code{trip_rate}: the rate at which each person takes a trip away from home
+#'    * \code{trip_dest}: the stochastic matrix telling us where each person (row) goes
+#'     (col) when they leave home
+#'    * \code{return_home_rate}: the rate at which each person (row) goes home from their current location (col)
+#'    * \code{npatch}: number of patches/places
+#'    * \code{home}: vector of everybody's home
+#'    * \code{current}: vector of everybody's current location
+#'    * \code{duration_days}: length (in days) of each time step
+#'
+#' @param parameters A list or environment
+#'
+#' @return A simulation object, which is a list.
+#' @export
+simple_trip_module <- function(parameters) {
+
+  expected_parameters <- c("trip_rate","trip_dest","return_home_rate","npatch","home","current","duration_days")
+  stopifnot(all(names(parameters) %in% expected_parameters))
+  stopifnot(all(expected_parameters %in% names(parameters)))
+
+  # parameter checking
+  stopifnot(all(diag(parameters$trip_dest) == 0))
+  stopifnot(all(rowSums(parameters$trip_dest) == 1))
+  stopifnot(nrow(parameters$trip_dest)==parameters$npatch & ncol(parameters$trip_dest)==parameters$npatch)
+
+  stopifnot(nrow(parameters$return_home_rate)==parameters$npatch & ncol(parameters$return_home_rate)==parameters$npatch)
+  stopifnot(all(parameters$return_home_rate) >= 0)
+  stopifnot(all(diag(parameters$return_home_rate) == 0))
+
+  stopifnot(length(parameters$home) == length(parameters$current))
+
+  # make the module structure
+  transitions <- simple_trip_transitions()
+
+  people_cnt <- length(parameters$home)
+  population <- data.table::data.table(
+    who = 1:people_cnt,
+    home = parameters$home,
+    current = parameters$current
+  )
+
+  simulation <- continuous_simulation(
+    individuals = population,
+    transitions = transitions,
+    observer = simple_trip_observer,
+    variables = parameters
+  )
+
+  initialized_simulation <- init_continuous(simulation)
+  class(initialized_simulation) <- "simple_trip"
+
+  return(initialized_simulation)
+}
+
+
+#' Takes one time step of the Simple Trip model
+#'
+#' @param simulation A simple trip model (most likely made via \code{\link[macro]{simple_trip_module}})
+#' @param health_path The history of health states for each person.
+#' @export
+mash_step.simple_trip <- function(simulation, health_path) {
+  duration_days <- simulation$parameters$duration_days
+  run_continuous(simulation, duration_days)
+
+  return(simulation)
+}
+
+location_path.simple_trip <- function(simulation){
+
+  
+
+
+  simulation$trajectory <- NULL
+  simulation$trajectory_cnt <- NULL
+
+  return(simulation)
+}
+
 
 
 #' Movement: Simple Trip Trajectory to State occupancy
@@ -145,10 +233,10 @@ simple_trip_stateoutput <- function(trajectory, init_state) {
   for(i in 1:nrow(trajectory)){
     if(i==1){
       state_occupancy[curr_state] <- state_occupancy[curr_state] + trajectory[i,"curtime"]
-      curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"location"])
+      curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"curr_location"])
     } else {
       state_occupancy[curr_state] <- state_occupancy[curr_state] + (trajectory[i,"curtime"] - trajectory[i-1,"curtime"])
-      curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"location"])
+      curr_state <- state_trans(curr_state,trajectory[i,"id"],trajectory[i,"curr_location"])
     }
   }
 
