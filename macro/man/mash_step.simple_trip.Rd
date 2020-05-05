@@ -4,7 +4,7 @@
 \alias{mash_step.simple_trip}
 \title{Takes one time step of the Simple Trip model}
 \usage{
-\method{mash_step}{simple_trip}(simulation, health_path)
+\method{mash_step}{simple_trip}(simulation, duration_days, health_path)
 }
 \arguments{
 \item{simulation}{A simple trip model (most likely made via \code{\link[macro]{simple_trip_module}})}

@@ -2,11 +2,13 @@
 
 S3method(human_disease_path,forced_si)
 S3method(infects_human_path,exponential_bite)
+S3method(location_path,simple_trip)
 S3method(location_path,single_location)
 S3method(mash_step,exponential_bite)
 S3method(mash_step,forced_si)
 S3method(mash_step,simple_trip)
 S3method(mash_step,single_location)
+S3method(person_path,simple_trip)
 export(continuous_simulation)
 export(continuous_step)
 export(convert_to_r_movement)
