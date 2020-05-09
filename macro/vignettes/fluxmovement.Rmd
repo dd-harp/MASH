@@ -42,7 +42,7 @@ $$
 \frac{d}{dt}P(S_{3}) = -2f_{21}P(S_{3}) + f_{12}P(S_{1})
 $$
 
-We can see them visually by looking at what they are telling us about the probability flow between states.
+We can see them visually by looking at what they are telling us about the probability flow between states. The reason that states $S_{2}$ and $S_{3}$ send 2 times the rate into state $S_{1}$ is that because the 3 state master equation ignores identity of the individuals, state $S_{1}$ actually consists of two aggregated states, where person 1 is at patch 2 and person 2 is at patch 1, or where person 1 is at patch 1 and person 2 is at patch 2.
 
 ```{r, echo=FALSE, fig.cap="State transition diagram", out.width = "60%", fig.align='center'}
 knitr::include_graphics("flux.png")
