@@ -8,7 +8,7 @@
 #' Movement: Make 'Simple Trip' Transitions
 #'
 #' This function makes the set of transitions for the 'simple trip' model of movement;
-#' the simple trip model is the simplest non-Eulerian movement model, meaning that it
+#' the simple trip model is the simplest Lagrangian (non-Eulerian) movement model, meaning that it
 #' is not a flux type model of movement. Each person has a home, so for \eqn{N}
 #' patches the state space is \eqn{N^{2}} as we track what patches residents of patch \eqn{i}
 #' are at.
@@ -62,9 +62,6 @@ simple_trip_transitions <- function() {
 #' data.table into which to store the trajectory, so that it overwrites
 #' lines in the data.table. By returning lists, we're churning memory.
 #'
-#' Currently this is identical to \code{\link[macro]{forced_si_observer}}
-#'
-#' You may want to augment this to record the id of the individual.
 #'
 #' @param transition_name The string name of the transition.
 #' @param former_state a list describing the individual's state before the transition
@@ -98,7 +95,6 @@ simple_trip_observer <- function(transition_name, former_state, new_state, curti
 #'    * \code{npatch}: number of patches/places
 #'    * \code{home}: vector of everybody's home
 #'    * \code{current}: vector of everybody's current location
-#'    * \code{duration_days}: length (in days) of each time step
 #'
 #' @param parameters A list or environment
 #'
@@ -148,7 +144,9 @@ simple_trip_module <- function(parameters) {
 #' Takes one time step of the Simple Trip model
 #'
 #' @param simulation A simple trip model (most likely made via \code{\link[macro]{simple_trip_module}})
+#' @param duration_days how long to step the simulation for
 #' @param health_path The history of health states for each person.
+#'
 #' @export
 mash_step.simple_trip <- function(simulation, duration_days, health_path) {
   stopifnot(is.finite(duration_days))

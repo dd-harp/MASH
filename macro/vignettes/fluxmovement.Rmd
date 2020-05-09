@@ -1,0 +1,77 @@
+---
+title: "Flux Movement"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Flux Movement}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(macro)
+```
+
+## Stochastic Model
+
+### Master Equations
+
+In this document we'll talk about the stochastic flux model. In this model people move between various locations (patches), where the probability of movement depends on where the person is now and where they might go. Because we consider continuous time models, the probability of moving from patch $i$ to $j$ ($i\rightarrow j$) in an infinitesimal time interval $\delta t$ is $P(i\rightarrow j) = f_{ij}\delta t + \mathcal{O}(\delta t)$.
+
+For verification of the simulation we will want to compare the time-averaged simulation results to an analytic stationary distribution. Let's consider a model with 2 patches and 2 people. Because in the flux model people do not have homes (they just move between patches according to the rate parameters $f_{ij}$ wherever they are), this model has 3 states.
+
+$$
+S_{1} = (N_{1}=1,N_{2}=1) \\
+S_{2} = (N_{1}=2,N_{2}=0) \\
+S_{3} = (N_{1}=0,N_{2}=2)
+$$
+
+The total state space is $\mathcal{S}:=\{S_{1},S_{2},S_{3}\}$, and each time an event occurs, the state changes. $S_{1}$ is the state where one person is in patch 1 and one person is in patch 2. $S_{2}$ is the state where both people are in patch 1. $S_{3}$, likewise, is where both people are in patch 3. In order to get a stationary probability distribution over these 3 states, we need to work out the master equations. These are a set of ordinary differential equations (ODE) which describe how the probability flux moves between states as time goes on. Put in terms of an example, if at $t=0$ we knew with absolute certainty that both people were in patch 1 ($S_{2}$ gets probability 1 at time 0), we could solve the master equations to tell us how probability flows out of and back into that state (as well as between all other states) as time goes on.
+
+The main restriction that will help us write the master equations is that as the time step goes to zero ($\delta t\rightarrow 0$), the probability of two or more events occuring simultaneously goes to zero. Put more succinctly, this just means two things can't happen at the same time.
+
+$$
+\frac{d}{dt}P(S_{1}) = -(f_{12} + f_{21})P(S_{1}) + f_{12}P(S_{2}) + f_{21}P(S_{3}) \\
+\frac{d}{dt}P(S_{2}) = -f_{12}P(S_{2}) + f_{21}P(S_{1}) \\
+\frac{d}{dt}P(S_{3}) = -f_{21}P(S_{3}) + f_{12}P(S_{1})
+$$
+
+We can see them visually by looking at what they are telling us about the probability flow between states.
+
+```{r, echo=FALSE, fig.cap="State transition diagram", out.width = "60%", fig.align='center'}
+knitr::include_graphics("flux.png")
+```
+
+To solve for the stationary probability distribution, we set the ODEs equal to zero, and solve with the additional constraint that $P(S_{1}) + P(S_{2}) + P(S_{3}) = 1$. We get the solution:
+
+$$
+P(S_{1}) = \frac{f_{12}f_{21}}{f_{12}^{2} + f_{12}f_{21} + f_{21}^{2}} \\
+P(S_{2}) = \frac{f_{21}^{2}}{f_{12}^{2} + f_{12}f_{21} + f_{21}^{2}} \\
+P(S_{3}) = \frac{f_{12}^{2}}{f_{12}^{2} + f_{12}f_{21} + f_{21}^{2}}
+$$
+
+## Stochastic Simulation
+
+Now we can use the functions provided by `marco` to set up a simple flux model. The only required paramter is the `rate_matrix` object, giving the $\{f_{ij}\}$ values.
+
+
+```{r}
+parameters <- new.env()
+parameters$rate_matrix <- matrix(c(0,1/6,1/4.5,0),byrow = TRUE,nrow = 2,ncol = 2)
+parameters$npatch <- 2
+
+parameters$location <- 1:2
+```
+
+Now we can set up and run the model. We'll use the function `flux_module` to make the simulation object, and then `mash_step` to simulate from it. We will run for 20,000 days, as we want a trajectory long enough to meaningfully compare to the stationary distribution we worked out above (it should reach the stationary distribution).
+
+```{r}
+simulation <- flux_module(parameters)
+simulation <- mash_step(simulation, 50, NULL)
+```
