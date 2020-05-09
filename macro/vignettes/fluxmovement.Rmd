@@ -37,9 +37,9 @@ The total state space is $\mathcal{S}:=\{S_{1},S_{2},S_{3}\}$, and each time an 
 The main restriction that will help us write the master equations is that as the time step goes to zero ($\delta t\rightarrow 0$), the probability of two or more events occuring simultaneously goes to zero. Put more succinctly, this just means two things can't happen at the same time.
 
 $$
-\frac{d}{dt}P(S_{1}) = -(f_{12} + f_{21})P(S_{1}) + f_{12}P(S_{2}) + f_{21}P(S_{3}) \\
-\frac{d}{dt}P(S_{2}) = -f_{12}P(S_{2}) + f_{21}P(S_{1}) \\
-\frac{d}{dt}P(S_{3}) = -f_{21}P(S_{3}) + f_{12}P(S_{1})
+\frac{d}{dt}P(S_{1}) = -(f_{12} + f_{21})P(S_{1}) + 2f_{12}P(S_{2}) + 2f_{21}P(S_{3}) \\
+\frac{d}{dt}P(S_{2}) = -2f_{12}P(S_{2}) + f_{21}P(S_{1}) \\
+\frac{d}{dt}P(S_{3}) = -2f_{21}P(S_{3}) + f_{12}P(S_{1})
 $$
 
 We can see them visually by looking at what they are telling us about the probability flow between states.
@@ -51,9 +51,9 @@ knitr::include_graphics("flux.png")
 To solve for the stationary probability distribution, we set the ODEs equal to zero, and solve with the additional constraint that $P(S_{1}) + P(S_{2}) + P(S_{3}) = 1$. We get the solution:
 
 $$
-P(S_{1}) = \frac{f_{12}f_{21}}{f_{12}^{2} + f_{12}f_{21} + f_{21}^{2}} \\
-P(S_{2}) = \frac{f_{21}^{2}}{f_{12}^{2} + f_{12}f_{21} + f_{21}^{2}} \\
-P(S_{3}) = \frac{f_{12}^{2}}{f_{12}^{2} + f_{12}f_{21} + f_{21}^{2}}
+P(S_{1}) = \frac{2f_{12}f_{21}}{(f_{12} + f_{21})^{2}} \\
+P(S_{2}) = \frac{f_{21}^{2}}{(f_{12} + f_{21})^{2}} \\
+P(S_{3}) = \frac{f_{12}^{2}}{(f_{12} + f_{21})^{2}}
 $$
 
 ## Stochastic Simulation
@@ -63,7 +63,7 @@ Now we can use the functions provided by `marco` to set up a simple flux model. 
 
 ```{r}
 parameters <- new.env()
-parameters$rate_matrix <- matrix(c(0,1/6,1/4.5,0),byrow = TRUE,nrow = 2,ncol = 2)
+parameters$rate_matrix <- matrix(c(0,1/6,1/5,0),byrow = TRUE,nrow = 2,ncol = 2)
 parameters$npatch <- 2
 
 parameters$location <- 1:2
@@ -73,5 +73,74 @@ Now we can set up and run the model. We'll use the function `flux_module` to mak
 
 ```{r}
 simulation <- flux_module(parameters)
-simulation <- mash_step(simulation, 50, NULL)
+simulation <- mash_step(simulation, 2e4, NULL)
+```
+
+After simulating the model, we are going to want to compare the simulated trajectory to the exact stationary probability vector we worked out earlier. To do that we'll write some code that takes the output trajectory of events and turns it into cumulative time spent in each state, to compare to the stationary probability distribution.
+
+```{r}
+trajectory <- Filter(Negate(is.null),simulation$trajectory)
+trajectory <- do.call(rbind,trajectory)
+
+state_occupancy <- rep(0,3)
+state_occupancy <- setNames(state_occupancy,paste0("S",1:3))
+curr_state <- "S1"
+
+state_trans <- function(current,traj){
+  if(traj$prev_location==1 & traj$curr_location==2){
+    if(current=="S1"){
+      return("S3")
+    } else if(current=="S2"){
+      return("S1")
+    } else {
+      cat("illegal value\n")
+      browser()
+    }
+  } else if(traj$prev_location==2 & traj$curr_location==1){
+    if(current=="S1"){
+      return("S2")
+    } else if(current=="S3"){
+      return("S1")
+    } else {
+      cat("illegal value\n")
+      browser()
+    }
+  } else {
+    cat("illegal value\n")
+    browser()
+  }
+}
+
+for (i in 1:nrow(trajectory)) {
+  if(i == 1) {
+    state_occupancy[curr_state] <- state_occupancy[curr_state] + trajectory[i,"curtime"][[1]]
+    curr_state <- state_trans(curr_state, trajectory[i, ])
+  } else {
+    state_occupancy[curr_state] <- state_occupancy[curr_state] + (trajectory[i,"curtime"][[1]] - trajectory[i-1,"curtime"][[1]])
+    curr_state <- state_trans(curr_state, trajectory[i, ])
+  }
+}
+
+state_occupancy <- state_occupancy / tail(trajectory, 1)[,"curtime"][[1]]
+```
+
+Now we can calculate the exact stationary probability distribution we derived from the master equations.
+
+```{r}
+f_12 <- parameters$rate_matrix[1,2]
+f_21 <- parameters$rate_matrix[2,1]
+
+P_stationary <- rep(0,3)
+P_stationary[1] = (2*f_12*f_21) / ((f_12 + f_21)^2)
+P_stationary[2] = (f_21^2) / ((f_12 + f_21)^2)
+P_stationary[3] = (f_12^2) / ((f_12 + f_21)^2)
+
+compare <- rbind(state_occupancy,P_stationary)
+rownames(compare) <- c("Simulated","Closed-Form")
+```
+
+Now that we've simulated a long trajectory through this state space ($\mathcal{S}$), let's compare the simulated state occupancy probabilities to what we get analytically. It should be pretty much the same.
+
+```{r comment='', echo=FALSE, results='asis'}
+ knitr::kable(compare, caption = "Comparison of Analytic versus Simulated Results", floating.environment="sidewaystable")
 ```

@@ -25,7 +25,7 @@ flux_transitions <- function() {
       return(TRUE)
     },
     when = function(state, time) {
-      rexp(n = 1, rate = sum(rate_matrix[state$loc, -state$loc]))
+      rexp(n = 1, rate = sum(rate_matrix[state$loc, ]))
     },
     fire = function(state, time) {
       dest <- sample.int(n = npatch, size = 1, prob = rate_matrix[state$loc, ])
@@ -89,12 +89,12 @@ flux_module <- function(parameters) {
     ncol(parameters$rate_matrix) == parameters$npatch
   )
 
-  stopifnot(length(parameters$home) == length(parameters$current))
+  stopifnot(length(parameters$location) >= 1)
 
   # make the module structure
   transitions <- flux_transitions()
 
-  people_cnt <- length(parameters$home)
+  people_cnt <- length(parameters$location)
   population <- data.table::data.table(
     who = 1:people_cnt,
     loc = parameters$location
