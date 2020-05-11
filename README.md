@@ -30,3 +30,5 @@ This software (R package) has the following pre-requisites:
 
 ### Technical Bits
 If you encounter problems with the `Rcpp` ecosystem for Mac OS, please see this guide (https://thecoatlessprofessor.com/programming/r-compiler-tools-for-rcpp-on-macos/) to fix most common problems. Also make sure R is running the latest version.
+
+The cover image of the masher is from https://flickr.com/photos/smiling_da_vinci/. Thank you!
