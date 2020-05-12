@@ -243,7 +243,7 @@ person_path.simple_trip <- function(simulation) {
 }
 
 
-#' Movement: Simple Trip Trajectory to State occupancy
+#' Movement: Simple Trip Trajectory to State Probabilities
 #'
 #' This is an internal function used to verify that the 'simple trip'
 #' model is functioning correctly. See the simple trip vignette

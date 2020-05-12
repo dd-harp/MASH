@@ -68,7 +68,7 @@ flux_observer <- function(transition_name, former_state, new_state, curtime) {
 #'
 #'  The input \code{parameters} must have the following *named* members:
 #'    * \code{rate_matrix}: a matrix whose elements \eqn{\{f_{ij}\}} give the rate of movement
-#'        between those two patches
+#'        between those two patches. The diagonal must be all zeros.
 #'    * \code{npatch}: number of patches/places
 #'    * \code{location}: vector of everybody's current location
 #'
@@ -161,14 +161,17 @@ location_path.flux <- function(simulation) {
 
     event <- simulation$trajectory[[i]]
 
-    location_path[[event$prev_location]][which(is.nan(location_path[[event$prev_location]]$time))[1], ] <-
-      c(arrive = NaN, leave = event$id, time = event$curtime)
-    location_path[[event$prev_location]][which(is.nan(location_path[[event$curr_location]]$time))[1], ] <-
-      c(arrive = event$id, leave = NaN, time = event$curtime)
+    location_path[[event$prev_location]][
+      which(is.nan(location_path[[event$prev_location]]$time))[1],
+    ] <- c(arrive = NaN, leave = event$id, time = event$curtime)
+
+    location_path[[event$prev_location]][
+      which(is.nan(location_path[[event$curr_location]]$time))[1],
+    ] <- c(arrive = event$id, leave = NaN, time = event$curtime)
 
   }
 
-  # trim excess
+  # trim excess NaN entries
   for(i in 1:npatch) {
     location_path[[i]] <- location_path[[i]][which(!is.nan(location_path[[i]]$time)), ]
   }
@@ -209,11 +212,70 @@ person_path.flux <- function(simulation) {
 
   }
 
-  # trim excess
+  # trim excess NaN entries
   for(i in 1:npeople) {
     person_path[[i]] <- person_path[[i]][which(!is.nan(person_path[[i]]$time)), ]
   }
 
 
-  return(simulation)
+  return(person_path)
+}
+
+
+#' Movement: Flux Trajectory to State Probabilities
+#'
+#' This is an internal function used to verify that the 'simple trip'
+#' model is functioning correctly. See the simple trip vignette
+#' for more details.
+#'
+#' @param trajectory the output of \code{\link[macro]{run_continuous}}
+#' @param init_state the initial state (S1,S2,S3)
+#' @return a vector of time-averaged state occupancy probabilities
+flux_stateoutput <- function(trajectory, init_state) {
+
+  stopifnot(init_state %in% c("S1","S2","S3"))
+
+  state_trans <- function(current,traj){
+    if(traj$prev_location==1 & traj$curr_location==2){
+      if(current=="S1"){
+        return("S3")
+      } else if(current=="S2"){
+        return("S1")
+      } else {
+        cat("illegal value\n")
+        browser()
+      }
+    } else if(traj$prev_location==2 & traj$curr_location==1){
+      if(current=="S1"){
+        return("S2")
+      } else if(current=="S3"){
+        return("S1")
+      } else {
+        cat("illegal value\n")
+        browser()
+      }
+    } else {
+      cat("illegal value\n")
+      browser()
+    }
+  }
+
+
+  state_occupancy <- rep(0,3)
+  state_occupancy <- setNames(state_occupancy,paste0("S",1:3))
+  curr_state <- init_state
+
+  for (i in 1:nrow(trajectory)) {
+    if(i == 1) {
+      state_occupancy[curr_state] <- state_occupancy[curr_state] + trajectory[i,"curtime"][[1]]
+      curr_state <- state_trans(curr_state, trajectory[i, ])
+    } else {
+      state_occupancy[curr_state] <- state_occupancy[curr_state] + (trajectory[i,"curtime"][[1]] - trajectory[i-1,"curtime"][[1]])
+      curr_state <- state_trans(curr_state, trajectory[i, ])
+    }
+  }
+
+  state_occupancy <- state_occupancy / tail(trajectory, 1)[,"curtime"][[1]]
+
+  return(state_occupancy)
 }
