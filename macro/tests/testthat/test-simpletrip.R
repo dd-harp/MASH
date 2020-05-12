@@ -54,6 +54,6 @@ test_that("simple trip model matches theoretical expectations", {
   pivec[4] <- (phi12*tau21)/((phi12+tau12)*(phi21+tau21))
 
   tst <- stats::chisq.test(x = avg_state, p = pivec, simulate.p.value = TRUE)
-  res <- tst$p.value > 0.98
+  res <- tst$p.value > 0.99
   expect_true(res)
 })

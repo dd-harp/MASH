@@ -90,7 +90,7 @@ phi12 <- parameters$trip_rate[1] * parameters$trip_dest[1,2]
 phi21 <- parameters$trip_rate[2] * parameters$trip_dest[2,1]
 ```
 
-Now we can set up and run the model. We create the list of transitions using the function `simple_trip_transitions` provided in the package. Using the API for continuous time discrete event simulation provided in the package, we use `continuous_simulation` to set up the simulation object, `init_continuous` to sample the initial event times, and then `run_continuous` to run the simulation. We will run for 20,000 days, as we want a trajectory long enough to meaningfully compare to the stationary distribution we worked out above (it should reach the stationary distribution).
+Now we can set up and run the model. We'll use the function `simple_trip_module` to make the simulation object, and then `mash_step` to simulate from it. We will run for 20,000 days, as we want a trajectory long enough to meaningfully compare to the stationary distribution we worked out above (it should reach the stationary distribution).
 
 ```{r}
 simulation <- simple_trip_module(parameters)
