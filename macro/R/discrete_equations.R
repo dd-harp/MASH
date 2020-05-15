@@ -114,6 +114,11 @@ build_cme <- function(normed) {
 }
 
 
+#' Use equations to make a function that calculates the matrix for the master equation.
+#'
+#' @param equations A list of formulas.
+#' @seealso \code{\link{normalize_equations}}
+#' @export
 cme_maker <- function(equations) {
   normalized <- normalize_equations(equations)
   build_cme(normalized)
@@ -147,6 +152,11 @@ build_small_step <- function(normed) {
 }
 
 
+#' Use equations to make a function that calculates the matrix for small time steps.
+#'
+#' @param equations A list of formulas.
+#' @seealso \code{\link{normalize_equations}}
+#' @export
 small_step_maker <- function(equations) {
   normalized <- normalize_equations(equations)
   build_small_step(normalized)
@@ -176,6 +186,13 @@ build_exact_exponential <- function(normed) {
 }
 
 
+#' Use equations to make a function that calculates the matrix for an exact time step.
+#'
+#' This exponentiates the matrix, giving \eqn{\exp(At)}.
+#'
+#' @param equations A list of formulas.
+#' @seealso \code{\link{normalize_equations}}
+#' @export
 exact_exponential <- function(equations) {
   normalized <- normalize_equations(equations)
   build_exact_exponential(normalized)
@@ -184,9 +201,9 @@ exact_exponential <- function(equations) {
 
 
 build_single_jump <- function(normed) {
-  template_function <- function(parameters) {
-    with(parameters, matrix(c(1), nrow = 1))
-  }
+  template_function <- function(parameters) with(parameters, {
+    matrix(c(1), nrow = 1)
+    })
 
   state_name <- names(normed)
 
@@ -225,7 +242,7 @@ build_single_jump <- function(normed) {
             "*",
             call(
               "/",
-              normed[[row]][[col]],
+              call("*", -1, normed[[row]][[col]]),
               as.name(paste0(col_name, "_rate"))
               ),
             call(
@@ -246,17 +263,22 @@ build_single_jump <- function(normed) {
       }
     }  # If there is no diagonal, the column must be zero.
   }
-  with_clause <- body(template_function)[[2]]
+  matrix_clause <- body(template_function)[[3]][[2]]
   for (assign_idx in 1:length(assignments)) {
-    body(template_function)[[1 + assign_idx]] <- assignments[[assign_idx]]
+    body(template_function)[[3]][[1 + assign_idx]] <- assignments[[assign_idx]]
   }
-  with_clause[[3]][[2]] <- as.call(list_action)
-  with_clause[[3]][[3]] <- length(normed)
-  body(template_function)[[length(assignments) + 2]] <- with_clause
+  matrix_clause[[2]] <- as.call(list_action)
+  matrix_clause[[3]] <- length(normed)
+  body(template_function)[[3]][[length(assignments) + 2]] <- matrix_clause
   template_function
 }
 
 
+#' Use equations to make a function that calculates the matrix for a single jump.
+#'
+#' @param equations A list of formulas.
+#' @seealso \code{\link{normalize_equations}}
+#' @export
 single_jump <- function(equations) {
   normalized <- normalize_equations(equations)
   build_single_jump(normalized)

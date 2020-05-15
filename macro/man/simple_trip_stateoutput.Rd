@@ -2,7 +2,7 @@
 % Please edit documentation in R/location_simpletrip.R
 \name{simple_trip_stateoutput}
 \alias{simple_trip_stateoutput}
-\title{Movement: Simple Trip Trajectory to State occupancy}
+\title{Movement: Simple Trip Trajectory to State Probabilities}
 \usage{
 simple_trip_stateoutput(trajectory, init_state)
 }
