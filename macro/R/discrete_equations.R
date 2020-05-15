@@ -115,7 +115,7 @@ build_cme <- function(normed) {
 
 
 cme_maker <- function(equations) {
-  normalized <- normalize_equations(substitute(equations))
+  normalized <- normalize_equations(equations)
   build_cme(normalized)
 }
 
@@ -148,14 +148,14 @@ build_small_step <- function(normed) {
 
 
 small_step_maker <- function(equations) {
-  normalized <- normalize_equations(substitute(equations))
+  normalized <- normalize_equations(equations)
   build_small_step(normalized)
 }
 
 
 build_exact_exponential <- function(normed) {
   cme_matrix <- function(parameters) with(parameters, expm::expm(matrix(c(1), nrow = 1)))
-  list_action <- vector(mode = "list", length = length(normed) + 1)
+  list_action <- vector(mode = "list", length = length(normed)^2 + 1)
   list_action[[1]] <- as.name("c")
   list_idx <- 2
   state_name <- names(normed)
@@ -177,6 +177,87 @@ build_exact_exponential <- function(normed) {
 
 
 exact_exponential <- function(equations) {
-  normalized <- normalize_equations(substitute(equations))
+  normalized <- normalize_equations(equations)
   build_exact_exponential(normalized)
+}
+
+
+
+build_single_jump <- function(normed) {
+  template_function <- function(parameters) {
+    with(parameters, matrix(c(1), nrow = 1))
+  }
+
+  state_name <- names(normed)
+
+  # Define variables at the top.
+  assignments <- list()
+  for (col in 1:length(normed)) {
+    col_name <- state_name[col]
+    # Check for a diagonal entry b/c that's the main rate.
+    if (col_name %in% names(normed[[col]])) {
+      col_rate <- paste0(col_name, "_rate")
+      assignments[[col_rate]] <- bquote(
+        .(n) <- .(v), list(n = as.name(col_rate), v = normed[[col]][[col_name]]))
+      col_exp <- paste0(col_name, "_exp")
+      assignments[[col_exp]] <- bquote(
+        .(n) <- exp(.(v) * t), list(n = as.name(col_exp), v = as.name(col_rate)))
+    }
+  }
+
+  list_action <- as.list(numeric(length(normed)^2 + 1))
+  list_action[[1]] <- as.name("c")
+  list_idx <- 2
+  for (col in 1:length(normed)) {
+    col_name <- state_name[col]
+    # Check for a diagonal entry b/c that's the main rate.
+    if (col_name %in% names(normed[[col]])) {
+      for (row in 1:length(normed)) {
+        if (row == col ) {
+          survival_term <- as.name(paste0(col_name, "_exp"))
+          if (list_action[[list_idx]] == 0) {
+            list_action[[list_idx]] <- survival_term
+          } else {
+            list_action[[list_idx]] <- call("+", list_action[[list_idx]], survival_term)
+          }
+        } else if (col_name %in% names(normed[[row]])) {
+          cumulative_incidence <- call(
+            "*",
+            call(
+              "/",
+              normed[[row]][[col]],
+              as.name(paste0(col_name, "_rate"))
+              ),
+            call(
+              "-",
+              1,
+              as.name(paste0(col_name, "_exp"))
+              )
+            )
+          if (list_action[[list_idx]] == 0) {
+            list_action[[list_idx]] <- cumulative_incidence
+          } else {
+            list_action[[list_idx]] <- call("+", list_action[[list_idx]], cumulative_incidence)
+          }
+        } else {
+          list_action[[list_idx]] <- 0
+        }
+        list_idx <- list_idx + 1
+      }
+    }  # If there is no diagonal, the column must be zero.
+  }
+  with_clause <- body(template_function)[[2]]
+  for (assign_idx in 1:length(assignments)) {
+    body(template_function)[[1 + assign_idx]] <- assignments[[assign_idx]]
+  }
+  with_clause[[3]][[2]] <- as.call(list_action)
+  with_clause[[3]][[3]] <- length(normed)
+  body(template_function)[[length(assignments) + 2]] <- with_clause
+  template_function
+}
+
+
+single_jump <- function(equations) {
+  normalized <- normalize_equations(equations)
+  build_single_jump(normalized)
 }
