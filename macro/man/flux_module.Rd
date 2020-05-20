@@ -20,7 +20,7 @@ is indistinguishable and moves to a new patch based on where they are now.
 The input \code{parameters} must have the following \emph{named} members:
 \itemize{
 \item \code{rate_matrix}: a matrix whose elements \eqn{\{f_{ij}\}} give the rate of movement
-between those two patches
+between those two patches. The diagonal must be all zeros.
 \item \code{npatch}: number of patches/places
 \item \code{location}: vector of everybody's current location
 }
