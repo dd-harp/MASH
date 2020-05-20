@@ -32,20 +32,21 @@ I'll assume this is a differential form of an ODE that reflects a master equatio
 That is, I'll assume that everything that leaves one compartment enters another compartment
 and that there are no constant terms.
 
-**Are these limitations the best choices?**
 
 From this kind of specification, we can produce lots of different kinds of time steps.
 
 # Discrete Time Steps
 
 ## The Matrix for the Master Equation
-Most of them are simple permutations of the specification. The simplest is a function
-that returns what it received, the matrix $A$. We can look at the text of the function itself, thanks
+
+The first function to generate from the specification above will
+returns what it received as a matrix. The matrix $A$. We can look at the text of the function itself, thanks
 to R's ability to print the body of a function.
 ```{r example_cme}
 (si_cme <- cme_maker(si_equations))
 ```
-This function executes, given a parameter list.
+This function executes, given a parameter list. When we call the function, as below,
+it is quick because it constructs the matrix and returns it with no changes.
 ```{r example_cme_execute}
 si_cme(list(h = 0.4, r = 0.1))
 ```
@@ -70,9 +71,10 @@ si_small(list(h = 0.4, r = 0.1, t = 0.05))
 How do you use this?
 The small time step is a very common way to build steps. We think
 of rate times time as the marginal probability for a jump in a Markov
-chain. If parameters keep changing, then this function can build the matrix quickly.
+chain. This function constructs the matrix directly, with one step per
+entry in the matrix, so it executes faster than the exponential version below.
 If you wanted to simulate a long interval that has constant
-parameters, you could split it into $2^(2n)$ steps and square this matrix
+parameters, you could split it into $2^{2n}$ steps and square this matrix
 $n$ times.
 
 When rates become large, the small time step can become not only erroneous
@@ -87,17 +89,20 @@ of the expontial in
 $$
 x_{t+1} = e^{At} x_t.
 $$
-It's as good as integrating, and R
+It's as good as integrating the master equation (ODEs) component by component, and R
 is known to have a well-chosen solver in the `expm` package.
 ```{r si_exact}
 (si_exact <- exact_exponential(si_equations))
 ```
+
 ```{r run_exact1}
 si_exact(list(h = 0.4, r = 0.1, t = 0.05))
 ```
 
 Why not use this all the time? Numerical exponentiation of a matrix can be expensive
-if the parameters change at each time step.
+if the parameters change at each time step. The implementation of matrix
+exponentiation used by this call will create a Pad&eacute; approximant and then
+raise it to a power of two.
 
 
 ## Single Jump
@@ -108,11 +113,11 @@ $S$, and that can go to compartments $E_0$, $E_1$, $E_2$ with hazard rates
 $\lambda_1$, $\lambda_2$, $\lambda_3$, then the probability
 of remaining in $S$ is
 $$
-  P[S_{t+1}|S_t] = e^{\sum_i\lambda_i}
+  P[S_{t+1}|S_t] = e^{-\sum_i\lambda_i}
 $$
 The probability to arrive in any destination compartment is
 $$
-  P[E_{j,t+1}|S_t] = \frac{\lambda_j}{\sum_i\lambda_i}\left(1-e^{\sum_i\lambda_i}\right)
+  P[E_{j,t+1}|S_t] = \frac{\lambda_j}{\sum_i\lambda_i}\left(1-e^{-\sum_i\lambda_i}\right)
 $$
 These are standard solutions to competing causes.
 
