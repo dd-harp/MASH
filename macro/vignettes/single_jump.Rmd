@@ -69,10 +69,10 @@ Now let's work out the elements of $P(X_{2})$. Let's begin by calculating $P(22)
 $$
 P(22) = e^{-\sum_{j}\lambda_{2j}(t,X(t))\Delta t} = e^{-\lambda_{2\bullet}(t,X(t)) \Delta t}
 $$
-It is the survival function of an exponential random variate with rate parameter equal to $\lambda_{2}(t,X(t))$ evaluated at $\Delta t$. To calculate all the other probabilities, follow a formula that says the probability of the event happening is the probability of _anything_ happening times the probability of that specific event happening. For example:
+It is the survival function of an exponential random variate with rate parameter equal to $\lambda_{2\bullet}(t,X(t))$ evaluated at $\Delta t$. To calculate all the other probabilities, follow a formula that says the probability of the event happening is the probability of _anything_ happening times the probability of that specific event happening. For example:
 
 $$
-P(23) = [1-P(22)] \left( \frac{\lambda_{23}}{\lambda_{2\bullet}(t,X(t))} \right)
+P(23) = [1-P(22)] \left( \frac{\lambda_{23}(t,X(t))}{\lambda_{2\bullet}(t,X(t))} \right)
 $$
 For some state $i$ which has $j=1,...,m$ possible destinations the general form is:
 
@@ -103,7 +103,7 @@ So to simulate trajectories from the model we only need to use Poisson and Multi
 
 # Implementation in R
 
-What we want to be able to do in R is take any model expressed as a stoichiometry matrix $\mathbf{S}$ and a vector of hazard functions $\Lambda(t,X(t)$ and then, given a desired $\Delta t$, return a function that takes as input $X(t)$ and returns the updated state vector at the end of the time step, $X(t+\Delta t)$.
+What we want to be able to do in R is take any model expressed as a stoichiometry matrix $\mathbf{S}$ and a vector of hazard functions $\Lambda(t,X(t))$ and then, given a desired $\Delta t$, return a function that takes as input $X(t)$ and returns the updated state vector at the end of the time step, $X(t+\Delta t)$.
 
 # References
 
