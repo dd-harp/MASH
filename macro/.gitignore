@@ -3,3 +3,9 @@
 inst/doc
 doc
 Meta
+src/build/
+src/cmake/
+src/cmake-build-debug/
+src/cmake-build-release/
+src/debug/
+*.pdf
