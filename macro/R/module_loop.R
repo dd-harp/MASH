@@ -83,19 +83,24 @@ human_disease_path <- function(human_module) {
 #'     \code{\link{human_disease_path}}, \code{\link{infects_mosquito_path}},
 #'     \code{\link{human_infection_path}}
 #' @export
-step_mainloop <- function(modules, step_cnt = 1) {
+step_mainloop <- function(modules, observer, step_cnt = 1) {
   location <- modules$location
   bloodmeal <- modules$bloodmeal
   health <- modules$health
 
   health_path <- human_disease_path(health)
   for (step_idx in 1:step_cnt) {
+    observe_begin_step(observer, step_idx)
     location <- mash_step(location, health_path)
     location_path <- location_path(location)
+    observe_location(observer, location_path)
     bloodmeal <- mash_step(bloodmeal, location_path, health_path)
     bloodmeal_path <- infects_human_path(bloodmeal)
+    observe_bloodmeal(observer, bloodmeal_path)
     health <- mash_step(health, bloodmeal_path)
     health_path <- human_disease_path(health)
+    observe_health(observer, health_path)
+    observe_end_step(observer, step_idx)
   }
 
   list(location = location, bloodmeal = bloodmeal, health = health)
