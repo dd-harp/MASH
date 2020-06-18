@@ -20,39 +20,65 @@ These are the MASH modules that are implemented now.
 
 These represent human health states.
 
-## Forced SI
+## Forced SI (Trivial)
 
 A human is susceptible or infected. A susceptible person can recover. A person
 becomes infected only if they receive an infectious bites. This module assumes
 it will receive a list of infectious bites at the start of each time step.
 
-There are no interventions possible.
+Status: There are no interventions possible, and it will be done when it has interventions.
+
+## Ross-Macdonald ODE
+
+Status: Not started
 
 # Location Modules
 
-## Single Location
+## Single Location (Trivial)
 
 Everybody is in one location, all the time. This is a well-mixed system.
+
+Status: Done except integration testing.
+
 
 ## Simple Trip
 
 Each person lives somewhere, but they travel to another place and, after
 a waiting time, travel home.
 
+This is in R.
+
+Status: Done except integration testing.
+
 ## Markov Flow
 
 There is a transition rate from one location to another, and individuals
 drift around according to those transitions rates, with no place to call home.
 
+This is in C++.
+
+Status: Done except integration testing.
+
 
 # Bloodmeal Modules
 
-## Exponential Bites
+## Exponential Bites (Trivial)
 
 There is a steady stream of bites with some biting rate.
 Each location has a biting rate that is predetermined.
 
+## Poisson Bites
+
+This is the one that takes input from the mosquito module.
+
+Status: Not started.
 
 # Mosquito Modules
 
-None yet.
+## Basic Mosquitoes
+
+This would reflect the basic aquatic stage, as we did with the previous
+version of MASH.
+
+Status: This is started but only partially done.
+
