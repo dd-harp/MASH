@@ -42,7 +42,8 @@ test_that("simple trip model matches theoretical expectations", {
     name=unlist(trajectory[,"name"]),
     curtime=unlist(trajectory[,"curtime"]),
     id=unlist(trajectory[,"id"]),
-    location=unlist(trajectory[,"location"])
+    curr_location=unlist(trajectory[,"curr_location"]),
+    prev_location=unlist(trajectory[,"prev_location"])
   )
 
   avg_state <- macro:::simple_trip_stateoutput(trajectory,"S3")
