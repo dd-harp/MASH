@@ -156,10 +156,33 @@ mash_step.forced_si <- function(simulation, bites) {
 #' Extract the trajectory from the simulation
 #'
 #' @param simulation a forced-SI model.
-#' @return a list of trajectory entries.
+#' @return a list of trajectory entries. Each trajectory entry has the individual's ID,
+#'     their initial state as S or I, and times at which they changed state.
 #' @export
 human_disease_path.forced_si <- function(simulation) {
+  # Create a wide dataframe with a column for each time the state changes.
+  # Set each person to start with their ending disease state. Fix the others
+  # along the way when we find out there was an event for them.
+  events <- simulation$state[, c("who", "disease")]
+  # Some question about what to do if there are a lot of events for one individual.
+  events[, paste0("t", 1:7)] <- NA
   trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
   simulation$trajectory_cnt <- 0
-  trajectory
+  # Each trajectory entry is created by forced_si_observer().
+  for (tidx in 1:simulation$trajectory_cnt) {
+    entry <- trajectory[tidx]
+    who <- entry$id
+    last_event <- which.max(events[who, 3:ncol(events)])
+    cat(paste(entry, "\n"))
+    if (length(last_event) > 0) {
+      time_point <- paste0("t", last_event + 1)
+      events[who, ..time_point := entry$curtime]
+    } else {
+      # Fix the initial state if there was an event for this person.
+      actual_initial_state <- ifelse(entry$name == "recover", "I", "S")
+      events[who, disease := actual_initial_state]
+      events[who, t1 := entry$curtime]
+    }
+  }
+  events
 }
