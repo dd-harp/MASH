@@ -10,7 +10,8 @@
 \item{simulation}{a forced-SI model.}
 }
 \value{
-a list of trajectory entries.
+a list of trajectory entries. Each trajectory entry has the individual's ID,
+their initial state as S or I, and times at which they changed state.
 }
 \description{
 Extract the trajectory from the simulation
