@@ -1,3 +1,5 @@
+library(data.table)
+
 #' Infect an individual from a given set of mosquito bite times.
 #'
 #' We assume the individual state includes a list of times for
@@ -163,26 +165,29 @@ human_disease_path.forced_si <- function(simulation) {
   # Create a wide dataframe with a column for each time the state changes.
   # Set each person to start with their ending disease state. Fix the others
   # along the way when we find out there was an event for them.
-  events <- simulation$state[, c("who", "disease")]
+  events <- simulation$state[, .(who, disease)]
   # Some question about what to do if there are a lot of events for one individual.
+  events[, paste0("t", 1:7)] <- 0.0
   events[, paste0("t", 1:7)] <- NA
-  trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
-  simulation$trajectory_cnt <- 0
-  # Each trajectory entry is created by forced_si_observer().
-  for (tidx in 1:simulation$trajectory_cnt) {
-    entry <- trajectory[tidx]
-    who <- entry$id
-    last_event <- which.max(events[who, 3:ncol(events)])
-    cat(paste(entry, "\n"))
-    if (length(last_event) > 0) {
-      time_point <- paste0("t", last_event + 1)
-      events[who, ..time_point := entry$curtime]
-    } else {
-      # Fix the initial state if there was an event for this person.
-      actual_initial_state <- ifelse(entry$name == "recover", "I", "S")
-      events[who, disease := actual_initial_state]
-      events[who, t1 := entry$curtime]
+  if (simulation$trajectory_cnt > 0) {
+    trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
+    # Each trajectory entry is created by forced_si_observer().
+    for (tidx in 1:simulation$trajectory_cnt) {
+      entry <- trajectory[tidx][[1]]
+      who <- entry$id
+      last_event <- which.max(events[who, 3:ncol(events)])
+      cat(paste(entry, "\n"))
+      if (length(last_event) > 0) {
+        time_point <- paste0("t", last_event + 1)
+        events[who, ..time_point := entry$curtime]
+      } else {
+        # Fix the initial state if there was an event for this person.
+        actual_initial_state <- ifelse(entry$name == "recover", "I", "S")
+        events[who, disease := actual_initial_state]
+        events[who, t1 := entry$curtime]
+      }
     }
-  }
+    simulation$trajectory_cnt <- 0
+  }  # else return an empty list.
   events
 }
