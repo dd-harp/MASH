@@ -71,6 +71,18 @@ test_that("forced si example runs", {
 })
 
 
+test_that("data.table is OK in testthat", {
+  # This was failing because the data.table wasn't imported into the namespace.
+  state <- data.table(
+    who = 1:3,
+    disease = factor(c("S", "I", "I"), levels = c("S", "I")),
+    other = 4:6
+  )
+  events <- state[, .(who, disease)]
+  expect_equal(nrow(state), 3)
+})
+
+
 test_that("runs as a module", {
   parameters <- list(
     recovery_rate = 1 / 200,

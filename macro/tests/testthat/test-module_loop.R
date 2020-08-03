@@ -7,7 +7,21 @@ test_that("module loop works for simplest modules", {
     health = forced_si_module(si_params),
     bloodmeal = exponential_bite_module(bite_params)
   )
-  results <- step_mainloop(modules)
+  observer = complete_observer()
+  results <- step_mainloop(modules, observer)
   cat(paste(names(results), "\n"))
   expect_equal(length(results), 3)
 })
+
+#
+# test_that("module loop has slots", {
+#   movement <- single_location(location_params)
+#   human <- forced_si_module(si_params)
+#   biting <- exponential_bite_module(bite_params)
+#   record <- especially_human_observer(human)
+#   model <- mash_build(location = movement, health = human, bloodmeal = biting, observer = record)
+#   model <- step_mainloop(model)
+#   observer <- clear_human_observer(record)
+#   model <- set_observer(model, observer)
+#   model <- step_mainloop(model)
+# })

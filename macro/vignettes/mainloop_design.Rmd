@@ -188,3 +188,48 @@ delay <- function(f) {
 ```
 
 
+# Observation
+
+This simulation style will let us observe basic trajectories, no matter what
+modules we run, because we insist that the API between modules exchange a particular
+set of data structures. We can make a generic observer that always records
+this information, or a subset of it.
+
+That generic information doesn't include, for instance, detailed transitions for
+each person. It's not relevant to other modules that a person is in a particular
+compartment. Other modules will need to know probability of infection. If we
+want to observe details about each person, the method that records these
+details will need to collaborate with the specific human module.
+
+
+# Parameters
+
+We should make it easy to work with parameters. A user has some main needs.
+I'll list them here, in order, with possible ways to meet those needs beneath.
+
+1. Find possible parameters
+   a. Look in the documentation.
+   b. Function to query possible parameters.
+2. Know default values and construct with them.
+   a. Defaults could be set as default parameters in a constructor.
+   b. Defaults would be in the documentation.
+3. Save and load parameters.
+   a. This could be an R rdata file.
+   b. Save as HDF.
+4. Change them during the simulation.
+5. Know which ones can be changed during the simulation
+6. Let the simulation see which ones were just changed by the user.
+7. Check that parameters are reasonable before running a simulation
+   a. Run a few steps of the main loop.
+   b. Check parameters against known types.
+
+Parameters are currently in a list.
+
+There are levels of checks that parameters are reasonable. One sure way
+to check is to run a step or two of the main loop. That's great for smaller
+simulations, but I have in mind that we will run this on the cluster against
+cluster-sized data, so it helps to have another kind of check, where you see
+that the names of parameters are OK and that values are the correct type.
+
+Getting parameter types wrong can be insidious. A wrong type can be converted
+automatically into something you didn't expect, but which still runs.

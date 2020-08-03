@@ -1,3 +1,5 @@
+library(data.table)
+
 #' Check to see if transition is enabled for this individual
 #'
 #' This function is for testing the transitions on data for a

@@ -4,7 +4,7 @@
 \alias{step_mainloop}
 \title{Main loop for a MASH simulation to run a discrete time step.}
 \usage{
-step_mainloop(modules, step_cnt = 1)
+step_mainloop(modules, observer, step_cnt = 1)
 }
 \arguments{
 \item{modules}{A list of modules, named \code{location}, \code{bloodmeal},
