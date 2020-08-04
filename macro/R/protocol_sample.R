@@ -35,3 +35,53 @@ sample_health_infection_status <- function(human_cnt = 10L, time_step = 10.0) {
 
   events[order(ID)]
 }
+
+
+#' Creates a sample movement dataset, that would be sent to the bloodmeal module.
+#'
+#' @param human_cnt The number of people as an integer.
+#' @param place_cnt The number of possible locations as an integer.
+#' @param time_step The length of a time step as a numeric.
+#'
+#' @export
+sample_move_location <- function(human_cnt = 10L, place_cnt = 5L, time_step = 10.0) {
+  human_cnt <- 10L
+  place_cnt <- 3L
+  time_step <- 10.0
+  rate <- 0.2
+
+  events <- data.table(
+    ID = sample(1:human_cnt),
+    Start = sample(1:place_cnt, human_cnt, replace = TRUE)
+  )
+
+  move_cnt <- human_cnt
+  moving <- 1L:move_cnt
+  location <- events$Start
+  now <- rep(0.0, move_cnt)
+  move_idx <- 1L
+
+  while (move_cnt > 0) {
+    when <- now[moving] + rexp(move_cnt, rate)
+    in_time <- when < time_step
+    moving <- moving[in_time]
+    if (length(moving) > 0) {
+      next_location <- unlist(lapply(moving, function(who) {
+        sample(setdiff(1:place_cnt, location[who]), 1)
+      }))
+      time_col <- paste0("Time", move_idx)
+      loc_col <- paste0("Location", move_idx)
+      events[, time_col] <- 0.0
+      events[, time_col] <- NA
+      events[, loc_col] <- 1L
+      events[, loc_col] <- NA
+      events[moving, time_col] <- when[in_time]
+      events[moving, loc_col] <- next_location
+      now[moving] <- when[in_time]
+      location[moving] <- next_location
+    }
+    move_cnt <- length(moving)
+    move_idx <- move_idx + 1L
+  }
+  events
+}
