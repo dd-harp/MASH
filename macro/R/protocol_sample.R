@@ -85,3 +85,23 @@ sample_move_location <- function(human_cnt = 10L, place_cnt = 5L, time_step = 10
   }
   events
 }
+
+
+#' Create a sample dataset from mosquitoes to bloodmeal.
+#'
+#' @param bite_cnt Integer number of bites.
+#' @param place_cnt Integer number of locations to do the biting.
+#' @param time_step Duration of time step within which to bite.
+#'
+#' @export
+sample_mosquito_half_bites <- function(bite_cnt = 10L, place_cnt = 3L, time_step = 10.0) {
+  infected_rate <- 0.3
+
+  events <- data.table(
+    Location = sample(1:place_cnt, bite_cnt, replace = TRUE),
+    Bite = rbinom(bite_cnt, 1, infected_rate) * runif(bite_cnt, .3, 1.0),
+    Time = runif(bite_cnt, 0, time_step)
+  )
+  events[order(Location, Time)]
+
+}
