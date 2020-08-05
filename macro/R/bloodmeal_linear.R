@@ -78,6 +78,33 @@ combine_health_and_movement <- function(health_dt, movement_dt) {
 }
 
 
+#' Tells you the state of humans at a location at a given time.
+#'
+#' @param location_events An event stream of movement and infection events for a single location.
+#' @param query_times A length 2 numeric with beginning and ending times for the query.
+#' @param previous_state The previously-returned value from this function.
+#'
+#' This is for assigning outcomes to bites. Each call of this function processes
+#' more of the event stream. It returns a data.table that has one entry for
+#' each individual in the location at that time, with a Level for each of those
+#' individuals. You then take the output from one call and pass it as
+#' previous_state for the next call.
+#'
+#' @export
+location_next_state <- function(location_events, query_times, previous_state = NULL) {
+  previous_query <- query_times[1]
+  if (is.null(previous_state)) {
+    previous_state <- location_events[Time == 0.0]
+  }
+  query_time <- query_times[2]
+  loc_before <- location_events[(Time > previous_query) & (Time <= query_time)]
+  loc_before <- rbind(previous_state, loc_before)
+  present <- loc_before[, Presence := sum(Event), by = ID][Presence == 1]$ID
+  loc_before[, Presence := NULL]
+  loc_before[ID %in% present][order(-Time), .SD[1], by = ID][, .(ID, Level, Time, Location, Event)]
+}
+
+
 bloodmeal_process <- function(health_dt, movement_dt) {
   movement_from_to <- convert_to_source_destination(movement_dt)
   movement_events <- convert_to_enter_events(movement_from_to)
