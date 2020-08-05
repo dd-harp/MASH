@@ -24,3 +24,28 @@ convert_to_source_destination <- function(location_dt) {
 }
 
 
+convert_to_enter_events <- function(location_changes_dt) {
+  enter <- location_changes_dt[
+    , .(ID = ID, Location = Location, Time = Time, Event = 1)]
+  leave <- location_changes_dt[
+    is.finite(Previous), .(ID = ID, Location = Previous, Time = Time, Event = -1)]
+  events <- rbind(enter, leave)
+  events[order(Location, Time)]
+}
+
+
+health_as_events <- function(health_dt) {
+  h0 <- health_dt[, .(ID = ID, Level = Start, Time = 0.0)]
+  step_cnt <- length(grep("Time", names(location_dt)))
+  healths <- list(h0)
+  for (step_idx in 1:step_cnt) {
+    level_name <- paste0("Level", step_idx)
+    time_name <- paste0("Time", step_idx)
+    level <- health_dt[, ..level_name][[1]]
+    when <- health_dt[, ..time_name][[1]]
+    h <- health_dt[, .(ID = ID, Level = level, Time = when)]
+    healths[[step_idx + 1]] <- h
+  }
+  health <- do.call(rbind, healths)
+  health[is.finite(Level)]
+}
