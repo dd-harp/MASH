@@ -116,8 +116,8 @@ bites_at_location <- function(events, bites) {
 
     # This samples humans with an equal probability, but this is where we weight it.
     human_idx <- sample(1:nrow(human_state), 1)
-    bites[bite_idx, ID] <- human_state[human_idx, ID]
-    bites[bite_idx, Level] <- human_state[human_idx, Level]
+    bites[bite_idx, "ID"] <- human_state[human_idx]$ID
+    bites[bite_idx, "Level"] <- human_state[human_idx]$Level
 
     previous_time <- bite_time
     previous_state <- human_state
@@ -133,9 +133,10 @@ bite_outcomes <- function(location_events, bites) {
     location = locations[out_idx]
     loc_events <- location_events[Location == location]
     bite_events <- bites[Location == location]
-    outcomes[[out_idx]] <- bites_at_location(loc_events, bite_events)
+    assigned_bites <- bites_at_location(loc_events, bite_events)
+    outcomes[[out_idx]] <- assigned_bites
   }
-  rbind(outcomes)
+  do.call(rbind, outcomes)
 }
 
 
@@ -145,6 +146,8 @@ bite_outcomes <- function(location_events, bites) {
 #' @param movement_dt Movement events from the protocol.
 #' @param bites_dt Bite events from the protocol.
 #'
+#' infect_human <- outcome_dt[Bite > 0.0]
+#' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
 bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
   movement_from_to <- convert_to_source_destination(movement_dt)

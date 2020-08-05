@@ -11,7 +11,10 @@ bloodmeal_process(health_dt, movement_dt, bites_dt)
 
 \item{movement_dt}{Movement events from the protocol.}
 
-\item{bites_dt}{Bite events from the protocol.}
+\item{bites_dt}{Bite events from the protocol.
+
+infect_human <- outcome_dt\link{Bite > 0.0}
+infect_mosquito <- outcome_dt\link{(Bite == 0.0) & (Level > 0.0)}}
 }
 \description{
 Assign bites to people, the top-level function.
