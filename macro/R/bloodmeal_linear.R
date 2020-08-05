@@ -139,6 +139,13 @@ bite_outcomes <- function(location_events, bites) {
 }
 
 
+#' Assign bites to people, the top-level function.
+#'
+#' @param health_dt Health events from the protocol.
+#' @param movement_dt Movement events from the protocol.
+#' @param bites_dt Bite events from the protocol.
+#'
+#' @export
 bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
   movement_from_to <- convert_to_source_destination(movement_dt)
   movement_events <- convert_to_enter_events(movement_from_to)
