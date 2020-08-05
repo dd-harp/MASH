@@ -105,9 +105,45 @@ location_next_state <- function(location_events, query_times, previous_state = N
 }
 
 
-bloodmeal_process <- function(health_dt, movement_dt) {
+bites_at_location <- function(events, bites) {
+  previous_time <- 0.0
+  previous_state <- NULL
+  bites[, `:=`(Level = 0.0, ID = integer(nrow(bites)))]
+  for (bite_idx in 1:nrow(bites)) {
+    bite_time <- bites[bite_idx]$Time
+    bite_level <- bites[bite_idx]$Bite
+    human_state <- location_next_state(events, c(previous_time, bite_time), previous_state)
+
+    # This samples humans with an equal probability, but this is where we weight it.
+    human_idx <- sample(1:nrow(human_state), 1)
+    bites[bite_idx, ID] <- human_state[human_idx, ID]
+    bites[bite_idx, Level] <- human_state[human_idx, Level]
+
+    previous_time <- bite_time
+    previous_state <- human_state
+  }
+  bites
+}
+
+
+bite_outcomes <- function(location_events, bites) {
+  locations <- unique(location_events$Location)
+  outcomes <- vector(mode = "list", length = length(locations))
+  for (out_idx in 1:length(locations)) {
+    location = locations[out_idx]
+    loc_events <- location_events[Location == location]
+    bite_events <- bites[Location == location]
+    outcomes[[out_idx]] <- bites_at_location(loc_events, bite_events)
+  }
+  rbind(outcomes)
+}
+
+
+bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
   movement_from_to <- convert_to_source_destination(movement_dt)
   movement_events <- convert_to_enter_events(movement_from_to)
   health_events <- health_as_events(health_dt)
   movement_health_events <- combine_health_and_movement(health_events, movement_events)
+  bites <- bite_outcomes(movement_health_events, bites_dt)
+  bites
 }
