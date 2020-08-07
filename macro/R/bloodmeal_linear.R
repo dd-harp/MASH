@@ -157,3 +157,26 @@ bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
   bites <- bite_outcomes(movement_health_events, bites_dt)
   bites
 }
+
+
+bloodmeal_linear_module <- function(parameters) {
+  module <- list(outcome = NULL)
+  class(module) <- "bloodmeal_linear"
+  module
+}
+
+
+mash_step.bloodmeal_linear <- function(simulation, health_dt, movement_dt, bites_dt) {
+  outcome_dt <- bloodmeal_process(health_dt, movement_dt, bites_dt)
+  simulation["outcome"] <- outcome_dt
+}
+
+
+infects_human_path.bloodmeal_linear(simulation) {
+  simulation["outcome"][Bite > 0]
+}
+
+
+infects_mosquito_path.bloodmeal_linear(simulation) {
+  simulation["outcome"][(Level > 0) & (Bite == 0)]
+}
