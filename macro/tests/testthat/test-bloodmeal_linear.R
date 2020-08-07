@@ -32,3 +32,23 @@ test_that("bloodmeal all infectious bites", {
     expect_true(bite_dt[Location == check_loc, all(Bite == 0.0)])
   }
 })
+
+
+test_that("bloodmeal_linear runs as a module", {
+  duration_days <- 10.0
+  parameters <- list()
+  simulation <- bloodmeal_linear_module(parameters)
+  for (i in 1:4) {
+    current_time <- duration_days * (i - 1)
+
+    health_dt <- sample_health_infection_status(human_cnt, time_step)
+    move_dt <- sample_move_location(human_cnt, place_cnt, time_step)
+    bite_dt <- sample_mosquito_half_bites(bite_cnt, place_cnt, time_step)
+
+    stepped <- mash_step(simulation, health_dt, move_dt, bite_dt)
+    human_bites <- infects_human_path(stepped)
+    mosquito_bites <- infects_mosquito_path(stepped)
+    expect_gt(nrow(human_bites), 0)
+    expect_gt(nrow(mosquito_bites), 0)
+  }
+})
