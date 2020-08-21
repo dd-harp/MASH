@@ -34,7 +34,7 @@ convert_to_enter_events <- function(location_changes_dt) {
 
 health_as_events <- function(health_dt) {
   h0 <- health_dt[, .(ID = ID, Level = Start, Time = 0.0)]
-  step_cnt <- length(grep("Time", names(location_dt)))
+  step_cnt <- length(grep("Time", names(health_dt)))
   healths <- list(h0)
   for (step_idx in 1:step_cnt) {
     level_name <- paste0("Level", step_idx)

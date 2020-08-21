@@ -35,11 +35,14 @@ test_that("bloodmeal all infectious bites", {
 
 
 test_that("bloodmeal_linear runs as a module", {
-  duration_days <- 10.0
+  human_cnt <- 10L
+  place_cnt <- 5L
+  bite_cnt <- 20L
+  time_step <- 10.0
   parameters <- list()
   simulation <- bloodmeal_linear_module(parameters)
   for (i in 1:4) {
-    current_time <- duration_days * (i - 1)
+    current_time <- time_step * (i - 1)
 
     health_dt <- sample_health_infection_status(human_cnt, time_step)
     move_dt <- sample_move_location(human_cnt, place_cnt, time_step)
