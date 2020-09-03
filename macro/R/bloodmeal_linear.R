@@ -181,7 +181,8 @@ bloodmeal_linear_module <- function(parameters) {
 #' @export
 mash_step.bloodmeal_linear <- function(simulation, health_dt, movement_dt, bites_dt) {
   outcome_dt <- bloodmeal_process(health_dt, movement_dt, bites_dt)
-  simulation["outcome"] <- outcome_dt
+  simulation[["outcome"]] <- outcome_dt
+
   simulation
 }
 
