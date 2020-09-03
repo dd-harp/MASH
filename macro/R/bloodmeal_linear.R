@@ -116,8 +116,8 @@ bites_at_location <- function(events, bites) {
 
     # This samples humans with an equal probability, but this is where we weight it.
     human_idx <- sample(1:nrow(human_state), 1)
-    bites[bite_idx, "ID"] <- human_state[human_idx]$ID
-    bites[bite_idx, "Level"] <- human_state[human_idx]$Level
+    bites[bite_idx, "ID"] <- human_state[human_idx, ID]
+    bites[bite_idx, "Level"] <- human_state[human_idx, Level]
 
     previous_time <- bite_time
     previous_state <- human_state
@@ -182,7 +182,7 @@ bloodmeal_linear_module <- function(parameters) {
 mash_step.bloodmeal_linear <- function(simulation, health_dt, movement_dt, bites_dt) {
   outcome_dt <- bloodmeal_process(health_dt, movement_dt, bites_dt)
   simulation[["outcome"]] <- outcome_dt
-
+  class(simulation) <- "bloodmeal_linear"
   simulation
 }
 
@@ -194,7 +194,7 @@ mash_step.bloodmeal_linear <- function(simulation, health_dt, movement_dt, bites
 #'     of humans where the mosquito was infectious.
 #' @export
 infects_human_path.bloodmeal_linear <- function(simulation) {
-  simulation["outcome"][Bite > 0]
+  simulation[["outcome"]][Bite > 0]
 }
 
 
@@ -206,5 +206,5 @@ infects_human_path.bloodmeal_linear <- function(simulation) {
 #'     but the human was.
 #' @export
 infects_mosquito_path.bloodmeal_linear <- function(simulation) {
-  simulation["outcome"][(Level > 0) & (Bite == 0)]
+  simulation[["outcome"]][(Level > 0) & (Bite == 0)]
 }
