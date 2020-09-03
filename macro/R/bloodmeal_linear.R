@@ -34,7 +34,7 @@ convert_to_enter_events <- function(location_changes_dt) {
 
 health_as_events <- function(health_dt) {
   h0 <- health_dt[, .(ID = ID, Level = Start, Time = 0.0)]
-  step_cnt <- length(grep("Time", names(location_dt)))
+  step_cnt <- length(grep("Time", names(health_dt)))
   healths <- list(h0)
   for (step_idx in 1:step_cnt) {
     level_name <- paste0("Level", step_idx)
@@ -116,8 +116,8 @@ bites_at_location <- function(events, bites) {
 
     # This samples humans with an equal probability, but this is where we weight it.
     human_idx <- sample(1:nrow(human_state), 1)
-    bites[bite_idx, "ID"] <- human_state[human_idx]$ID
-    bites[bite_idx, "Level"] <- human_state[human_idx]$Level
+    bites[bite_idx, "ID"] <- human_state[human_idx, ID]
+    bites[bite_idx, "Level"] <- human_state[human_idx, Level]
 
     previous_time <- bite_time
     previous_state <- human_state
@@ -156,4 +156,56 @@ bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
   movement_health_events <- combine_health_and_movement(health_events, movement_events)
   bites <- bite_outcomes(movement_health_events, bites_dt)
   bites
+}
+
+
+#' Create a bloodmeal module that assigns the same weight to all humans.
+#'
+#' @param parameters There are no parameters for this, so this is ignored.
+#' @return a module for bloodmeal
+#' @export
+bloodmeal_linear_module <- function(parameters) {
+  invisible(parameters)
+  module <- list(outcome = NULL)
+  class(module) <- "bloodmeal_linear"
+  module
+}
+
+
+#' Take one time step for a bloodmeal module.
+#'
+#' @param simulation The blodmeal module.
+#' @param health_dt Human health data.
+#' @param movement_dt Movement of humans.
+#' @param bites_dt Mosquito bite data.
+#' @return Returns the simulation that's updated.
+#' @export
+mash_step.bloodmeal_linear <- function(simulation, health_dt, movement_dt, bites_dt) {
+  outcome_dt <- bloodmeal_process(health_dt, movement_dt, bites_dt)
+  simulation[["outcome"]] <- outcome_dt
+  class(simulation) <- "bloodmeal_linear"
+  simulation
+}
+
+
+#' Extract human bites from the bloodmeal module.
+#'
+#' @param simulation The bloodmeal_linear module.
+#' @return A data.table with bite information. These are all bites
+#'     of humans where the mosquito was infectious.
+#' @export
+infects_human_path.bloodmeal_linear <- function(simulation) {
+  simulation[["outcome"]][Bite > 0]
+}
+
+
+#' Extract mosquito bites from the bloodmeal module.
+#'
+#' @param simulation The bloodmeal_linear module.
+#' @return A data.table with bite information.
+#'     These are only bites where the mosquito was not infectious
+#'     but the human was.
+#' @export
+infects_mosquito_path.bloodmeal_linear <- function(simulation) {
+  simulation[["outcome"]][(Level > 0) & (Bite == 0)]
 }

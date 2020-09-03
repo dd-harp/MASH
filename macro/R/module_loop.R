@@ -98,7 +98,10 @@ step_mainloop <- function(modules, observer, step_cnt = 1) {
 
     bloodmeal <- mash_step(bloodmeal, location_path, health_path)
     bloodmeal_path <- infects_human_path(bloodmeal)
-    observe_bloodmeal(observer, bloodmeal_path)
+    bloodmeal_human <- observe_bloodmeal_human(observer, bloodmeal_path)
+    # Cannot test these steps yet.
+    # bloodmeal_mosquito_path <- infects_mosquito_path(bloodmeal)
+    # bloodmeal_mosquito <- observe_bloodmeal_mosquito(observer, bloodmeal_path)
 
     health <- mash_step(health, bloodmeal_path)
     health_path <- human_disease_path(health)

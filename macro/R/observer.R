@@ -11,14 +11,20 @@ complete_observer <- function() {
 #' Observe the change in location for every person.
 #' @export
 observe_location <- function(observer, location_path, step) {
-
 }
 
-#' Observe the bloodmeal.
+
+#' Observe the bloodmeal bites to humans.
 #' @export
-observe_bloodmeal <- function(observer, bloodmeal_path, step) {
-
+observe_bloodmeal_human <- function(observer, bloodmeal_path, step) {
 }
+
+
+#' Observe the bloodmeal bites to mosquitoes.
+#' @export
+observe_bloodmeal_mosquito <- function(observer, bloodmeal_path, step) {
+}
+
 
 #' Observe the health state for every person.
 #' @export
