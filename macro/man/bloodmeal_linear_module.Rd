@@ -6,6 +6,9 @@
 \usage{
 bloodmeal_linear_module(parameters)
 }
+\arguments{
+\item{parameters}{There are no parameters for this, so this is ignored.}
+}
 \value{
 a module for bloodmeal
 }

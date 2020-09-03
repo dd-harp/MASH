@@ -161,10 +161,11 @@ bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
 
 #' Create a bloodmeal module that assigns the same weight to all humans.
 #'
-#' @param parameters
+#' @param parameters There are no parameters for this, so this is ignored.
 #' @return a module for bloodmeal
 #' @export
 bloodmeal_linear_module <- function(parameters) {
+  invisible(parameters)
   module <- list(outcome = NULL)
   class(module) <- "bloodmeal_linear"
   module
