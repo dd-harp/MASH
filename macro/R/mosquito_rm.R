@@ -75,7 +75,7 @@ build_internal_parameters <- function(parameters) {
       maxEIP = maxEIP,
       a_kappa = a * kappa,  # biting fraction
       y_shift = shift_with_open_interval(maxEIP + 1),
-      year_day_start = year_day_start
+      year_day_offset = year_day_start - 1
     )
   })
 }
@@ -118,7 +118,7 @@ mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic) {
   within(state, {
     with(parameters, {
       simulation_day <- simulation_day + 1
-      year_day <- day_within_year(simulation_day + year_day_start - 1)
+      year_day <- day_within_year(simulation_day + year_day_offset)
 
       M <- p_psi %*% (M + aquatic(lambda[, year_day]))
       Y <- p_psi %*% Y
