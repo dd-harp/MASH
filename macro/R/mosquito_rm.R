@@ -8,7 +8,7 @@ build_biting_parameters <- function(patch_cnt, year_days = 365) {
   list(
     N = patch_cnt,  # patches
     # emergence matrix
-    lambda = matrix(rep(year_days), nrow = year_days),
+    lambda = matrix(rep(0.1, year_days * N), nrow = N),
     psi = diag(patch_cnt),  # diffusion matrix
     EIP = rep(12, year_days),
     maxEIP = 12,
@@ -17,6 +17,18 @@ build_biting_parameters <- function(patch_cnt, year_days = 365) {
     a = 0.6,   # human biting rate
     year_day_start = 1
   )
+}
+
+
+#' Given a day that counts past multiple years, what's year day.
+#' @param day integer count of days since start of year.
+#' @param day_cnt It's 365 unless you're testing.
+#'
+#' This is what you get for counting from 1 instead of 0.
+#'
+#' @export
+day_within_year <- function(day, day_cnt = 365) {
+  ((day - 1) %% day_cnt) + 1
 }
 
 
@@ -32,8 +44,7 @@ look_back_eip <- function(EIP) {
   day_cnt <- length(EIP)
   look <- lapply(1:day_cnt, function(x) numeric(0))
   for (bite_day in 1:day_cnt) {
-    incubate_day <- (bite_day + EIP[bite_day]) %% day_cnt
-    incubate_day <- ifelse(incubate_day, incubate_day, day_cnt)
+    incubate_day <- day_within_year(bite_day + EIP[bite_day], day_cnt)
     backwards <- look[[incubate_day]]
     look[[incubate_day]] <- c(backwards, EIP[bite_day])
   }
@@ -60,9 +71,11 @@ build_internal_parameters <- function(parameters) {
       N = N,  # patches
       lambda = lambda,  # emergence matrix
       p_psi = p * psi,  # diffusion matrix
-      EIP_back = test_look_back_eip(EIP),
+      EIP_back = look_back_eip(EIP),
+      maxEIP = maxEIP,
       a_kappa = a * kappa,  # biting fraction
       y_shift = shift_with_open_interval(maxEIP + 1),
+      year_day_start = year_day_start
     )
   })
 }
@@ -102,24 +115,26 @@ mosquito_rm_aquatic <- function(lambda) {
 #' @param aquatic The function to call to get the emergence.
 #' @export
 mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic) {
-  within(c(state, parameters), {
-    simulation_day <- simulation_day + 1
-    year_day <- simulation_day - year_day_start + 1
+  within(state, {
+    with(parameters, {
+      simulation_day <- simulation_day + 1
+      year_day <- day_within_year(simulation_day + year_day_start - 1)
 
-    M <- p_psi %*% (M + aquatic(lambda[, year_day]))
-    Y <- p_psi %*% Y
-    Z <- p_psi %*% Z
+      M <- p_psi %*% (M + aquatic(lambda[, year_day]))
+      Y <- p_psi %*% Y
+      Z <- p_psi %*% Z
 
-    broods <- EIP_back[[year_day]]
-    if (length(broods) > 0) {
-      for (brood in broods) {
-        Z = Z + Y[, brood]
+      broods <- EIP_back[[year_day]]
+      if (length(broods) > 0) {
+        for (brood in broods) {
+          Z = Z + Y[, brood]
+        }
       }
-    }
 
-    Y0 <- a_kappa * (M - colSums(Y))
-    Y0[Y0 < 0] <- 0
-    Y <- Y %*% y_shift
-    Y[, 1] <- Y0
+      Y0 <- a_kappa * (M - rowSums(Y))
+      Y0[Y0 < 0] <- 0
+      Y <- Y %*% y_shift
+      Y[, 1] <- Y0
+    })
   })
 }
