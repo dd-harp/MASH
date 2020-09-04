@@ -1,9 +1,16 @@
-build_biting_parameters <- function(patch_cnt, year = 365) {
+#' Make a default set of parameters for R-M mosquitoes.
+#'
+#' @param patch_cnt The number of patches
+#' @param year_days The number of days in a year
+#'
+#' @export
+build_biting_parameters <- function(patch_cnt, year_days = 365) {
   list(
     N = patch_cnt,  # patches
-    lambda = matrix(rep(0.1, patch_cnt, year), nrow = year),  # emergence matrix
+    # emergence matrix
+    lambda = matrix(rep(year_days), nrow = year_days),
     psi = diag(patch_cnt),  # diffusion matrix
-    EIP = rep(12, year),
+    EIP = rep(12, year_days),
     maxEIP = 12,
     kappa = rep(0.4, patch_cnt),  # biting fraction
     p = 0.9,  # survival
@@ -13,6 +20,56 @@ build_biting_parameters <- function(patch_cnt, year = 365) {
 }
 
 
+#' This reverses the list of EIP per day of the year.
+#'
+#' @param EIP a vector of the EIP on a day of the year.
+#'
+#' It tells you how many days back to get the newly-infected
+#' mosquitoes. The value is a ragged array by day of year.
+#'
+#' @export
+look_back_eip <- function(EIP) {
+  day_cnt <- length(EIP)
+  look <- lapply(1:day_cnt, function(x) numeric(0))
+  for (bite_day in 1:day_cnt) {
+    incubate_day <- (bite_day + EIP[bite_day]) %% day_cnt
+    incubate_day <- ifelse(incubate_day, incubate_day, day_cnt)
+    backwards <- look[[incubate_day]]
+    look[[incubate_day]] <- c(backwards, EIP[bite_day])
+  }
+  look
+}
+
+
+#' Makes a shift matrix that accumulates the oldest.
+#' @param N The size of the square matrix.
+#' @export
+shift_with_open_interval <- function(N) {
+  y_shift <- c(numeric(N - 1), 1)
+  diag(y_shift[1, ]) <- rep(1, N - 1)
+}
+
+
+#' Turn external parameters into mosquito internal parameters.
+#' @param The external parameters.
+#' @export
+build_internal_parameters <- function(parameters) {
+  with(parameters, {
+    list(
+      N = N,  # patches
+      lambda = lambda,  # emergence matrix
+      p_psi = p * psi,  # diffusion matrix
+      EIP_back = test_look_back_eip(EIP),
+      a_kappa = a * kappa,  # biting fraction
+      y_shift = shift_with_open_interval(maxEIP + 1),
+    )
+  })
+}
+
+
+#' Create a default state for mosquito-RM model.
+#' @param The internal parameter set.
+#' @export
 build_biting_state <- function(parameters) {
   with(parameters, {
     # Add a category for
@@ -28,53 +85,21 @@ build_biting_state <- function(parameters) {
 }
 
 
-#' This reverses the list of EIP per day of the year.
-#'
-#' It tells you how many days back to get the newly-infected
-#' mosquitoes. The value is a ragged array by day of year.
-look_back_eip <- function(EIP) {
-  day_cnt <- length(EIP)
-  look <- lapply(1:day_cnt, function(x) numeric(0))
-  for (bite_day in 1:day_cnt) {
-    incubate_day <- (bite_day + EIP[bite_day]) %% day_cnt
-    incubate_day <- ifelse(incubate_day, incubate_day, day_cnt)
-    backwards <- look[[incubate_day]]
-    look[[incubate_day]] <- c(backwards, EIP[bite_day])
-  }
-  look
-}
-
-
-test_look_back_eip <- function() {
-  ll <- look_back_eip(c(3,3,2,2,2))
-  compare <- list(c(2), c(2), c(0), c(3), c(3, 2))
-  for (i in 1:5) {
-    stopifnot(ll[[i]] == compare[[i]])
-  }
-}
-
-
-build_internal_parameters <- function(parameters) {
-  with(parameters, {
-    y_shift <- c(numeric(maxEIP - 1), 1)
-    y_shift <- diag(y_shift[1, ]) <- rep(1, maxEIP - 1)
-    list(
-      N = N,  # patches
-      lambda = lambda,  # emergence matrix
-      p_psi = p * psi,  # diffusion matrix
-      EIP_back = test_look_back_eip(EIP),
-      a_kappa = a * kappa,  # biting fraction
-      y_shift = y_shift,
-    )
-  })
-}
-
-
+#' An aquatic emergence dynamics.
+#' @param A vector of emergence rate per patch.
+#' @return Returns a vector count of emerged mosquitoes.
+#' @export
 mosquito_rm_aquatic <- function(lambda) {
   rpois(length(lambda), lambda)
 }
 
 
+#' Dynamics of R-M mosquitoes.
+#' @param state The internal state.
+#' @param parameters The internal parameters.
+#' @param kapp The biting rate from humans.
+#' @param aquatic The function to call to get the emergence.
+#' @export
 mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic) {
   within(c(state, parameters), {
     simulation_day <- simulation_day + 1
