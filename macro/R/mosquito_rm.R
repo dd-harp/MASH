@@ -45,8 +45,9 @@ look_back_eip <- function(EIP) {
 #' @param N The size of the square matrix.
 #' @export
 shift_with_open_interval <- function(N) {
-  y_shift <- c(numeric(N - 1), 1)
-  diag(y_shift[1, ]) <- rep(1, N - 1)
+  y_shift <- diag(c(numeric(N - 1), 1))
+  diag(y_shift[, -1]) <- rep(1, N - 1)
+  y_shift
 }
 
 
