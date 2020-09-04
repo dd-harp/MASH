@@ -1,0 +1,222 @@
+---
+title: "Mosquito Module Description"
+header-includes:
+  - \usepackage{amsmath}
+output:
+  - pdf_document
+  - html_notebook
+---
+
+Describes what should be in the first mosquito module.
+
+# Introduction
+
+We already wrote two mosquito modules as part of MASH.
+Both were in C++, the PfSI and PfMOI versions. I'm about
+to write a version in R that fits in with the rest of
+MASH-macro. This version will follow a protocol, so it
+has a well-specified set of inputs and outputs. This document
+will describe what the mosquito model should have,
+given what was in the previous versions.
+
+
+# Ross-Macdonald-style deterministic mosquito module
+
+## Overview
+The PfSI code is in the MASH repository under
+`MASH/macro.pfsi/src/Mosquito-RM.cpp.` The PfMOI code
+uses the exact same file. Both are Ross-Macdonald-style
+and deterministic except for emergence.
+
+As a reminder, the PfSI code uses a data structure called
+a Tile, which represents an area where all of the
+simulations are synchronous. The idea was that large
+parallel simulations could create multiple, neighboring
+Tiles. Here, there is one Tile that has some global
+information.
+
+Each Tile has multiple Patches. Every population of
+mosquitoes is considered homogeneous within a Patch,
+so we expect some of the definition of the Mosquito-RM
+module to involve the patch.
+
+Time is measured in days. Assume all the math below is applied to
+all patches individually, except for diffusion, where
+mosquitoes move among patches.
+
+From the header file, we get basic information about
+the parameters and state space. In parentheses after each
+is the size of its array.
+
+
+## Parameters
+
+Notation here comes mostly from Smith, Battle, et al 2012, in Box 2, but
+it follows variables defined in the code.
+
+Parameter           Description
+------------------- ----------------------------------------------------------
+N                   Count of patches
+lambda ($\lambda$)  Emergence matrix (365 x N)
+psi ($\psi$)        Diffusion matrix (N x N)
+EIP                 Extrinsic incubation period on each day of the year (365)
+maxEIP              The count of days in the longest EIP.
+p                   Daily survival, conditional survival for a day.
+f                   Blood feeding rate (not used)
+a                   Human-blood feeding rate
+Q                   Human hosts, $a = fQ$ (not used)
+v                   Daily egg-laying rate (not used)
+
+
+## State
+
+State Variable  Description
+--------------- ---------------------------------------------------
+M               Adult females (N)
+Y               Incubating mosquitoes (N)
+Y0              Newly-infected mosquitoes (N)
+Z               Infectious mosquitoes (N)
+
+## Input variables
+
+Variable            Description
+------------------  -----------------------------------------------
+kappa ($\kappa$)    Net infectiousness of humans to mosquitoes (N)
+
+
+## Aquatic Dynamics
+
+The aquatic dynamics for this model is simple.
+The emergence parameter dictates, for each patch, the rate
+at which adults emerge. The stochastic dynamics draws
+from a Poisson distribution with that rate.
+$$
+\begin{aligned}
+  X & \sim \mbox{Poisson}(\lambda_{d}) \\
+  M & \rightarrow M + x
+\end{aligned}
+$$
+Here, $d$ is the day of the year. The random variable $X$
+is Poisson-distributed, and we add a sample $x$ from $X$
+to the adult mosquito population.
+
+## Adult Dynamics
+
+### Reading the algorithm
+First, everybody survives a bit.
+$$
+\begin{aligned}
+  M & = pM \\
+  Y & = pY \\
+  Z & = pZ
+\end{aligned}
+$$
+There won't be another step where mosquitoes are removed from
+these categories. They die off geometrically.
+Then we get newly-infected mosquitoes.
+$$
+ Y_{0} = \max(a\kappa(M-Y), 0)
+$$
+This is for each patch. And each newly-infected mosquito is
+also considered incubating, so
+$$
+  Y\rightarrow Y + Y_{0}
+$$
+Some mosquitoes graduate from incubation to infectious.
+These are the mosquitoes that were newly-infected EIP
+days ago. The trick is that the EIP can be different on
+different days, so you have to add them for all days where
+the EIP ends today.
+$$
+Z_p \rightarrow Z_p + \sum_{e=d-\infty}^d p^{d-e}(Y_0\psi^{d-e})_p\delta(d - e - \mbox{EIP}_e)
+$$
+The code does this calculation simply with some nice matrix work.
+The $p^{d-e}$ is a constant survival rate per day of EIP.
+The $\psi$ diffuses the initial $Y_0$, as we will do to
+the rest of the variables, but it does that once per day
+of the EIP. (The MASH-PfSI code applies $\psi$ once, but it
+should be applied each day.) The subscript ${}_p$ means we are
+picking out the newly-infectious mosquitoes that
+diffused to this patch on that day.
+
+Where past values are missing for incubating mosquitoes, in
+the equation above, we initialize them with $Z(1-p)$.
+
+All of the mosquitoes diffuse a bit around their patches.
+$$
+\begin{aligned}
+  M & = M \psi \\
+  Y & = Y \psi \\
+  Z & = Z \psi
+\end{aligned}
+$$
+
+### Analyzing the algorithm
+
+It can help to understand a time step if we try to combine all
+of the steps into one equation, where the right-hand
+side is in terms of previous values of the adult dynamics and the
+primed left-hand side is the next time step.
+$$
+\begin{aligned}
+  M' & = p(M + \mbox{Poisson}(\lambda))\psi \\
+  Y' & = (pY + \max(a\kappa p(M-Y)),0)\psi \\
+  Y'_0 & = \max(a\kappa p(M-Y), 0)\psi \\
+  Z' & = (pZ + \sum_{e=d-\infty}^d p^{d-e}(Y_0\psi^{d-e})_p\delta(d - e - \mbox{EIP}_e))\psi
+\end{aligned}
+$$
+
+When I look for what could go wrong, when writing this as code,
+I see that I might need to check that incubating mosquitoes get
+the right survival applied. I could easily create an off-by-one
+error there in the exponent on survival.
+
+How would I test this code? First, identify the parameters.
+$a\kappa$ apears together, as do $p\psi$, so there is no point
+in testing those separately. The other parameter
+is EIP. Initialization includes not only an initial $(M, Y, Y_0, Z$
+but also the past $Y_0$.
+
+One test of the delay in the system would set the emergence
+rate to a constant value and then change it on a day, in
+order to see $Z$ change EIP days later. Another test would
+be a similar change in EIP at a particular day of the year,
+to see it affect $Z$.
+
+## Infection Dynamics
+
+### In the MASH-PfSI code
+First, let's read the MASH-PfSI code. It uses $\kappa$ and EIR.
+The MASH-macro code will be a little different because it uses
+a message protocol.
+
+We use $\beta = a Z$ for the biting rate. That means
+the EIR is calculated from $\beta$, the biting weight $\omega_p$
+for a patch, and the biting weight for a particular human, $\omega_h$.
+$$
+  \mbox{EIR} = \max(0, \beta \omega_p / \omega_h)
+$$
+The mosquitoes get infected at a rate determined by the
+biting weight of all infectious humans.
+$$
+  \kappa = \sum_h c_h\omega_h
+$$
+Here, $c$ is the human-to-mosquito transmission efficiency.
+
+
+### In the MASH-macro code
+
+The MASH-macro code will send a list of bites to the bloodmeal.
+(I write this as an assertion, but I'm asking whether we
+should send $\beta$ and receive $\kappa$.)
+The mosquitoes generate $aZ$ infectious bites per day for each patch.
+The bloodmeal then assigns these to humans.
+
+When the bloodmeal sends infectious bites to the mosquitoes,
+we take the total count of bites per day (of infectious humans)
+and sum the $c_h\omega_h$ for all of those to get $\kappa$ for
+the day.
+
+# Bibliography
+
+Smith, David L., et al. "Ross, Macdonald, and a theory for the dynamics and control of mosquito-transmitted pathogens." PLoS pathog 8.4 (2012): e1002588.
