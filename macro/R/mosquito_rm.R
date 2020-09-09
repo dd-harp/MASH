@@ -1,4 +1,4 @@
-#' Make a default set of parameters for R-M mosquitoes.
+#' Make a base set of parameters for R-M mosquitoes.
 #'
 #' @param patch_cnt The number of patches
 #' @param year_days The number of days in a year
@@ -8,7 +8,7 @@ build_biting_parameters <- function(patch_cnt, year_days = 365) {
   list(
     N = patch_cnt,  # patches
     # emergence matrix
-    lambda = matrix(rep(0.1, year_days * N), nrow = N),
+    lambda = matrix(rep(0.1, year_days * patch_cnt), nrow = patch_cnt),
     psi = diag(patch_cnt),  # diffusion matrix
     EIP = rep(12, year_days),
     maxEIP = 12,
@@ -54,6 +54,8 @@ look_back_eip <- function(EIP) {
 
 #' Makes a shift matrix that accumulates the oldest.
 #' @param N The size of the square matrix.
+#' @return A square matrix. You right-multiply a population, and it gets
+#'     a day older by moving a column to the right.
 #' @export
 shift_with_open_interval <- function(N) {
   y_shift <- diag(c(numeric(N - 1), 1))
