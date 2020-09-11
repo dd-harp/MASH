@@ -217,6 +217,58 @@ we take the total count of bites per day (of infectious humans)
 and sum the $c_h\omega_h$ for all of those to get $\kappa$ for
 the day.
 
+# Testing the discrete-time model
+
+The new mosquito code will need testing. We walk through the implementation
+in order to write down special cases we can test, starting with steady
+state for the discrete-time model.
+
+```{r dt_code, echo = TRUE, eval = FALSE}
+mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic = mosquito_rm_aquatic) {
+  with(parameters, {
+    within(state, {
+      simulation_day <- simulation_day + 1
+      year_day <- day_within_year(simulation_day + year_day_offset)
+
+      # It matters whether we apply survival to the new adults.
+      M <- p_psi %*% (M + aquatic(lambda[, year_day]))
+      Y <- p_psi %*% Y
+      Z <- p_psi %*% Z
+
+      broods <- EIP_back[[year_day]]
+      if (length(broods) > 0) {
+        for (brood in broods) {
+          Z = Z + Y[, brood]
+        }
+      }
+
+      Y0 <- a * kappa * (M - rowSums(Y))
+      Y0[Y0 < 0] <- 0
+      Y <- Y %*% one_day_older
+      Y[, 1] <- Y0
+    })
+  })
+}
+```
+
+From this, we take some math for the steady state.
+
+For adult females in steady-state, $M_1=pM+pW$, where
+$w$ is the aquatic stage. If $M_1=M$, then $W/M = (1-p)/p$.
+For a test, we set the aquatic rate to this value and
+see that $M$ remains the same.
+
+For incubating mosquitoes, when adult females are in
+steady state, $Y_0 = a\kappa((p(M+W)-pY_0/(1-p))$.
+We can check the value of $Y_0$ for given values of the
+rest of the variables.
+
+
+
+
+
+
+
 # Bibliography
 
 Smith, David L., et al. "Ross, Macdonald, and a theory for the dynamics and control of mosquito-transmitted pathogens." PLoS pathog 8.4 (2012): e1002588.
