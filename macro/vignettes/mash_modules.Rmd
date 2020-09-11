@@ -10,6 +10,10 @@ output:
     df_print: paged
 header-includes:
   - \usepackage{palatino}
+vignette: >
+  %\VignetteIndexEntry{MASH Modules}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 # Overview

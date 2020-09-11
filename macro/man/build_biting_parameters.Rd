@@ -2,9 +2,9 @@
 % Please edit documentation in R/mosquito_rm.R
 \name{build_biting_parameters}
 \alias{build_biting_parameters}
-\title{Make a default set of parameters for R-M mosquitoes.}
+\title{Make a base set of parameters for R-M mosquitoes.}
 \usage{
-build_biting_parameters(patch_cnt, year_days = 365)
+build_biting_parameters(patch_cnt)
 }
 \arguments{
 \item{patch_cnt}{The number of patches}
@@ -12,5 +12,5 @@ build_biting_parameters(patch_cnt, year_days = 365)
 \item{year_days}{The number of days in a year}
 }
 \description{
-Make a default set of parameters for R-M mosquitoes.
+Make a base set of parameters for R-M mosquitoes.
 }

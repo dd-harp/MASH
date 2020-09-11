@@ -9,7 +9,10 @@ output:
     number_sections: yes
 header-includes:
   - \usepackage{palatino}
-bibliography: pfSI.bib
+vignette: >
+  %\VignetteIndexEntry{Human Module with SI Dynamics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 ```{r load_libraries, include = FALSE}
 library(data.table)
@@ -417,3 +420,5 @@ time step low enough that conflicts are rare.
 
 
 # Bibliography
+
+Molloy, Michael K. "Discrete time stochastic Petri nets." IEEE Transactions on Software Engineering 4 (1985): 417-423.

@@ -7,7 +7,7 @@
 mosquito_rm_aquatic(lambda)
 }
 \arguments{
-\item{A}{vector of emergence rate per patch.}
+\item{lambda}{A vector of emergence rate per patch.}
 }
 \value{
 Returns a vector count of emerged mosquitoes.

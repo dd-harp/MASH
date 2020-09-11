@@ -7,7 +7,9 @@
 build_internal_parameters(parameters)
 }
 \arguments{
-\item{The}{external parameters.}
+\item{parameters}{The external parameters.}
+
+\item{adult_scale}{A scale for total mosquito counts for all patches.}
 }
 \description{
 Turn external parameters into mosquito internal parameters.

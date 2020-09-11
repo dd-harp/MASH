@@ -4,16 +4,17 @@
 \alias{mosquito_rm_dynamics}
 \title{Dynamics of R-M mosquitoes.}
 \usage{
-mosquito_rm_dynamics(state, parameters, kappa, aquatic)
+mosquito_rm_dynamics(state, parameters, kappa, aquatic = mosquito_rm_aquatic)
 }
 \arguments{
 \item{state}{The internal state.}
 
 \item{parameters}{The internal parameters.}
 
-\item{aquatic}{The function to call to get the emergence.}
+\item{kappa}{Net infectiousness of humans to mosquitoes, the probability
+a mosquito becomes infected after feeding on a human. Vector per patch.}
 
-\item{kapp}{The biting rate from humans.}
+\item{aquatic}{The function to call to get the emergence.}
 }
 \description{
 Dynamics of R-M mosquitoes.

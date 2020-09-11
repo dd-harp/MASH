@@ -186,6 +186,6 @@ Now that we've simulated a long trajectory through this state space ($\mathcal{S
 
 To do this comparison in a statistically reasonable manner we'll use a Chi-squared test. We should get a p-value close to 1, indicating that there is close to no evidence that these two PMFs (simulated and analytic) came from different distributions.
 
-```{r}
+```{r chi_square_test, include = FALSE}
 stats::chisq.test(x = state_occupancy, p = pivec, simulate.p.value = TRUE)
 ```
