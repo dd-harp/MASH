@@ -1,4 +1,4 @@
-test_that("look_back_ip is right for small problem", {
+test_that("look_back_eip is right for small problem", {
   ll <- look_back_eip(c(3,3,2,2,2))
   compare <- list(c(2), c(2), numeric(0), c(3), c(3, 2))
   for (i in 1:5) {
@@ -137,4 +137,33 @@ test_that("mosquito-rm infectious is stable", {
   p = params$p
   z_expected <- rep(p^eip * y0_expected / (1 - p), patch_cnt)
   expect_true(within_absolute_error(state$Z, z_expected, 1e-4))
+})
+
+
+test_that("mosquito-rm lag is correct for EIP", {
+  patch_cnt <- 5
+  params <- build_biting_parameters(patch_cnt)
+  params$EIP[1:49] <- 12
+  params$EIP[50:365] <- 10
+  internal_params <- build_internal_parameters(params)
+  infectious <- rep(0.4, patch_cnt)
+  mortality <- 1 - params$p
+  state <- build_biting_state(infectious, mortality, params$maxEIP)
+
+  replacement <- (1 -params$p) / params$p
+  aquatic <- function(lambda) rep(replacement, length(lambda))
+
+  kappa <- 0.2
+  kappa_patch = rep(kappa, patch_cnt)
+  initial_state <- mrm_copy_state(state)
+  iteration_cnt <- 100
+  running_z <- numeric(iteration_cnt)
+  for (i in 1:iteration_cnt) {
+    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
+    running_z[i] <- state$Z[1]
+  }
+  zmean <- mean(running_z[40:50])
+  zsd <- sd(running_z[40:50])
+  different <- which(running_z[50:365] > zmean + 5 * zsd)
+  expect_true(different[1] == 10)
 })
