@@ -1,9 +1,12 @@
 # Mosquito Ross-Macdonald module
 #
+# Discrete-time, ten-day timestep built from single-day discrete time.
+#
 # Refers to Smith, David L., et al. “Ross, Macdonald, and a theory for the
 # dynamics and control of mosquito-transmitted pathogens.” PLoS pathog 8.4 (2012): e1002588.
-#
-# Discrete-time, ten-day timestep built from single-day discrete time.
+# More direct paper: Reiner Jr, Robert C., et al. "Estimating malaria transmission from
+# humans to mosquitoes in a noisy landscape." Journal of the Royal Society Interface
+# 12.111 (2015): 20150478.
 
 
 #' Make a base set of parameters for R-M mosquitoes.

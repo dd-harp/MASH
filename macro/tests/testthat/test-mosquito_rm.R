@@ -111,3 +111,30 @@ test_that("mosquito-rm incubating is stable", {
     rep(a * kappa / (1 + a * kappa * p / (1 - p)), patch_cnt))
   expect_true(within_absolute_error(state$Y[, 1], y0_expected, 1e-5))
 })
+
+
+# When the maternal population is stable, the incubating population will
+# converge to a kappa (p - 1) / (p (1 + a kappa) - 1)
+test_that("mosquito-rm infectious is stable", {
+  patch_cnt <- 5
+  params <- build_biting_parameters(patch_cnt)
+  internal_params <- build_internal_parameters(params)
+  infectious <- rep(0.4, patch_cnt)
+  mortality <- 1 - params$p
+  state <- build_biting_state(infectious, mortality, params$maxEIP)
+
+  replacement <- (1 -params$p) / params$p
+  aquatic <- function(lambda) rep(replacement, length(lambda))
+
+  kappa <- 0.2
+  kappa_patch = rep(kappa, patch_cnt)
+  initial_state <- mrm_copy_state(state)
+  for (i in 1:100) {
+    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
+  }
+  y0_expected <- with(params, a * kappa / (1 + a * kappa * p / (1 - p)))
+  eip = params$EIP[[1]]
+  p = params$p
+  z_expected <- rep(p^eip * y0_expected / (1 - p), patch_cnt)
+  expect_true(within_absolute_error(state$Z, z_expected, 1e-4))
+})
