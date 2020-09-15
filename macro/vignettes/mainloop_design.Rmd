@@ -10,6 +10,10 @@ output:
     df_print: paged
 header-includes:
   - \usepackage{palatino}
+vignette: >
+  %\VignetteIndexEntry{Mainloop Design}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r load_libraries, hide = TRUE}

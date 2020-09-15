@@ -176,7 +176,6 @@ human_disease_path.forced_si <- function(simulation) {
       entry <- trajectory[tidx][[1]]
       who <- entry$id
       last_event <- which.max(events[who, 3:ncol(events)])
-      cat(paste(entry, "\n"))
       if (length(last_event) > 0) {
         time_point <- paste0("t", last_event + 1)
         events[who, ..time_point := entry$curtime]
