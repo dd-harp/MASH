@@ -1,0 +1,140 @@
+---
+title: "Mosquito Module Description"
+abstract: "Summarizes two choices: the protocol for module interaction and how it runs across time steps."
+header-includes:
+  - \usepackage{amsmath}
+output:
+  pdf_document:
+    toc: true
+    df_print: kable
+    number_sections: yes
+  html_notebook:
+    df_print: paged
+---
+
+
+```{r load_library}
+library(macro)
+```
+
+# Introduction
+
+I'm almost done implementing a first version of MASH, and I'd like
+to highlight two choices, and what I've learned about those
+choices by writing the code. My goal is to ensure we understand
+those choices, so we can fix them now, if necessary.
+
+# The time step
+
+As a reminder, we worked out that we would change the
+time step between the output of the bloodmeal module
+and the inputs to the health and mosquito modules.
+This module diagram is incomplete because there is no
+message from health status to location, and it reflects the current
+set of data that are passed among the modules.
+
+```{r image-ref-for-in-text, echo = FALSE, message=FALSE, fig.align='center', fig.cap='MASH modules exchange data. The green lines cross discrete-time steps.', out.width='0.3\\linewidth'}
+knitr::include_graphics("./cyclic_module_diagram_crop.pdf")
+```
+
+The green arrows are where data from one time step is sent
+to a module that will be computing for the next time step.
+That means that the bloodmeal doesn't receive any bites that
+happen during the week (or so) it is currently calculating. Similarly,
+the human module doesn't receive any bites that happen during
+the week it is currently calculating.
+
+# Protocols
+
+The current code sends data among modules in a format
+described below. I give samples of that format and discuss
+how I would like to change it.
+
+## Health infection status
+
+The current version of health infection status has one row per individual.
+The `Start` column is their initial state of infection. Each additional pair
+of `Time` and `Level` columns documents a change to that state. The state of
+infection in the example is either a 0 or a 1, but it could be a float.
+We haven't pinned that down. The columns are ID, Start, Time1, Level1,
+Time2, Level2, and so on.
+```{r health_status}
+sample_health_infection_status()
+```
+
+I propose that we change this format from wide to long, which would
+mean there are three columns, one for the `ID`, one for the `Time`,
+and one for the `Level`. I propose this because, when I wrote the code
+in the bloodmeal module to process this data, I thought it would have
+been easier to write if the dataframe were long instead of wide.
+
+## Location
+
+The location protocol is similar to the health protocol. It's a wide
+dataframe, as shown below.
+```{r location_protocol}
+sample_move_location()
+```
+
+I propose to make this a long dataframe, for the same reason, that
+working with the wide dataframe was difficult, and using a long
+version seemed like it would be easier.
+
+## Mosquito to bloodmeal
+
+This output from the mosquito module to the bloodmeal module
+is a list of locations, times, and bite levels, where the bite level is 
+a measure of infectiousness. This one was fine to work with.
+```{r mosquito_protocol}
+sample_mosquito_half_bites()
+```
+
+I have a question about this protocol. The first mosquito module is designed
+to mirror the Ross-Macdonald model, and it depends only on a rate of infectiousness
+from humans to mosquitoes and vice-versa. Do you anticipate that we could support
+future work if we change this protocol to be that level, instead?
+
+```{r maybe_mosquito}
+data.frame(Location = c(1, 2, 3, 3, 1), Time = c(0.0, 0.0, 0.0, 1.0, 3.0),
+           AttackRate = c(0.1, 0.12, 0.9, 0.2, 0.8))
+```
+Changing the protocol to an attack rate over time, that changes, would
+require that we create individual bites from an inhomogeneous Poisson process
+inside the bloodmeal module. We have to do that work, anyway, inside the
+mosquito module right now, but it shifts to the bloodmeal module.
+
+If we don't limit the protocol to the attack rate and, instead, keep the list
+of individual bites, then I notice that the bites are identified by
+location and time but not by mosquito. This protocol would mean that
+the bloodmeal would lose information about which mosquito bit
+a naive, or an infectious, human. It's not able to fully support an
+individual-level mosquito simulation.
+
+I'm suggesting we move what we have in one of two directions, more
+granular or more detailed.
+
+## Bloodmeal output
+
+There are two outputs from the bloodmeal, one to the human module,
+one to the mosquito module. First, a sample of output to the
+mosquito module shows the detailed version that I think could
+be reduced to $\kappa$ for a location.
+
+```{r bloodmeal_output_mosquito}
+data.frame(Location = c(2, 3), Bite = c(0, 0), Time = c(.27, 6.24), Level = c(1,1))
+```
+
+Then let's look at a sample of output to the human module.
+```{r bloodmeal_to_human}
+data.frame(Location=c(2,2,2), Bite=c(.53, .44, .62), Time=c(5.9, 6.21, 6.23),
+           Level=c(1, 0, 1), ID=c(4, 9, 4))
+```
+
+# Conclusion
+
+These are the questions:
+
+1. Should we change protocols from wide to long?
+
+2. Should we change mosquito module protocol from individual bites
+   to attack rate and $\kappa$ at each location and time?
