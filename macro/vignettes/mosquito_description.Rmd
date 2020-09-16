@@ -57,14 +57,14 @@ it follows variables defined in the code.
 Parameter           Description
 ------------------- ----------------------------------------------------------
 N                   Count of patches
-lambda ($\lambda$)  Emergence matrix (365 x N)
+lambda ($\lambda$)  Emergence matrix (365 x N), number of mosquitoes per day
 psi ($\psi$)        Diffusion matrix (N x N)
 EIP                 Extrinsic incubation period on each day of the year (365)
 maxEIP              The count of days in the longest EIP.
 p                   Daily survival, conditional survival for a day.
-f                   Blood feeding rate (not used)
-a                   Human-blood feeding rate
-Q                   Human hosts, $a = fQ$ (not used)
+a                   Human-blood feeding rate per mosquito
+f                   Blood feeding rate, per day (not used)
+Q                   Human hosts, $a = fQ$, per day (not used)
 v                   Daily egg-laying rate (not used)
 
 
@@ -77,11 +77,26 @@ Y               Incubating mosquitoes (N)
 Y0              Newly-infected mosquitoes (N)
 Z               Infectious mosquitoes (N)
 
-## Input variables
+## Input and output
 
 Variable            Description
 ------------------  -----------------------------------------------
 kappa ($\kappa$)    Net infectiousness of humans to mosquitoes (N)
+$aZ$                Infectious bites of humans per day (N)
+
+We want to calculate the number of infectious bites per human per day,
+called the entomological inoculation rate (EIR). This module knows
+the mosquitoes, not the humans. If this module returns $aZ$,
+that's the correct quantity because it let's the bloodmeal calculate
+the EIR. We can derive that using Box 2 in the Smith 2012
+paper. We expect the EIR to be $maz$ where
+$m = M / H$, with $H$ the number of humans, and $z=Z/M$.
+In terms of our variables, $maz = aZ/H$. So we provide $aZ$,
+and the bloodmeal provides the denominator, $H$.
+
+What if there are no people in the patch? Do we assume
+mosquitoes move to other hosts? This could mean we need to
+pass the humans-per-patch to the mosquito module.
 
 
 ## Aquatic Dynamics
@@ -194,7 +209,7 @@ We use $\beta = a Z$ for the biting rate. That means
 the EIR is calculated from $\beta$, the biting weight $\omega_p$
 for a patch, and the biting weight for a particular human, $\omega_h$.
 $$
-  \mbox{EIR} = \max(0, \beta \omega_p / \omega_h)
+  \mbox{EIR} = \beta \omega_p / \omega_h
 $$
 The mosquitoes get infected at a rate determined by the
 biting weight of all infectious humans.
@@ -271,4 +286,9 @@ rest of the variables.
 
 # Bibliography
 
-Smith, David L., et al. "Ross, Macdonald, and a theory for the dynamics and control of mosquito-transmitted pathogens." PLoS pathog 8.4 (2012): e1002588.
+Reiner Jr, Robert C., et al. "Estimating malaria transmission from
+humans to mosquitoes in a noisy landscape." Journal of the Royal Society Interface
+12.111 (2015): 20150478.
+
+Smith, David L., et al. "Ross, Macdonald, and a theory for the dynamics and control of
+mosquito-transmitted pathogens." PLoS pathog 8.4 (2012): e1002588.
