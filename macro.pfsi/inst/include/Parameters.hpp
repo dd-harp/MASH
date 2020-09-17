@@ -73,10 +73,6 @@ public:
     /* fill hash table */
     for(u_int i=0; i<pars.size(); i++){
 
-      // std::string parname(Rcpp::as<std::string>(par_names[i]));
-      // double parvalue = Rcpp::as<double>(pars[i]);
-      // std::cout << "making i: " << i << "th parameter, name: " << parname << " value: " << parvalue << "\n";
-
       pars_map.insert(std::make_pair(
         Rcpp::as<std::string>(par_names[i]),
         Rcpp::as<double>(pars[i])
@@ -84,10 +80,21 @@ public:
 
     }
 
+    // other parameters
+    travel_vaxx = Rcpp::as<bool>(pars["travel_vaxx"]);
+    travel_treat = Rcpp::as<bool>(pars["travel_treat"]);
+
   };
+
+  // other paramters
+  bool            get_travel_vaxx(){return travel_vaxx;};
+  bool            get_travel_treat(){return travel_treat;};
 
 private:
   std::unordered_map<std::string, double>      pars_map;
+
+  bool                                         travel_vaxx;
+  bool                                         travel_treat;
 };
 
 #endif

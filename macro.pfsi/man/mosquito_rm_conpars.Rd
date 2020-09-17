@@ -4,8 +4,19 @@
 \alias{mosquito_rm_conpars}
 \title{Mosquito-RM: Constructor Parameters}
 \usage{
-mosquito_rm_conpars(N, lambda, psi, EIP, p = 0.9, f = 0.3, Q = 0.9,
-  v = 20, M, Y, Z)
+mosquito_rm_conpars(
+  N,
+  lambda,
+  psi,
+  EIP,
+  p = 0.9,
+  f = 0.3,
+  Q = 0.9,
+  v = 20,
+  M,
+  Y,
+  Z
+)
 }
 \arguments{
 \item{N}{integer number of patches}

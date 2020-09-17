@@ -4,8 +4,17 @@
 \alias{human_pfsi_conpars}
 \title{Human-PfSI: Individual Constructor Parameters}
 \usage{
-human_pfsi_conpars(id, home_patch_id, trip_duration, trip_frequency,
-  bweight, age, state, bite_algorithm, bite_disp = NaN)
+human_pfsi_conpars(
+  id,
+  home_patch_id,
+  trip_duration,
+  trip_frequency,
+  bweight,
+  age,
+  state,
+  bite_algorithm,
+  bite_disp = NaN
+)
 }
 \arguments{
 \item{id}{integer id of this person}
