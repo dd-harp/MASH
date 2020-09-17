@@ -4,11 +4,28 @@
 \alias{pfsi_parameters}
 \title{PfSI Parameters}
 \usage{
-pfsi_parameters(Pf_c = 0.15, Pf_b = 0.55, DurationPf = 200,
-  LatentPf = 10, FeverPf = 0.3, mnFeverPf = 10, vrFeverPf = 0.1,
-  TreatPf = 0.5, mnTreatPf = 1, mnChemoprophylaxisPf = 32,
-  PEProtectPf = 0.99, peBlockPf = 1, mnPEPf = 270, vrPEPf = 50,
-  GSProtectPf = 1, gsBlockPf = 0.9, mnGSPf = 180, vrGSPf = 20)
+pfsi_parameters(
+  Pf_c = 0.15,
+  Pf_b = 0.55,
+  DurationPf = 200,
+  LatentPf = 10,
+  FeverPf = 0.3,
+  mnFeverPf = 10,
+  vrFeverPf = 0.1,
+  TreatPf = 0.5,
+  mnTreatPf = 1,
+  mnChemoprophylaxisPf = 32,
+  PEProtectPf = 0.99,
+  peBlockPf = 1,
+  mnPEPf = 270,
+  vrPEPf = 50,
+  GSProtectPf = 1,
+  gsBlockPf = 0.9,
+  mnGSPf = 180,
+  vrGSPf = 20,
+  travel_vaxx = FALSE,
+  travel_treat = FALSE
+)
 }
 \arguments{
 \item{Pf_c}{human to mosquito transmission efficiency}
@@ -46,6 +63,10 @@ pfsi_parameters(Pf_c = 0.15, Pf_b = 0.55, DurationPf = 200,
 \item{mnGSPf}{mean duration of protection from GS vaccination (Gaussian)}
 
 \item{vrGSPf}{standard deviation of protection from GS vaccination (Gaussian)}
+
+\item{travel_vaxx}{when someone goes to a reservoir patch, do they get vaccinated immediately before?}
+
+\item{travel_treat}{when someone goes to a reservoir patch, do they get treated immediately before? (is conditional on vaccination)}
 }
 \description{
 Parameters for the 'PfSI' model of human infection dynamics

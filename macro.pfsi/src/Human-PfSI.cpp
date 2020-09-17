@@ -197,6 +197,27 @@ void human::initialize_movement(){
 
   addEvent2Q(e_move_takeTrip(trip_t,dest_id,this));
 
+  /* vaccinate/treat upon travel */
+  if(tileP->get_patch(dest_id)->get_reservoir()){
+
+    /* vaccine */
+    if(tileP->get_params()->get_travel_vaxx()){
+
+      /* prophylaxis? */
+      bool treat(tileP->get_params()->get_travel_treat());
+      addEvent2Q(e_pfsi_pevaxx(trip_t - 1E-10, treat, this));
+
+    /* no vaccine */
+    } else {
+
+      /* prophylaxis? */
+      if(tileP->get_params()->get_travel_treat()){
+        addEvent2Q(e_pfsi_treatment(trip_t - 1E-10, this));
+      }
+
+    }
+  }
+
 };
 
 

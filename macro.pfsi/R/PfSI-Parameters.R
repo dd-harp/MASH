@@ -36,6 +36,8 @@
 #' @param gsBlockPf vaccine effectiveness (reduction in probability of transmission 'c' given challenge)
 #' @param mnGSPf mean duration of protection from GS vaccination (Gaussian)
 #' @param vrGSPf standard deviation of protection from GS vaccination (Gaussian)
+#' @param travel_vaxx when someone goes to a reservoir patch, do they get vaccinated immediately before?
+#' @param travel_treat when someone goes to a reservoir patch, do they get treated immediately before? (is conditional on vaccination)
 #'
 #' @export
 pfsi_parameters <- function(
@@ -56,26 +58,30 @@ pfsi_parameters <- function(
     GSProtectPf = 1,
     gsBlockPf = .9,
     mnGSPf = 180,
-    vrGSPf = 20
+    vrGSPf = 20,
+    travel_vaxx = FALSE,
+    travel_treat = FALSE
   ){
   list(
-    Pf_c = Pf_c,
-    Pf_b = Pf_b,
-    DurationPf = DurationPf,
-    LatentPf = LatentPf,
-    FeverPf = FeverPf,
-    mnFeverPf = mnFeverPf,
-    vrFeverPf = vrFeverPf,
-    TreatPf = TreatPf,
-    mnTreatPf = mnTreatPf,
-    mnChemoprophylaxisPf = mnChemoprophylaxisPf,
-    PEProtectPf = PEProtectPf,
-    peBlockPf = peBlockPf,
-    mnPEPf = mnPEPf,
-    vrPEPf = vrPEPf,
-    GSProtectPf = GSProtectPf,
-    gsBlockPf = gsBlockPf,
-    mnGSPf = mnGSPf,
-    vrGSPf = vrGSPf
+    Pf_c = as.numeric(Pf_c),
+    Pf_b = as.numeric(Pf_b),
+    DurationPf = as.numeric(DurationPf),
+    LatentPf = as.numeric(LatentPf),
+    FeverPf = as.numeric(FeverPf),
+    mnFeverPf = as.numeric(mnFeverPf),
+    vrFeverPf = as.numeric(vrFeverPf),
+    TreatPf = as.numeric(TreatPf),
+    mnTreatPf = as.numeric(mnTreatPf),
+    mnChemoprophylaxisPf = as.numeric(mnChemoprophylaxisPf),
+    PEProtectPf = as.numeric(PEProtectPf),
+    peBlockPf = as.numeric(peBlockPf),
+    mnPEPf = as.numeric(mnPEPf),
+    vrPEPf = as.numeric(vrPEPf),
+    GSProtectPf = as.numeric(GSProtectPf),
+    gsBlockPf = as.numeric(gsBlockPf),
+    mnGSPf = as.numeric(mnGSPf),
+    vrGSPf = as.numeric(vrGSPf),
+    travel_vaxx = as.logical(travel_vaxx),
+    travel_treat = as.logical(travel_treat)
   )
 }
