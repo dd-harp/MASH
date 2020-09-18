@@ -58,7 +58,7 @@ test_that("mosquito-rm maternal stable population is stable", {
 
   kappa <- 0.2
   kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mrm_copy_state(state)
+  initial_state <- mosquito_rm_copy_state(state)
   for (i in 1:10) {
     state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
   }
@@ -80,7 +80,7 @@ test_that("mosquito-rm aggregates Y0 geometrically", {
 
   kappa <- 0.2
   kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mrm_copy_state(state)
+  initial_state <- mosquito_rm_copy_state(state)
   for (i in 1:100) {
     state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
   }
@@ -103,7 +103,7 @@ test_that("mosquito-rm incubating is stable", {
 
   kappa <- 0.2
   kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mrm_copy_state(state)
+  initial_state <- mosquito_rm_copy_state(state)
   for (i in 1:100) {
     state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
   }
@@ -128,7 +128,7 @@ test_that("mosquito-rm infectious is stable", {
 
   kappa <- 0.2
   kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mrm_copy_state(state)
+  initial_state <- mosquito_rm_copy_state(state)
   for (i in 1:100) {
     state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
   }
@@ -155,7 +155,7 @@ test_that("mosquito-rm lag is correct for EIP", {
 
   kappa <- 0.2
   kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mrm_copy_state(state)
+  initial_state <- mosquito_rm_copy_state(state)
   iteration_cnt <- 100
   running_z <- numeric(iteration_cnt)
   for (i in 1:iteration_cnt) {

@@ -70,11 +70,11 @@ look_back_eip <- function(EIP) {
 #' @param N The size of the square matrix.
 #' @return A square matrix. You right-multiply a population, and it gets
 #'     a day older by moving a column to the right.
-#' 
+#'
 #' This is for half-open intervals, meaning the last column of the matrix
 #' doesn't shift. It accumulates individuals that are added from the previous
 #' day. This number will be gradually reduced by the survival.
-#' 
+#'
 #' @export
 shift_with_open_interval <- function(N) {
   y_shift <- diag(c(numeric(N - 1), 1))
@@ -116,7 +116,7 @@ build_internal_parameters <- function(parameters) {
 #'       \item \eqn{Y} are incubating mosquitoes, one for each patch, and one for each day
 #'         of the EIP, so it's a matrix (patch x EIP day). The first column is newly-hatched.
 #'         The last column are those incubating mosquitoes that are beyond the EIP.
-#'       \item \eqn{Z} are infectious mosquitoes. 
+#'       \item \eqn{Z} are infectious mosquitoes.
 #'       \item \code{simulation_day} This is the count of the number of days into the simulation.
 #'     }
 #' @export
@@ -140,7 +140,7 @@ build_biting_state <- function(infectious, replacement, maxEIP) {
 #' @param state A list of the state
 #' @return A copy of the state. No changes.
 #' @export
-mrm_copy_state <- function(state) {
+mosquito_rm_copy_state <- function(state) {
   with(state, {
     list(M = M, Y = Y, Z = Z, simulation_day = simulation_day)
   })
@@ -187,4 +187,40 @@ mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic = mosquito_rm
       Y[, 1] <- Y0
     })
   })
+}
+
+
+mosquito_rm_module <- function(parameters) {
+  infectious <- rep(0.4, parameters$N)
+  mortality <- 1 - parameters$p
+  module <- list(
+    parameters = build_internal_parameters(parameters),
+    state = build_biting_state(infectious, mortality, parameters$maxEIP)
+    )
+  class(module) <- "mosquito_rm"
+  module
+}
+
+
+mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
+  params <- module$parameters
+  past_kappa <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
+  today_state <- module$state
+  for (i in 1:10) {
+    today_state <- mosquito_rm_dynamics(today_state, params, past_kappa)
+  }
+  future_kappa <- mosquito_rm_average_kappa(past_kappa)
+  future_state <- mosquito_rm_copy_state(today_state)
+  output <- NULL
+  for (i in 1:10) {
+    future_state <- mosquito_rm_dynamics(future_state, params, future_kappa)
+    output <- aggregate_state(output, future_state)
+  }
+  result <- list(
+    parameters = module$parameters,
+    state = today_state,
+    output = output
+  )
+  class(result) <- "mosquito_rm"
+  result
 }
