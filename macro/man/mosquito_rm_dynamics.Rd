@@ -2,7 +2,7 @@
 % Please edit documentation in R/mosquito_rm.R
 \name{mosquito_rm_dynamics}
 \alias{mosquito_rm_dynamics}
-\title{Dynamics of R-M mosquitoes.}
+\title{Dynamics of Ross-Macdonald mosquitoes.}
 \usage{
 mosquito_rm_dynamics(state, parameters, kappa, aquatic = mosquito_rm_aquatic)
 }
@@ -14,8 +14,12 @@ mosquito_rm_dynamics(state, parameters, kappa, aquatic = mosquito_rm_aquatic)
 \item{kappa}{Net infectiousness of humans to mosquitoes, the probability
 a mosquito becomes infected after feeding on a human. Vector per patch.}
 
-\item{aquatic}{The function to call to get the emergence.}
+\item{aquatic}{The function to call to get the emergence.
+
+This is a single-day dynamics step for a discrete-time analog
+of the Ross-Macdonald model. The aquatic lifecycle is stochastic, but
+the rest is deterministic.}
 }
 \description{
-Dynamics of R-M mosquitoes.
+Dynamics of Ross-Macdonald mosquitoes.
 }

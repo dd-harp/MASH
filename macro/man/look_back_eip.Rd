@@ -7,10 +7,14 @@
 look_back_eip(EIP)
 }
 \arguments{
-\item{EIP}{a vector of the EIP on a day of the year.
+\item{EIP}{a vector of the EIP on a day of the year.}
+}
+\value{
+A list, 365 days long, where each entry is the day from
+which to get the newly-adult mosquitoes.
 
 It tells you how many days back to get the newly-infected
-mosquitoes. The value is a ragged array by day of year.}
+mosquitoes. The value is a ragged array by day of year.
 }
 \description{
 This reverses the list of EIP per day of the year.

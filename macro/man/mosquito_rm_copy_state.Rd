@@ -10,7 +10,7 @@ mosquito_rm_copy_state(state)
 \item{state}{A list of the state}
 }
 \value{
-A copy of the state. No changes.
+A copy of the state with no changes.
 }
 \description{
 Make a copy of the state of the Mosqutio-RM model.
