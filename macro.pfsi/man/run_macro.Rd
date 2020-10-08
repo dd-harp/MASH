@@ -4,8 +4,16 @@
 \alias{run_macro}
 \title{Run a MACRO :: PfSI (CoI) - RM (mosquito) Simulation}
 \usage{
-run_macro(tmax, human_pars, mosquito_pars, patch_pars, model_pars,
-  log_streams, vaxx_events, verbose = TRUE)
+run_macro(
+  tmax,
+  human_pars,
+  mosquito_pars,
+  patch_pars,
+  model_pars,
+  log_streams,
+  vaxx_events,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{tmax}{a non-negative integer maximum simulation time (simulation runs from day 0 to tmax-1)}

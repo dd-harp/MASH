@@ -14,8 +14,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-# PfSI Example
-
 This vignette shows how to run the MACRO model in this package: the PfSI course of infection (CoI) which is coupled to a 1-day time-step Ross-Macdonald (RM) mosquito model. 
 
 ## One Simulation Run
@@ -105,7 +103,7 @@ vaxx_pars <- lapply(X = vaxx_id,FUN = function(id){
 
 Now all the parameters have been specified so we are ready to sample a single trajectory from the stochastic model. We just set up the data structure that the C++ logger needs to know where to write out data and then we can run MACRO. After that we show some visualizations of the trajectory. The visualization is just for a confirmation that the model ran correctly and not intended for analysis, which will depend on the specific questions being investigated.
 
-```{r}
+```{r,fig.width=9, fig.height=6,message=FALSE,warning=FALSE}
 log_pars <- list()
 h_inf <- paste0(path,"pfsi.csv")
 log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
@@ -142,7 +140,7 @@ ggplot(pfsi_pr) +
 
 Here we use the same initial conditions and sample 100 trajectories from the stochastic model.
 
-```{r}
+```{r,fig.width=9, fig.height=6,message=FALSE,warning=FALSE}
 # run ensemble
 nrun <- 1e2
 tsteps <- 1e3

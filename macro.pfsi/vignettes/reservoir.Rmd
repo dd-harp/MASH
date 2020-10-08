@@ -1,0 +1,177 @@
+---
+title: "Example with Reservoir Patches"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Example with Reservoir Patches}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(macro.pfsi)
+```
+
+# Reservoir Patches
+
+In some situations, we want certain patches to be reservoirs, that is, they should not have any mosquitoes, and individuals are subject to a constant FOI when they are in that patch. When people travel to that patch, we additionally allow them to recieve any combination (including none) of vaccination and prophylaxis.
+
+## Short Example
+
+The first thing we will want to do is load the necessary packages and set output paths. When we set the output path we check if the directory exists, and if it does, we *clear out* any existing files that are there (so please don't set to your root directory)! We do this to avoid errors when reading output. At this point we also go ahead and set the random seed, because this version of MACRO uses R's random number generator through the C API because of its ease of use and quality.
+
+```{r}
+# output path
+path <- "output/"
+if(!dir.exists(path)){
+  dir.create(path)
+} else {
+  files <- list.files(path)
+  if(length(files) > 0){
+    for(f in files){
+      file.remove(paste0(path,f))
+    }
+  }
+}
+
+# seed
+set.seed(42L)
+
+library(macro.pfsi)
+
+# Matrix for sparse mosquito diffusion matrices
+library(Matrix)
+# tidyverse and Hmisc for output visualization; I prefer to use tidyverse but the output can be analyzed with base plots just fine
+library(tidyverse)
+library(Hmisc)
+```
+
+The next thing we do is set up parameters and initial conditions of the simulation. We'll just make 2 nodes, one is a reservoir. Travellers will recieve both sporozoite-block vaccination and prophylaxis upon travel to that reservoir.
+
+```{r}
+# vector of parameters
+pfsi_pars <- pfsi_parameters(travel_vaxx = TRUE,travel_treat = TRUE)
+
+# set up patches (n is how many patches we have)
+n <- 2
+# movement matrix for humans is uniform over possible destinations.
+move <- matrix(data = 1/(n-1),nrow = n,ncol = n)
+diag(move) <- 0
+patch_pars <- patches_parameters(move = move,bWeightZoo = rep(0,n),bWeightZootox = rep(0,n),reservoir = c(F,T),res_EIR = c(0,120/365))
+
+# mosquitos
+psi <- Matrix::sparseMatrix(i = {},j = {},x = 0.0,dims = c(1,1))
+diag(psi) <- 1
+mosy_pars <- mosquito_rm_conpars(N = 1,lambda = matrix(50,nrow = 365,ncol = 1),
+                                 psi = psi,EIP = rep(11,365),M = rep(450,1),Y = rep(0,1),Z = rep(0,1))
+
+# humans
+patch_sizes <- rep(1e3,n) # number of people in each patch
+pfpr <- c(0.5,0.1) # malaria prevalence in each patch
+nh <- sum(patch_sizes) # total num of humans
+
+# sample S or I for each person
+init_state <- unlist(mapply(FUN = function(n,pr){
+  sample(x = c("I","S"),size = n,replace = T,prob = c(pr,1-pr))
+},n=patch_sizes,pr=pfpr,SIMPLIFY = F))
+
+# where the people go (0-indexed for c++)
+patch_id <- rep(0:(n-1),times=patch_sizes)
+
+# uniform biting weights; this could follow any density on the positive reals (gamma, log-normal, weibull, etc.)
+bweights <- rep(1,nh)
+
+# the data structure that will be passed down to C++ to construct the human pop
+human_pars <- vector("list",nh)
+for(i in 1:nh){
+  human_pars[[i]] <- human_pfsi_conpars(id = i-1,home_patch_id = patch_id[i],
+                                        trip_duration = rep(3,n),trip_frequency = 1/20,bweight = bweights[i],
+                                        age = 20,state = init_state[i],bite_algorithm = 0)
+}
+
+vaxx_pars <- list()
+```
+
+Now all the parameters have been specified so we are ready to sample a single trajectory from the stochastic model. We just set up the data structure that the C++ logger needs to know where to write out data and then we can run MACRO. After that we show some visualizations of the trajectory. The visualization is just for a confirmation that the model ran correctly and not intended for analysis, which will depend on the specific questions being investigated.
+
+```{r,fig.width=9, fig.height=6}
+log_pars <- list()
+h_inf <- paste0(path,"pfsi.csv")
+log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
+                      header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
+                    )
+mosy <- paste0(path,"mosy.csv")
+log_pars[[2]] <- list(outfile = mosy,key = "mosquito",
+                      header = paste0(c("time","state",paste0("patch",1:n)),collapse = ","))
+
+run_macro(tmax = 365*5,
+          human_pars = human_pars,
+          mosquito_pars = mosy_pars,
+          patch_pars = patch_pars,
+          model_pars = pfsi_pars,
+          log_streams = log_pars,
+          vaxx_events = vaxx_pars,
+          verbose = T)
+
+pfsi <- readr::read_csv("output/pfsi.csv")
+
+pfsi_pr <- pfsi %>%
+  select(-ends_with("away")) %>%
+  select(-starts_with("incidence")) %>%
+  gather(key, value, -time,-patch)
+
+ggplot(pfsi_pr) +
+  geom_line(aes(x=time,y=value,color=key)) +
+  facet_wrap(. ~ patch) +
+  theme_bw()
+```
+
+## No Protection
+
+Compare the above results to the situation where travelers recieve neither vaccination or prophylaxis.
+
+```{r,fig.width=9, fig.height=6}
+pfsi_pars <- pfsi_parameters(travel_treat = FALSE,travel_vaxx = FALSE)
+
+log_pars <- list()
+h_inf <- paste0(path,"pfsi_no.csv")
+log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
+                      header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
+                    )
+mosy <- paste0(path,"mosy_no.csv")
+log_pars[[2]] <- list(outfile = mosy,key = "mosquito",
+                      header = paste0(c("time","state",paste0("patch",1:n)),collapse = ","))
+
+run_macro(tmax = 365*5,
+          human_pars = human_pars,
+          mosquito_pars = mosy_pars,
+          patch_pars = patch_pars,
+          model_pars = pfsi_pars,
+          log_streams = log_pars,
+          vaxx_events = vaxx_pars,
+          verbose = T)
+
+pfsi <- readr::read_csv("output/pfsi_no.csv")
+
+pfsi_pr <- pfsi %>%
+  select(-ends_with("away")) %>%
+  select(-starts_with("incidence")) %>%
+  gather(key, value, -time,-patch)
+
+ggplot(pfsi_pr) +
+  geom_line(aes(x=time,y=value,color=key)) +
+  facet_wrap(. ~ patch) +
+  theme_bw()
+```
+
+```{r, echo=FALSE}
+# just for cleaning out the vignettes folder in the package
+unlink(x = path, recursive = TRUE)
+rm(list=ls())
+```

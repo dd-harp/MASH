@@ -19,6 +19,9 @@
 #include "Patch.hpp"
 #include "Parameters.hpp"
 
+// for vaxx upon travel
+#include "Event-PfSI.hpp"
+
 // for categorial rv
 #include "RNG.hpp"
 
@@ -68,6 +71,27 @@ e_move_returnHome::e_move_returnHome(const double tEvent_, human* h) :
     int dest_id = rcategorical(h->get_patch()->get_move());
     double trip_t = tEvent_ + R::rexp(1./h->get_trip_frequency());
     h->addEvent2Q(e_move_takeTrip(trip_t,dest_id,h));
+
+    /* vaccinate/treat upon travel */
+    if(h->get_tile()->get_patch(dest_id)->get_reservoir()){
+
+      /* vaccine */
+      if(h->get_tile()->get_params()->get_travel_vaxx()){
+
+        /* prophylaxis? */
+        bool treat(h->get_tile()->get_params()->get_travel_treat());
+        h->addEvent2Q(e_pfsi_pevaxx(trip_t - 1E-10, treat, h));
+
+      /* no vaccine */
+      } else {
+
+        /* prophylaxis? */
+        if(h->get_tile()->get_params()->get_travel_treat()){
+          h->addEvent2Q(e_pfsi_treatment(trip_t - 1E-10, h));
+        }
+
+      }
+    }
 
   })
 {
