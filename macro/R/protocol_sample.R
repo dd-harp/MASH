@@ -105,3 +105,43 @@ sample_mosquito_half_bites <- function(bite_cnt = 10L, place_cnt = 3L, time_step
   events[order(Location, Time)]
 
 }
+
+
+
+#' Create a sample dataset from mosquitoes to bloodmeal.
+#'
+#' @param place_cnt Integer number of locations to do the biting.
+#' @param time_step Duration of time step within which to bite.
+#'
+#' @export
+sample_mosquito_kappa <- function(place_cnt = 3L, time_step = 10.0) {
+  infected_rate <- runif(place_cnt, 0, 100)
+  step_cnt <- as.integer(time_step)
+  bites <- sapply(infected_rate, function(x) {rpois(step_cnt, x)})
+  events <- data.table(
+    Location = rep(1:3, step_cnt),
+    Bites = as.numeric(t(bites)),
+    Time = rep(1:step_cnt - 1, each = place_cnt)
+  )
+  events
+}
+
+
+
+#' Create a sample dataset from bloodmeal to mosquitoes.
+#'
+#' @param place_cnt Integer number of locations to do the biting.
+#' @param time_step Duration of time step within which to bite.
+#'
+#' @export
+sample_mosquito_eip <- function(place_cnt = 3L, time_step = 10.0) {
+  infected_rate <- runif(place_cnt, 0, 100)
+  step_cnt <- as.integer(time_step)
+  bites <- sapply(infected_rate, function(x) {rpois(step_cnt, x)})
+  events <- data.table(
+    Location = rep(1:3, step_cnt),
+    EIP = as.numeric(t(bites)),
+    Time = rep(1:step_cnt - 1, each = place_cnt)
+  )
+  events
+}
