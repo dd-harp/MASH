@@ -170,6 +170,16 @@ test_that("mosquito-rm lag is correct for EIP", {
 })
 
 
+test_that("mosquito-rm converts incoming kappa to internal shape", {
+  patch_cnt <- 5
+  duration <- 10
+  kappa_dt <- sample_mosquito_kappa(patch_cnt, duration)
+  kappa <- mosquito_rm_convert_bloodmeal(kappa_dt)
+  expect_equal(dim(kappa)[1], patch_cnt)
+  expect_equal(dim(kappa)[2], duration)
+})
+
+
 test_that("mosquito-rm module can do a time step", {
   patch_cnt <- 5L
   user_parameters <- build_biting_parameters(patch_cnt)

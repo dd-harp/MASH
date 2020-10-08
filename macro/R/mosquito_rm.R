@@ -220,7 +220,8 @@ mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic = mosquito_rm
 #' @return A matrix of kappa for the mosquito_rm model.
 #'     Dimensions are N x duration of the time step.
 mosquito_rm_convert_bloodmeal <- function(bloodmeal_dt) {
-  numeric(5)
+  places <- sort(unique(bloodmeal_dt$Location))
+  matrix(bloodmeal_dt[order(Time, Location)]$Bites, nrow = length(places))
 }
 
 
@@ -329,7 +330,7 @@ mosquito_rm_discrete_step <- function(module, past_kappa) {
   }
   list(
     state = today_state,
-    future_state = future_state,
+    future_state = future_state,  # Pass future state in order to check it.
     output = do.call(cbind, output)
   )
 }
