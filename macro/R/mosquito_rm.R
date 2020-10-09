@@ -353,3 +353,24 @@ mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
   class(result) <- "mosquito_rm"
   result
 }
+
+
+#' Get the output of the time step for Ross Macdonald mosquitoes.
+#'
+#' @param module A `mosquito_rm` module.
+#' @return A data.table with three columns, `Bites`, `Location`, and
+#'     `Time`.
+#' @export
+observe_bloodmeal_mosquito.mosquito_rm <- function(module) {
+  bites <- as.numeric(module$output)
+  place_cnt <- module$parameters$N
+  day_cnt <- module$parameters$duration
+
+  places <- rep(1:place_cnt, day_cnt)
+  days <- rep(1:day_cnt, each = place_cnt)
+  data.table(
+    Bites = bites,
+    Location = places,
+    Time = days - 1  # -1 because time starts at 0.
+    )
+}

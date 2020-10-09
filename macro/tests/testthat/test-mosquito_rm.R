@@ -180,11 +180,33 @@ test_that("mosquito-rm converts incoming kappa to internal shape", {
 })
 
 
-test_that("mosquito-rm module can do a time step", {
+test_that("mosquito-rm module internals can do a ten-day time step", {
   patch_cnt <- 5L
   user_parameters <- build_biting_parameters(patch_cnt)
   module <- mosquito_rm_module(user_parameters)
   past_kappa <- matrix(rep(0.2, patch_cnt * user_parameters$duration), nrow = patch_cnt)
   chunk_step <- mosquito_rm_discrete_step(module, past_kappa)
   expect_equal(names(module$state), names(chunk_step$state))
+})
+
+
+test_that("mosquito-rm module can do a time step", {
+  patch_cnt <- 5L
+  user_parameters <- build_biting_parameters(patch_cnt)
+  module_initial <- mosquito_rm_module(user_parameters)
+  bloodmeal_dt <- sample_mosquito_kappa(patch_cnt, user_parameters$duration)
+  module <- mash_step(module_initial, bloodmeal_dt)
+  expect_equal(names(module_initial), names(module))
+  expect_equal(dim(module$output), c(patch_cnt, user_parameters$duration))
+})
+
+
+
+test_that("mosquito-rm module can do a time step", {
+  patch_cnt <- 5L
+  user_parameters <- build_biting_parameters(patch_cnt)
+  module <- mosquito_rm_module(user_parameters)
+  module$ouput <- matrix(nrow = patch_cnt, ncol = user_parameters$duration)
+  bites_dt <- observe_bloodmeal_mosquito(module)
+  expect_equal(nrow(bites_dt), patch_cnt * user_parameters$duration)
 })
