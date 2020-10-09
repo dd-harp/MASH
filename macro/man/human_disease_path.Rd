@@ -6,6 +6,9 @@
 \usage{
 human_disease_path(human_module)
 }
+\arguments{
+\item{human_module}{The module for human health.}
+}
 \description{
 Extract the health status of every person from a health module.
 }

@@ -201,12 +201,11 @@ test_that("mosquito-rm module can do a time step", {
 })
 
 
-
-test_that("mosquito-rm module can do a time step", {
+test_that("mosquito-rm module can observe results", {
   patch_cnt <- 5L
   user_parameters <- build_biting_parameters(patch_cnt)
   module <- mosquito_rm_module(user_parameters)
-  module$ouput <- matrix(nrow = patch_cnt, ncol = user_parameters$duration)
-  bites_dt <- observe_bloodmeal_mosquito(module)
+  module$output <- matrix(nrow = patch_cnt, ncol = user_parameters$duration)
+  bites_dt <- mosquito_path(module)
   expect_equal(nrow(bites_dt), patch_cnt * user_parameters$duration)
 })

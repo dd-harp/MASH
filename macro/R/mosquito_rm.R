@@ -361,7 +361,7 @@ mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
 #' @return A data.table with three columns, `Bites`, `Location`, and
 #'     `Time`.
 #' @export
-observe_bloodmeal_mosquito.mosquito_rm <- function(module) {
+mosquito_path.mosquito_rm <- function(module) {
   bites <- as.numeric(module$output)
   place_cnt <- module$parameters$N
   day_cnt <- module$parameters$duration
