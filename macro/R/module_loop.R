@@ -62,14 +62,6 @@ human_disease_path <- function(human_module) {
 }
 
 
-#' Observe data from mosquitoes that goes to the bloodmeal.
-#' @param mosquito_module The module for mosquito life cycle.
-#' @export
-observe_bloodmeal_mosquito <- function(mosquito_module) {
-  UseMethod("observe_bloodmeal_mosquito", mosquito_module)
-}
-
-
 #' Main loop for a MASH simulation to run a discrete time step.
 #'
 #' @param modules A list of modules, named `location`, `bloodmeal`,
@@ -96,28 +88,39 @@ step_mainloop <- function(modules, observer, step_cnt = 1) {
   location <- modules$location
   bloodmeal <- modules$bloodmeal
   health <- modules$health
+  mosquito <- modules$mosquito
 
+  # These two modules take the past data and yield future data.
   health_path <- human_disease_path(health)
+  mosquito_trajectory <- mosquito_path(mosquito)
+
   for (step_idx in 1:step_cnt) {
     observe_begin_step(observer, step_idx)
 
+    # Location depends on current health.
     location <- mash_step(location, health_path)
     location_path <- location_path(location)
-    observe_location(observer, location_path)
+    observe_location(observer, location_path, step_idx)
 
-    bloodmeal <- mash_step(bloodmeal, location_path, health_path)
-    bloodmeal_path <- infects_human_path(bloodmeal)
-    bloodmeal_human <- observe_bloodmeal_human(observer, bloodmeal_path)
-    # Cannot test these steps yet.
-    # bloodmeal_mosquito_path <- infects_mosquito_path(bloodmeal)
-    # bloodmeal_mosquito <- observe_bloodmeal_mosquito(observer, bloodmeal_path)
+    # Bloodmeal is the central piece where things come together.
+    bloodmeal <- mash_step(bloodmeal, health_path, location_path, mosquito_trajectory)
+    human_bloodmeal_path <- infects_human_path(bloodmeal)
+    mosquito_bloodmeal_path <- mosquito_path(bloodmeal)
+    observe_bloodmeal_human(observer, human_bloodmeal_path, step_idx)
+    observe_bloodmeal_mosquito(observer, mosquito_bloodmeal_path, step_idx)
 
-    health <- mash_step(health, bloodmeal_path)
+    # The mosquito moves us to the next step.
+    mosquito <- mash_step(mosquito, mosquito_bloodmeal_path)
+    mosquito_trajectory <- mosquito_path(mosquito)
+    observe_mosquito(mosquito, mosquito_trajectory, step_idx)
+
+    # Health moves us to the next step.
+    health <- mash_step(health, human_bloodmeal_path)
     health_path <- human_disease_path(health)
-    observe_health(observer, health_path)
+    observe_health(observer, health_path, step_idx)
 
     observe_end_step(observer, step_idx)
   }
 
-  list(location = location, bloodmeal = bloodmeal, health = health)
+  list(location = location, bloodmeal = bloodmeal, health = health, mosquito = mosquito)
 }

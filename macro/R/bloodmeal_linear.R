@@ -1,5 +1,10 @@
 library(data.table)
 
+#' Converts from incoming wide format data table to a long one.
+#' @param location_dt Data table with one individual per row and two columns
+#'     for each movement. One column for when, one for where.
+#' @return Output data table is a sequence of movements, so columns are
+#'     person, time, source, destination.
 convert_to_source_destination <- function(location_dt) {
   location_linear <- location_dt[, .(ID = ID, Previous = NA, Location = Start, Time = 0.0)]
   step_cnt <- length(grep("Time", names(location_dt)))
@@ -22,6 +27,8 @@ convert_to_source_destination <- function(location_dt) {
 }
 
 
+#' Takes location movements and turns them into a sequence of entering
+#' leaving events for each location.
 convert_to_enter_events <- function(location_changes_dt) {
   enter <- location_changes_dt[
     , .(ID = ID, Location = Location, Time = Time, Event = 1)]
@@ -32,6 +39,11 @@ convert_to_enter_events <- function(location_changes_dt) {
 }
 
 
+#' Converts wide data table of health events into a long one.
+#' @param health_dt One row per individual, two columns per change.
+#'     The two columns are for time and state.
+#' @param Output data table is ID, Level, Time, with a row for each
+#'     change for each person, plus starting rows for starting states.
 health_as_events <- function(health_dt) {
   h0 <- health_dt[, .(ID = ID, Level = Start, Time = 0.0)]
   step_cnt <- length(grep("Time", names(health_dt)))
