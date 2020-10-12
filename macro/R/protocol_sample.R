@@ -119,7 +119,7 @@ sample_mosquito_kappa <- function(place_cnt = 3L, time_step = 10.0) {
   step_cnt <- as.integer(time_step)
   bites <- sapply(infected_rate, function(x) {rpois(step_cnt, x)})
   events <- data.table(
-    Location = rep(1:3, step_cnt),
+    Location = rep(1:place_cnt, step_cnt),
     Bites = as.numeric(t(bites)),
     Time = rep(1:step_cnt - 1, each = place_cnt)
   )

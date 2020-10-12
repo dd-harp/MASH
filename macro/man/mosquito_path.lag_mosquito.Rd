@@ -4,7 +4,7 @@
 \alias{mosquito_path.lag_mosquito}
 \title{Get the trajectory from a simulation time step.}
 \usage{
-mosquito_path.lag_mosquito(simulation)
+\method{mosquito_path}{lag_mosquito}(simulation)
 }
 \arguments{
 \item{simulation}{an exponential bites simulation object.}

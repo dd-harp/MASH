@@ -2,12 +2,12 @@
 % Please edit documentation in R/mosquito_rm.R
 \name{shift_with_open_interval}
 \alias{shift_with_open_interval}
-\title{Makes a shift matrix that accumulates the oldest.}
+\title{Makes a shift matrix that accumulates the oldest age group.}
 \usage{
 shift_with_open_interval(N)
 }
 \arguments{
-\item{N}{The size of the square matrix.}
+\item{N}{The integer size of the square matrix.}
 }
 \value{
 A square matrix. You right-multiply a population, and it gets
@@ -18,5 +18,5 @@ doesn't shift. It accumulates individuals that are added from the previous
 day. This number will be gradually reduced by the survival.
 }
 \description{
-Makes a shift matrix that accumulates the oldest.
+Makes a shift matrix that accumulates the oldest age group.
 }

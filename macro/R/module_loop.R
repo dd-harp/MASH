@@ -49,15 +49,24 @@ infects_human_path <- function(bloodmeal_module) {
 #' Extract all bites that are infectious to a mosquito from a bloodmeal module.
 #' @seealso \code{\link{infects_human_path}}
 #' @export
-infects_mosquito_path <- function(bloodmeal_module) {
-  UseMethod("infects_mosquito_path", bloodmeal_module)
+mosquito_path <- function(bloodmeal_module) {
+  UseMethod("mosquito_path", bloodmeal_module)
 }
 
 
 #' Extract the health status of every person from a health module.
+#' @param human_module The module for human health.
 #' @export
 human_disease_path <- function(human_module) {
   UseMethod("human_disease_path", human_module)
+}
+
+
+#' Observe data from mosquitoes that goes to the bloodmeal.
+#' @param mosquito_module The module for mosquito life cycle.
+#' @export
+observe_bloodmeal_mosquito <- function(mosquito_module) {
+  UseMethod("observe_bloodmeal_mosquito", mosquito_module)
 }
 
 

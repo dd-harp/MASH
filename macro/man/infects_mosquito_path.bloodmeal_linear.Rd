@@ -4,7 +4,7 @@
 \alias{infects_mosquito_path.bloodmeal_linear}
 \title{Extract mosquito bites from the bloodmeal module.}
 \usage{
-\method{infects_mosquito_path}{bloodmeal_linear}(simulation)
+infects_mosquito_path.bloodmeal_linear(simulation)
 }
 \arguments{
 \item{simulation}{The bloodmeal_linear module.}
