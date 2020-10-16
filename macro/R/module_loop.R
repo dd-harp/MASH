@@ -46,6 +46,17 @@ infects_human_path <- function(bloodmeal_module) {
 }
 
 
+#' Extracts a time series of all bites that can infect a person.
+#'
+#' An S3 method to read a bloodmeal module and return infectious
+#' bites it has predicted.
+#' @seealso \code{\link{infects_mosquito_path}}
+#' @export
+infects_mosquito_path <- function(bloodmeal_module) {
+  UseMethod("infects_mosquito_path", bloodmeal_module)
+}
+
+
 #' Extract all bites that are infectious to a mosquito from a bloodmeal module.
 #' @seealso \code{\link{infects_human_path}}
 #' @export
@@ -105,7 +116,7 @@ step_mainloop <- function(modules, observer, step_cnt = 1) {
     # Bloodmeal is the central piece where things come together.
     bloodmeal <- mash_step(bloodmeal, health_path, location_path, mosquito_trajectory)
     human_bloodmeal_path <- infects_human_path(bloodmeal)
-    mosquito_bloodmeal_path <- mosquito_path(bloodmeal)
+    mosquito_bloodmeal_path <- infects_mosquito_path(bloodmeal)
     observe_bloodmeal_human(observer, human_bloodmeal_path, step_idx)
     observe_bloodmeal_mosquito(observer, mosquito_bloodmeal_path, step_idx)
 

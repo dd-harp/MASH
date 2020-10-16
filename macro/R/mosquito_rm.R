@@ -193,6 +193,7 @@ mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic = mosquito_rm
       Z <- p_psi %*% Z
 
       broods <- EIP_back[[year_day]]
+      # There could be 0 or >1 broods due to EIP changes over season.
       if (length(broods) > 0) {
         for (brood in broods) {
           Z = Z + Y[, brood]
@@ -326,7 +327,7 @@ mosquito_rm_discrete_step <- function(module, past_kappa) {
   output <- vector(mode = "list", length = params$duration)
   for (i in 1:params$duration) {
     future_state <- mosquito_rm_dynamics(future_state, params, future_kappa[, i])
-    output[[i]] <- future_state$Z
+    output[[i]] <- params$a * future_state$Z
   }
   list(
     state = today_state,

@@ -117,6 +117,12 @@ location_next_state <- function(location_events, query_times, previous_state = N
 }
 
 
+#' Assign bites to humans present at location.
+#' Events has columns (ID, Level, Time, Location, Event).
+#' Events include enter 1, leave -1, and change infectiousness level 2.
+#' Bites has columns (Location, Bite, Time).
+#' Returned bites have an ID for the human, that can be -1 for not-a-human,
+#' and a Level, for the infectiousness of the human bitten.
 bites_at_location <- function(events, bites) {
   previous_time <- 0.0
   previous_state <- NULL
@@ -126,10 +132,16 @@ bites_at_location <- function(events, bites) {
     bite_level <- bites[bite_idx]$Bite
     human_state <- location_next_state(events, c(previous_time, bite_time), previous_state)
 
-    # This samples humans with an equal probability, but this is where we weight it.
-    human_idx <- sample(1:nrow(human_state), 1)
-    bites[bite_idx, "ID"] <- human_state[human_idx, ID]
-    bites[bite_idx, "Level"] <- human_state[human_idx, Level]
+    if (nrow(human_state > 0)) {
+      # This samples humans with an equal probability, but this is where we weight it.
+      human_idx <- sample(1:nrow(human_state), 1)
+      bites[bite_idx, "ID"] <- human_state[human_idx, ID]
+      bites[bite_idx, "Level"] <- human_state[human_idx, Level]
+    } else {
+      # There were no humans at this location to bite, so the bite is lost.
+      bites[bite_idx, "ID"] <- -1  # This defines a not-a-human bitten.
+      bites[bite_idx, "Level"] <- 0.0
+    }
 
     previous_time <- bite_time
     previous_state <- human_state
