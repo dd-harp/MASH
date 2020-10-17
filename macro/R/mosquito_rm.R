@@ -345,14 +345,14 @@ mosquito_rm_discrete_step <- function(module, past_kappa) {
 mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
   past_kappa <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
   step_output <- mosquito_rm_discrete_step(module, past_kappa)
-  result <- list(
+  stepped_module <- list(
     external_parameters = module$external_parameters,
     parameters = module$parameters,
     state = step_output$state,
     output = step_output$output
   )
-  class(result) <- "mosquito_rm"
-  result
+  class(stepped_module) <- "mosquito_rm"
+  stepped_module
 }
 
 
