@@ -35,6 +35,11 @@ string_log_level <- function(levelName) {
 
 
 #' Set up logging for use on a local machine.
+#' @param level_name One of the strings (trace, debug, info, warn, error, fatal)
+#' This creates a logger that is named after the package
+#' so that all logging messages for this package can be turned on or off
+#' together. This function makes everything go to the console on
+#' standard out.
 local_logging <- function(level_name = "info") {
   invisible(futile.logger::flog.logger(
     .baseLogger,
@@ -45,6 +50,9 @@ local_logging <- function(level_name = "info") {
 
 
 #' Set up logging for running on the cluster.
+#' @param level_name One of the strings (trace, debug, info, warn, error, fatal)
+#' This sets logging so that warnings and above go to a file that is
+#' named by the date and time, but all else goes to standard out.
 cluster_logging <- function(level_name = "info") {
   error_file <- format(Sys.time(), "%Y%m%d-%H%M%S.txt")
   futile.logger::flog.logger(
@@ -61,31 +69,73 @@ cluster_logging <- function(level_name = "info") {
 }
 
 
+#' Set the logging level on some part of a package.
+#' @param module The string name of a section of the package.
+#' @param level_name One of the strings (trace, debug, info, warn, error, fatal)
+#' If you want to debug one module, then you can set its level differently
+#' here from the rest of the package.
+log_module <- function(module, level_name = "debug") {
+  level <- string_log_level(level_name)
+  futile.logger::threshold(level, name = paste0(.baseLogger, ".", module))
+  futile.logger::threshold(level, name = paste0(.errorLogger, ".", module))
+}
+
+
 logtrace <- function(...) {
   futile.logger::flog.trace(..., name = .baseLogger)
 }
 
 
 logdebug <- function(...) {
-  futile.logger::flog.debug(..., name = .baseLogger)
+  arglist <- list(...)
+  if ("name" %in% names(arglist)) {
+    arglist[names(arglist) == "name"] <- paste0(.baseLogger, ".", arglist$name)
+    do.call(futile.logger::flog.debug, arglist)
+  } else {
+    futile.logger::flog.debug(..., name = .baseLogger)
+  }
 }
 
 
 loginfo <- function(...) {
-  futile.logger::flog.info(..., name = .baseLogger)
+  arglist <- list(...)
+  if ("name" %in% names(arglist)) {
+    arglist[names(arglist) == "name"] <- paste0(.baseLogger, ".", arglist$name)
+    do.call(futile.logger::flog.info, arglist)
+  } else {
+    futile.logger::flog.info(..., name = .baseLogger)
+  }
 }
 
 
 logwarn <- function(...) {
-  futile.logger::flog.warn(..., name = .errorLogger)
+  arglist <- list(...)
+  if ("name" %in% names(arglist)) {
+    arglist[names(arglist) == "name"] <- paste0(.errorLogger, ".", arglist$name)
+    do.call(futile.logger::flog.warn, arglist)
+  } else {
+    futile.logger::flog.warn(..., name = .errorLogger)
+  }
 }
 
 
 logerror <- function(...) {
-  futile.logger::flog.error(..., name = .errorLogger)
+  arglist <- list(...)
+  if ("name" %in% names(arglist)) {
+    arglist[names(arglist) == "name"] <- paste0(.errorLogger, ".", arglist$name)
+    do.call(futile.logger::flog.error, arglist)
+  } else {
+    futile.logger::flog.error(..., name = .errorLogger)
+  }
 }
 
 
 logfatal <- function(...) {
-  futile.logger::flog.fatal(..., name = .errorLogger)
+  arglist <- list(...)
+  if ("name" %in% names(arglist)) {
+    arglist[names(arglist) == "name"] <- paste0(.errorLogger, ".", arglist$name)
+    do.call(futile.logger::flog.fatal, arglist)
+  } else {
+    futile.logger::flog.fatal(..., name = .errorLogger)
+  }
 }
