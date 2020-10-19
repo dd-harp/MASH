@@ -10,7 +10,6 @@ test_that("logging string_log_level warns that name not found", {
     macro:::string_log_level("nonexistent"),
     warning = function(w) {w[[1]]}
     )
-  print(warned)
   expect_equal(grep("nonexistent", warned), 1L)
 })
 

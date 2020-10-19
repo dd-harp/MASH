@@ -13,7 +13,7 @@
 
 \item{movement_dt}{Movement of humans.}
 
-\item{bites_dt}{Mosquito bite data.}
+\item{bites_dt}{Rate of infectious mosquito bites over time in bites per day.}
 }
 \value{
 Returns the simulation that's updated.
