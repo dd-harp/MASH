@@ -148,6 +148,7 @@ bld_bites_at_location <- function(events, bites) {
   bites[, `:=`(Level = 0.0, ID = integer(nrow(bites)))]
   for (bite_idx in 1:nrow(bites)) {
     bite_time <- bites[bite_idx]$Time
+
     bite_level <- bites[bite_idx]$Bite
     human_state <- bld_location_next_state(events, c(previous_time, bite_time), previous_state)
 
@@ -169,17 +170,22 @@ bld_bites_at_location <- function(events, bites) {
 }
 
 
+#' Iterate over locations and calculate bloodmeal for each location
 bld_bite_outcomes <- function(location_events, bites) {
   locations <- unique(location_events$Location)
-  outcomes <- vector(mode = "list", length = length(locations))
+  human_outcomes <- vector(mode = "list", length = length(locations))
+  mosquito_outcomes <- vector(mode = "list", length = length(locations))
   for (out_idx in 1:length(locations)) {
     location = locations[out_idx]
     loc_events <- location_events[Location == location]
     bite_events <- bites[Location == location]
     assigned_bites <- bld_bites_at_location(loc_events, bite_events)
-    outcomes[[out_idx]] <- assigned_bites
+    human_outcomes[[out_idx]] <- assigned_bites
   }
-  do.call(rbind, outcomes)
+  list(
+    human = do.call(rbind, human_outcomes),
+    mosquito = do.call(rbind, mosquito_outcomes)
+  )
 }
 
 

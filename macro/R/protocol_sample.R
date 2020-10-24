@@ -145,3 +145,66 @@ sample_mosquito_eip <- function(place_cnt = 3L, time_step = 10.0) {
   )
   events
 }
+
+
+one_human_at_location <- function(id) {
+  time_step = 10
+  start_infection <- rbinom(1, 1, 0.5)
+  change_infection_time <- rexp(1, 1 / time_step)
+  infection_dt <- data.table(
+    Time = c(-1, change_infection_time),
+    Level = c(start_infection, 1 - start_infection),
+    Event = c(2, 2)
+  )
+
+  move_period <- 5
+  move_times <- cumsum(rexp(9, 1 / move_period))
+  enter_leave <- rep(c(0, 1), 5)
+  start_inside <- rbinom(1, 1, 0.5)
+  if (start_inside != 0) {
+    enter_leave <- 1 - 2 * enter_leave
+  } else {
+    enter_leave <- -1 + 2 * enter_leave
+  }
+  move_dt <- data.table(
+    Time = c(0, move_times),
+    Level = 0,
+    Event = enter_leave
+  )
+
+  unordered_dt <- rbind(infection_dt, move_dt)
+  all_dt <- unordered_dt[order(Time),]
+
+  level <- 0
+  for (idx in 1:nrow(all_dt)) {
+    if (all_dt[idx, Event] == 2) {
+      level <- all_dt[idx, Level]
+    } else {
+      all_dt[idx]$Level <- level
+    }
+  }
+  all_dt[, ID := id]
+  all_dt
+}
+
+
+#' Sample of human activity at a location, within the bloodmeal.
+#'
+#' @param human_cnt
+#' @param rate
+#' @param time_step Defaults to 10.
+#' @return A data.table with the columns `ID`, `Level`, `Time`
+#'     `Location`, and `Event`. The location will be 1 for all
+#'     rows. The event is 1 for enter, -1 for leave and 2 for
+#'     change in infection status. The level is 0 or 1.
+sample_humans_at_location <- function(human_cnt = 10L, move_period = 20, time_step = 10) {
+  pfpr <- 0.4
+  start_infectious <- sample(1:human_cnt, round(pfpr * human_cnt))
+  change_infection_time <- rexp(human_cnt, 1 / time_step)
+  start_in_location <- sample(1:human_cnt, round(0.6 * human_cnt))
+  ddt <- do.call(rbind,lapply(1:10, one_human_at_location))
+  in_time <- ddt[Time >= 0 & Time < time_step,]
+  in_order <- in_time[order(ID, Time),]
+  in_order[, Location := 1]
+  in_order[, .(ID, Level, Time, Location, Event)]
+}

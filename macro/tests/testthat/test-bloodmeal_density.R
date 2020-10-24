@@ -9,6 +9,11 @@ all_movement_locations <- function(location_dt) {
 }
 
 
+test_that("bloodmeal density assigns bites at location", {
+
+})
+
+
 test_that("bloodmeal density processes sample data", {
   human_cnt <- 10L
   place_cnt <- 5L

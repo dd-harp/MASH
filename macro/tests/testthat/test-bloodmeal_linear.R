@@ -14,14 +14,9 @@ test_that("bloodmeal processes sample data", {
   place_cnt <- 5L
   bite_cnt <- 20L
   time_step <- 10.0
-  health_dt <- sample_health_infection_status(human_cnt, time_step)
-  move_dt <- sample_move_location(human_cnt, place_cnt, time_step)
-  bite_dt <- sample_mosquito_half_bites(bite_cnt, place_cnt, time_step)
-  outcome_dt <- bloodmeal_process(health_dt, move_dt, bite_dt)
-  # all bites in places that had people are returned.
-  all_locations <- all_movement_locations(move_dt)
-  bites_with_people <- bite_dt[Location %in% all_locations,]
-  expect_equal(nrow(bites_with_people), nrow(outcome_dt))
+  human_events <- macro:::sample_humans_at_location()
+  bites_dt <- macro:::sample_mosquito_kappa()
+  result <- macro:::bld_bites_at_location(human_events, bites_dt)
 })
 
 
