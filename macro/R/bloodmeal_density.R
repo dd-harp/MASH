@@ -171,6 +171,9 @@ bld_bites_at_location <- function(events, bites) {
 
 
 #' Iterate over locations and calculate bloodmeal for each location
+#' location_events has columns `ID`, `Level`, `Time`, `Location`, `Event`.
+#' Level is 0 for uninfectious, 1 for infectious. Event is 1, -1 for enter
+#' and leave, 2 for change in infectious status.
 bld_bite_outcomes <- function(location_events, bites) {
   locations <- unique(location_events$Location)
   human_outcomes <- vector(mode = "list", length = length(locations))

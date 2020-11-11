@@ -10,6 +10,16 @@ all_movement_locations <- function(location_dt) {
 
 
 test_that("bloodmeal density assigns bites at location", {
+  human_cnt <- 10L
+  place_cnt <- 5L
+  time_step <- 10.0
+  health_dt <- sample_health_infection_status(human_cnt, time_step)
+  move_dt <- sample_move_location(human_cnt, place_cnt, time_step)
+  bite_dt <- sample_mosquito_kappa(place_cnt, time_step)
+  movement_from_to <- macro:::bld_convert_to_source_destination(move_dt)
+  movement_events <- macro:::bld_convert_to_enter_events(movement_from_to)
+  health_events <- macro:::bld_health_as_events(health_dt)
+  movement_health_events <- macro:::bld_combine_health_and_movement(health_events, movement_events)
 
 })
 
