@@ -38,7 +38,7 @@ patch::patch(
   reservoir(Rcpp::as<bool>(patch_pars["reservoir"])),
   res_EIR(Rcpp::as<double>(patch_pars["res_EIR"])),
   tileP(tileP_),
-  inc_travel(0), inc_resident(0)
+  inc_travel(0), inc_resident(0), vaxx(0)
 {
   SIP_visitor.fill(0);
   SIP_resident_home.fill(0);
@@ -77,31 +77,6 @@ void patch::update_incidence(const bool travel){
     inc_resident += 1;
   }
 };
-
-// // this is called by humans at the end of their daily simulation
-// void patch::update_SIP(const std::string state, const bool travel){
-//   if(travel){
-//     if(state.compare("S") == 0){
-//       SIP_travel.at(0) += 1;
-//     } else if(state.compare("I") == 0){
-//       SIP_travel.at(1) += 1;
-//     } else if(state.compare("P") == 0){
-//       SIP_travel.at(2) += 1;
-//     } else {
-//       Rcpp::stop("error, illegal human state detected: " + state);
-//     }
-//   } else {
-//     if(state.compare("S") == 0){
-//       SIP_resident.at(0) += 1;
-//     } else if(state.compare("I") == 0){
-//       SIP_resident.at(1) += 1;
-//     } else if(state.compare("P") == 0){
-//       SIP_resident.at(2) += 1;
-//     } else {
-//       Rcpp::stop("error, illegal human state detected: " + state);
-//     }
-//   }
-// };
 
 // this is called by humans to log state
 void patch::update_SIP_visitor(const std::string state){
@@ -152,11 +127,13 @@ void patch::reset_SIP(){
   SIP_resident_away.fill(0);
   inc_travel = 0;
   inc_resident = 0;
+  vaxx = 0;
 };
 
 // log output at the end of the day
 void patch::log_output(){
   int tnow(tileP->get_tnow());
   tileP->get_logger()->get_stream("pfsi") << tnow << "," << id << "," << SIP_visitor.at(0) << "," << SIP_resident_home.at(0) << "," << SIP_resident_away.at(0) << "," << SIP_visitor.at(1) << "," << SIP_resident_home.at(1) << "," << SIP_resident_away.at(1) << "," << SIP_visitor.at(2) << "," << SIP_resident_home.at(2) << "," << SIP_resident_away.at(2) << "," << inc_resident << "," << inc_travel << "\n";
+  tileP->get_logger()->get_stream("vaxx") << tnow << "," << id << "," << vaxx << "\n";
   reset_SIP();
 };

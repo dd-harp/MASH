@@ -81,6 +81,7 @@ public:
   void                  normalize_kappa();
 
   /* PfSI specific member functions */
+  void                  accumulate_vaxx(){vaxx += 1;}
   void                  update_incidence(const bool travel);
   void                  update_SIP_visitor(const std::string state);
   void                  update_SIP_resident_home(const std::string state);
@@ -115,6 +116,7 @@ private:
   std::array<int,3>     SIP_resident_away;
   int                   inc_travel;
   int                   inc_resident;
+  int                   vaxx;
 };
 
 

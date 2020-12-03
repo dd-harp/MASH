@@ -10,7 +10,7 @@ License: What license is it under?
 Imports: Rcpp
 Depends: RcppProgress
 LinkingTo: Rcpp, RcppArmadillo, RcppProgress
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 Suggests: 
     knitr,
     rmarkdown

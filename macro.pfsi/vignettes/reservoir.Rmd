@@ -28,17 +28,7 @@ The first thing we will want to do is load the necessary packages and set output
 
 ```{r}
 # output path
-path <- "output/"
-if(!dir.exists(path)){
-  dir.create(path)
-} else {
-  files <- list.files(path)
-  if(length(files) > 0){
-    for(f in files){
-      file.remove(paste0(path,f))
-    }
-  }
-}
+path <- tempdir()
 
 # seed
 set.seed(42L)
@@ -102,24 +92,26 @@ Now all the parameters have been specified so we are ready to sample a single tr
 
 ```{r,fig.width=9, fig.height=6}
 log_pars <- list()
+
 h_inf <- paste0(path,"pfsi.csv")
-log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
-                      header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
-                    )
+log_pars[[1]] <- list(
+  outfile = h_inf,key = "pfsi",
+  header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
+)
+
 mosy <- paste0(path,"mosy.csv")
-log_pars[[2]] <- list(outfile = mosy,key = "mosquito",
-                      header = paste0(c("time","state",paste0("patch",1:n)),collapse = ","))
+log_pars[[2]] <- list(
+  outfile = mosy,key = "mosquito",
+  header = paste0(c("time","state",paste0("patch",1:n)),collapse = ",")
+)
 
-run_macro(tmax = 365*5,
-          human_pars = human_pars,
-          mosquito_pars = mosy_pars,
-          patch_pars = patch_pars,
-          model_pars = pfsi_pars,
-          log_streams = log_pars,
-          vaxx_events = vaxx_pars,
-          verbose = T)
+vaxx <- paste0(path,"vaxx.csv")
+log_pars[[3]] <- list(
+  outfile = vaxx,key = "vaxx",
+  header = paste0(c("time","patch","vaxx_events"),collapse = ",")
+)
 
-pfsi <- readr::read_csv("output/pfsi.csv")
+pfsi <- readr::read_csv(h_inf)
 
 pfsi_pr <- pfsi %>%
   select(-ends_with("away")) %>%
@@ -140,13 +132,24 @@ Compare the above results to the situation where travelers recieve neither vacci
 pfsi_pars <- pfsi_parameters(travel_treat = FALSE,travel_vaxx = FALSE)
 
 log_pars <- list()
+
 h_inf <- paste0(path,"pfsi_no.csv")
-log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
-                      header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
-                    )
+log_pars[[1]] <- list(
+  outfile = h_inf,key = "pfsi",
+  header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
+)
+
 mosy <- paste0(path,"mosy_no.csv")
-log_pars[[2]] <- list(outfile = mosy,key = "mosquito",
-                      header = paste0(c("time","state",paste0("patch",1:n)),collapse = ","))
+log_pars[[2]] <- list(
+  outfile = mosy,key = "mosquito",
+  header = paste0(c("time","state",paste0("patch",1:n)),collapse = ",")
+)
+
+vaxx <- paste0(path,"vaxx_no.csv")
+log_pars[[3]] <- list(
+  outfile = vaxx,key = "vaxx",
+  header = paste0(c("time","patch","vaxx_events"),collapse = ",")
+)
 
 run_macro(tmax = 365*5,
           human_pars = human_pars,
@@ -157,7 +160,7 @@ run_macro(tmax = 365*5,
           vaxx_events = vaxx_pars,
           verbose = T)
 
-pfsi <- readr::read_csv("output/pfsi_no.csv")
+pfsi <- readr::read_csv(h_inf)
 
 pfsi_pr <- pfsi %>%
   select(-ends_with("away")) %>%
@@ -170,8 +173,8 @@ ggplot(pfsi_pr) +
   theme_bw()
 ```
 
-```{r, echo=FALSE}
-# just for cleaning out the vignettes folder in the package
-unlink(x = path, recursive = TRUE)
-rm(list=ls())
-```
+# ```{r, echo=FALSE}
+# # just for cleaning out the vignettes folder in the package
+# unlink(x = path, recursive = TRUE)
+# rm(list=ls())
+# ```

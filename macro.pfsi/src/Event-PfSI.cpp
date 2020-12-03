@@ -303,6 +303,9 @@ e_pfsi_pevaxx::e_pfsi_pevaxx(double tEvent_, const bool treat, human* h):
       h->addEvent2Q(e_pfsi_endchx(tSusceptible,h));
     }
 
+    /* log this event with our patch */
+    h->get_patch()->accumulate_vaxx();
+
   })
 {
 
@@ -371,6 +374,9 @@ e_pfsi_gsvaxx::e_pfsi_gsvaxx(double tEvent_, const bool treat, human* h):
       double tSusceptible = tEvent_ + pfsi_ttSusceptiblePf(h);
       h->addEvent2Q(e_pfsi_endchx(tSusceptible,h));
     }
+
+    /* log this event with our patch */
+    h->get_patch()->accumulate_vaxx();
 
   })
 {

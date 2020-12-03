@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette shows how to run the MACRO model in this package: the PfSI course of infection (CoI) which is coupled to a 1-day time-step Ross-Macdonald (RM) mosquito model. 
+This vignette shows how to run the MACRO model in this package: the PfSI course of infection (CoI) which is coupled to a 1-day time-step Ross-Macdonald (RM) mosquito model.
 
 ## One Simulation Run
 
@@ -22,17 +22,7 @@ The first thing we will want to do is load the necessary packages and set output
 
 ```{r}
 # output path
-path <- "output/"
-if(!dir.exists(path)){
-  dir.create(path)
-} else {
-  files <- list.files(path)
-  if(length(files) > 0){
-    for(f in files){
-      file.remove(paste0(path,f))
-    }
-  }
-}
+path <- tempdir()
 
 # seed
 set.seed(42L)
@@ -105,13 +95,24 @@ Now all the parameters have been specified so we are ready to sample a single tr
 
 ```{r,fig.width=9, fig.height=6,message=FALSE,warning=FALSE}
 log_pars <- list()
+
 h_inf <- paste0(path,"pfsi.csv")
-log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
-                      header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
-                    )
+log_pars[[1]] <- list(
+  outfile = h_inf,key = "pfsi",
+  header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
+)
+
 mosy <- paste0(path,"mosy.csv")
-log_pars[[2]] <- list(outfile = mosy,key = "mosquito",
-                      header = paste0(c("time","state",paste0("patch",1:n)),collapse = ","))
+log_pars[[2]] <- list(
+  outfile = mosy,key = "mosquito",
+  header = paste0(c("time","state",paste0("patch",1:n)),collapse = ",")
+)
+
+vaxx <- paste0(path,"vaxx.csv")
+log_pars[[3]] <- list(
+  outfile = vaxx,key = "vaxx",
+  header = paste0(c("time","patch","vaxx_events"),collapse = ",")
+)
 
 run_macro(tmax = 1e3,
           human_pars = human_pars,
@@ -122,7 +123,7 @@ run_macro(tmax = 1e3,
           vaxx_events = vaxx_pars,
           verbose = T)
 
-pfsi <- readr::read_csv("output/pfsi.csv")
+pfsi <- readr::read_csv(h_inf)
 
 pfsi_pr <- pfsi %>%
   select(-ends_with("away")) %>%
@@ -140,21 +141,33 @@ ggplot(pfsi_pr) +
 
 Here we use the same initial conditions and sample 100 trajectories from the stochastic model.
 
-```{r,fig.width=9, fig.height=6,message=FALSE,warning=FALSE}
+```{r,fig.width=9, fig.height=6,message=FALSE,warning=FALSE,eval=FALSE}
 # run ensemble
 nrun <- 1e2
 tsteps <- 1e3
 pb <- txtProgressBar(min = 1,max = nrun)
 for(i in 1:nrun){
-  
+
   log_pars <- list()
+
   h_inf <- paste0(path,"pfsi_",i,".csv")
-  log_pars[[1]] <- list(outfile = h_inf,key = "pfsi",
-                        header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ","))
+  log_pars[[1]] <- list(
+    outfile = h_inf,key = "pfsi",
+    header = paste0(c("time","patch",unlist(lapply(c("S","I","P"),function(x){paste0(x,c("_visitor","_resident_home","_resident_away"))})),"incidence_resident","incidence_traveller"),collapse = ",")
+  )
+
   mosy <- paste0(path,"mosy_",i,".csv")
-  log_pars[[2]] <- list(outfile = mosy,key = "mosquito",
-                        header = paste0(c("time","state",paste0("patch",1:n)),collapse = ","))
-  
+  log_pars[[2]] <- list(
+    outfile = mosy,key = "mosquito",
+    header = paste0(c("time","state",paste0("patch",1:n)),collapse = ",")
+  )
+
+  vaxx <- paste0(path,"vaxx_",i,".csv")
+  log_pars[[3]] <- list(
+    outfile = vaxx,key = "vaxx",
+    header = paste0(c("time","patch","vaxx_events"),collapse = ",")
+  )
+
   run_macro(tmax = tsteps,
             human_pars = human_pars,
             mosquito_pars = mosy_pars,
@@ -167,8 +180,8 @@ for(i in 1:nrun){
 }
 
 pfsi_ensemble <-
-  list.files(path = "output/",pattern = "pfsi_[[:digit:]]+.csv") %>%
-  map_df(~read_csv(paste0("output/",.)),.id = "run")
+  list.files(path = path,pattern = "pfsi_[[:digit:]]+.csv") %>%
+  map_df(~read_csv(paste0(h_inf,.)),.id = "run")
 
 pfsi_ensemble_pr <- pfsi_ensemble %>%
   select(-ends_with("away")) %>%
@@ -181,11 +194,4 @@ ggplot(pfsi_ensemble_pr,aes(x=time,y=value,color=key,fill=key)) +
   facet_wrap(. ~ patch) +
   guides(color = FALSE) +
   theme_bw()
-```
-
-
-```{r, echo=FALSE}
-# just for cleaning out the vignettes folder in the package
-unlink(x = path, recursive = TRUE)
-rm(list=ls())
 ```

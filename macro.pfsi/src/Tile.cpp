@@ -56,6 +56,9 @@ tile::tile(
 
   /* set up logging */
   if(verbose){std::cout << "begin initializing logging streams" << std::endl;}
+  if(log_streams.size() != 3){
+    Rcpp::stop("please provide 3 logging streams: 'pfsi', 'mosquito', and 'vaxx'");
+  }
   for(int i=0; i<log_streams.size(); i++){
     Rcpp::List log = Rcpp::as<Rcpp::List>(log_streams[i]);
     loggerPtr->open(
