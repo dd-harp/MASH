@@ -2,7 +2,9 @@
 #'
 #' The human module and location module both report events for individual humans.
 #' The mosquito module reports changes in density of mosquitoes in each location
-#' over time.
+#' over time. The mosquito module doesn't report a number of bites at a time
+#' but does report a biting rate over time. This assigns bites out of the
+#' biting rate and the available biting weight of humans.
 #'
 #' \itemize{
 #'   \item \link{bloodmeal_density_module}
@@ -168,6 +170,12 @@ bld_bites_at_location <- function(events, bites) {
   }
   bites
 }
+
+
+integrated_person_days <- function(when, events) {
+  person_exposure(when, events)
+}
+
 
 
 #' Iterate over locations and calculate bloodmeal for each location

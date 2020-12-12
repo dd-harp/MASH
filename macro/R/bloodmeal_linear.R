@@ -1,3 +1,6 @@
+# Bloodmeal-linear
+# This assumes that the mosquito module sends a list of bites at locations
+# and times. It assigns those bites to humans at those locations and times.
 library(data.table)
 
 #' Converts from incoming wide format data table to a long one.
