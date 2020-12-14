@@ -1,0 +1,169 @@
+---
+title: "Bloodmeal Investigation"
+output: html_notebook
+---
+
+# Introduction
+I want to write down a way to sample the number of bites for each person
+in each location and check that it looks right. In particular, let's write
+down the version that draws from a negative binomial for the number of
+bites per person, because that's the harder case.
+
+# Distributions
+Before I use the negative binomial distribution in R, I'll check that
+R's definition matches something known. There are always alternative forms
+of distributions, so it helps to be sure from the start.
+
+According to R's documentation, the R negative binomial distribution has density
+$$
+ f(x;n, p) = \frac{\Gamma(x+n)}{\Gamma(n) x!} p^n (1-p)^x.
+$$
+Here, $\Gamma(n)=(n-1)!$ for integer $n$, so that's equivalent to
+$$
+ f(x;n, p) = \frac{(x+n-1)!}{(n-1)! x!} p^n (1-p)^x.
+$$
+For comparison, Wikipedia's [entry for the negative binomial](https://en.wikipedia.org/wiki/Negative_binomial_distribution)
+writes it with a choose-notation.
+$$
+f(k; r,p) = \left(k+r-1\atop r-1\right)p^r(1-p)^k
+$$
+That's the same as above, swapping $(x,n,p)\rightarrow (k,r,p)$.
+
+Fine. From this, we know the mean of R's distribution.
+$$
+\int_0^\infty xf(x;n,p)dx = \frac{n(1-p)}{p}
+$$
+The variance is the mean over $1-p$.
+$$
+\int_0^\infty (x-\mu)^2f(x;n,p)dx = \frac{n(1-p)}{p^2}
+$$
+# Parametrize the distribution
+We want to parametrize the bloodmeal with two values, the EIR and the
+dispersion. The mean should be the EIR.
+$$
+  E = \frac{n(1-p)}{p}
+$$
+When we use the term dispersion, we could measure that a number of different
+ways. One is the standard deviation.
+$$
+D = \frac{\sqrt{n(1-p)}}{p}
+$$
+If I look at the C++ implementation, it seems to use a ratio of dispersion
+to the mean.
+$$
+\frac{D}{E} = \frac{p}{1-p}
+$$
+Let's go with that, which implies a simple formulat for $p$.
+$$
+p = \frac{D}{D+E}
+$$
+Given this value for $p$, what $n$ should be.
+
+We need the mean number of bites to equal the EIR.
+$$
+n = \frac{Ep}{1-p}
+$$
+That looks like the C++ function.
+```{r cpp_bloodmeal, eval = FALSE}
+int queue_bites_nbinom::sample_bites(const double eir){
+  double p = disp / (disp + eir);
+  int k = (eir*p)/(1.-p);
+  return R::rnbinom(k,p);
+}
+```
+It's the same in R.
+```{r r_bloodmeal}
+bloodmeal_nbinom <- function(eir, dispersion) {
+  p <- dispersion / (dispersion + eir)
+  k <- (eir * p) / (1 - p)
+  rnbinom(1, size = k, prob = p)
+}
+```
+
+
+# R sampling
+
+There are humans, $h$, and locations $l$.
+People have biting weights, $b_h$. The mosquitoes in a location have a biting
+rate, $c_l$. We start with a list of which people dwelled in which locations.
+Let's start by giving each person a home location and drawing their dwell time
+from a multinomial over the locations.
+```{r build_world}
+l_cnt <- 5L
+humans_per_location <- 20L
+h_cnt <- humans_per_location * l_cnt
+home <- rep(1:l_cnt, each = humans_per_location)
+b <- runif(h_cnt, 0.5, 1)
+c <- runif(l_cnt, 0.2, 0.5)
+# A human in a location has a distribution for where they go.
+travel_distribution <- function (l_idx, l_cnt) {
+  shape = 1
+  preference <- rexp(l_cnt, shape)
+  highest <- which.max(preference)
+  save <- preference[l_idx]
+  preference[l_idx] <- highest
+  preference[highest] <- save
+  preference / sum(preference)
+}
+location_travel <- vapply(
+  1:l_cnt,
+  function(l_idx) travel_distribution(l_idx, l_cnt), FUN.VALUE = numeric(l_cnt)
+  )
+stopifnot(abs(colSums(location_travel) - rep(1, l_cnt)) < 1e-10)
+# Each human's travel is a draw from that distribution, for 30min segments.
+travel_pattern <- function(h_idx) {
+  time_chunks <- rmultinom(1, 48, location_travel[, home[h_idx]])
+  time_chunks / sum(time_chunks)
+}
+tar <- vapply(1:h_cnt, travel_pattern, numeric(l_cnt))
+stopifnot(abs(colSums(tar) - rep(1, l_cnt)) < 1e-10)
+stopifnot(dim(tar) == c(l_cnt, h_cnt))
+```
+
+Now turn that into a total biting weight per location and person.
+```{r total_biting_weight}
+tar_biting_weight <- tar %*% diag(b)
+location_biting_weight <- rowSums(tar_biting_weight)
+location_biting_weight
+```
+Let's give the location a tendency for mosquitoes. Make it rocky, so that
+there is some chance of none, some of many.
+```{r mosquitoes_at_location}
+multitudes_of_mosquitoes <- rbinom(l_cnt, 5, 0.4)
+mosquitoes <- rbinom(l_cnt, 1000*multitudes_of_mosquitoes, 0.1)
+```
+
+We could sample, for a location, the number of bites. That would look like
+this.
+```{r mosquito_bites}
+bites_at_location <- rbinom(l_cnt, mosquitoes, c)
+```
+But how would we assign them to people?
+
+Instead, take the biting rate and turn that back onto each person.
+```{r}
+bites_per_day <- mosquitoes * c
+dim(tar_biting_weight)
+fraction_of_bites_to_each_human <- diag(1 / rowSums(tar_biting_weight)) %*% tar_biting_weight
+average_bites_per_human <- bites_per_day %*% fraction_of_bites_to_each_human
+```
+We can use that as our average for sampling.
+```{r}
+dispersion <- 1.5
+bites_per_human <- vapply(
+  average_bites_per_human,
+  function(bites) bloodmeal_nbinom(bites, dispersion),
+  numeric(1)
+  )
+```
+Then allocate these back to the locations with a multinomial.
+```{r allocate_bites_back}
+bites_matrix <- vapply(
+  1:h_cnt,
+  function(h_idx) rmultinom(1, bites_per_human[h_idx], tar_biting_weight[, h_idx]),
+  numeric(l_cnt)
+)
+bites_at_location <- rowSums(bites_matrix)
+stopifnot(sum(bites_at_location) == sum(bites_per_human))
+```
+
