@@ -89,8 +89,8 @@ rate, $c_l$. We start with a list of which people dwelled in which locations.
 Let's start by giving each person a home location and drawing their dwell time
 from a multinomial over the locations.
 ```{r build_world}
-l_cnt <- 5L
-humans_per_location <- 20L
+l_cnt <- 2L
+humans_per_location <- 3L
 h_cnt <- humans_per_location * l_cnt
 home <- rep(1:l_cnt, each = humans_per_location)
 b <- runif(h_cnt, 0.5, 1)
@@ -135,17 +135,20 @@ mosquitoes <- rbinom(l_cnt, 1000*multitudes_of_mosquitoes, 0.1)
 
 We could sample, for a location, the number of bites. That would look like
 this.
-```{r mosquito_bites}
+```{r mosquito_bites, eval = FALSE}
 bites_at_location <- rbinom(l_cnt, mosquitoes, c)
 ```
 But how would we assign them to people?
 
 Instead, take the biting rate and turn that back onto each person.
 ```{r}
-bites_per_day <- mosquitoes * c
-dim(tar_biting_weight)
+biterate_location <- mosquitoes * c
+print(biterate_location)
 fraction_of_bites_to_each_human <- diag(1 / rowSums(tar_biting_weight)) %*% tar_biting_weight
-average_bites_per_human <- bites_per_day %*% fraction_of_bites_to_each_human
+fraction_of_bites_to_each_human
+average_bites_per_human <- biterate_location %*% fraction_of_bites_to_each_human
+print(average_bites_per_human)
+print(fraction_of_bites_to_each_human * biterate_location)
 ```
 We can use that as our average for sampling.
 ```{r}
@@ -165,5 +168,118 @@ bites_matrix <- vapply(
 )
 bites_at_location <- rowSums(bites_matrix)
 stopifnot(sum(bites_at_location) == sum(bites_per_human))
+```
+
+# Distribution from that sampling
+
+We worked out a way to sample. Now let's run this a bunch of times and see if
+the distribution of samples looks OK. I took the above code and put it
+into `bloodmeal_daily.R` so that we have functions to call.
+
+```{r}
+world <- build_world(5, 20)
+travel <- sample_travel(world)
+mosquitoes <- sample_mosquitoes(world)
+```
+## Some debugging on the code version
+```{r}
+b = world$b
+c = world$c
+dispersion = world$dispersion
+h_cnt <- world$h_cnt
+l_cnt <- world$l_cnt
+
+bite_weight.lh <- travel %*% diag(b)
+bite_weight.l <- rowSums(bite_weight.lh)
+
+bite_rate.l <- mosquitoes * c
+fraction_of_bites_to_each_human <- diag(1 / bite_weight.l) %*% bite_weight.lh
+bite_rate.h <- bite_rate.l %*% fraction_of_bites_to_each_human
+bite_rate.lh <- fraction_of_bites_to_each_human * bite_rate.l
+
+bites.h <- vapply(
+  bite_rate.h,
+  function(bites) bloodmeal_nbinom(bites, dispersion),
+  numeric(1)
+)
+bites.lh <- vapply(
+  1:h_cnt,
+  function(h_idx) {
+    rmultinom(1, size = bites.h[h_idx], prob = bite_rate.lh[, h_idx])
+    },
+  numeric(l_cnt)
+)
+```
+
+```{r}
+sample_cnt <- 10000
+bites_l_draws <- vapply(1:sample_cnt, function(i) {
+    bites <- sample_bites(travel, mosquitoes, world)
+    rowSums(bites)
+  },
+  numeric(world$l_cnt))
+hist(bites_l_draws[4, ])
+```
+This KDE uses jitter on the integer values. It looks pretty bad, though.
+```{r, eval = FALSE}
+for (loc_idx in 1:l_cnt) {
+  loc1 <- kde1d::kde1d(bites_l_draws[loc_idx,], xmin = 0, deg = 2)
+  if (loc_idx == 1) {
+    plot(loc1)
+  } else {
+    lines(loc1)
+  }
+}
+```
+
+```{r}
+expected_location_bites <- mosquitoes * world$c
+trimmed_mean <- function(data, indices) {
+  mean(data[indices], trim = 0.2)
+}
+full_mean <- function(data, indices) {
+  mean(data[indices])
+}
+mean_absolute_deviation <- function(data, indices) {
+  max(data[indices], constant = 1.4826)
+}
+compare_over_statistic <- function(statistic) {
+  # Generate a robust estimator of the Poisson distribution
+  mean_generated <- lapply(1:world$l_cnt, function(l_idx) {
+    basic_rate <- rpois(1000, expected_location_bites[l_idx])
+    boot::boot(
+      data = basic_rate,
+      statistic = statistic,
+      R = 599
+    )
+  })
+  # Compare with same robust estimator on observed values
+  mean_est <- lapply(1:world$l_cnt, function(l_idx) {
+      boot::boot(
+      data = bites_l_draws[l_idx,],
+      statistic = statistic,
+      R = 599
+      )
+    })
+  sampled_bites <- vapply(mean_est, function(m) m$t0, numeric(1))
+  expected_bites <- vapply(mean_generated, function(m) m$t0, numeric(1))
+  cbind(sampled_bites, expected_bites)
+}
+print(compare_over_statistic(trimmed_mean))
+compare_over_statistic(mean_absolute_deviation)
+```
+The net result is that I'm concerned about the final distributions
+because they don't appear to be Poisson in variance.
+
+Go back and check the bloodmeal. It has the correct expected value.
+```{r}
+expected_eir <- 10
+bloodsamples <- vapply(
+  1:10000,
+  function(x) bloodmeal_nbinom(expected_eir, 3),
+  numeric(1)
+)
+print(c(mean(bloodsamples), expected_eir))
+hist(bloodsamples)
 ```
 
