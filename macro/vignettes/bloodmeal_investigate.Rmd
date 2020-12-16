@@ -1,7 +1,14 @@
 ---
 title: "Bloodmeal Investigation"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
+
+```{r load_libs, echo = FALSE}
+library(macro)
+```
+
 
 # Introduction
 I want to write down a way to sample the number of bites for each person
@@ -38,6 +45,7 @@ $$
 \int_0^\infty (x-\mu)^2f(x;n,p)dx = \frac{n(1-p)}{p^2}
 $$
 # Parametrize the distribution
+
 We want to parametrize the bloodmeal with two values, the EIR and the
 dispersion. The mean should be the EIR.
 $$
@@ -49,7 +57,7 @@ $$
 D = \frac{\sqrt{n(1-p)}}{p}
 $$
 If I look at the C++ implementation, it seems to use a ratio of dispersion
-to the mean.
+to the mean. **Why is this the dispersion measure?**
 $$
 \frac{D}{E} = \frac{p}{1-p}
 $$
@@ -80,6 +88,17 @@ bloodmeal_nbinom <- function(eir, dispersion) {
 }
 ```
 
+Check the bloodmeal. It has the correct expected value.
+```{r}
+expected_eir <- 10
+bloodsamples <- vapply(
+  1:10000,
+  function(x) bloodmeal_nbinom(expected_eir, 3),
+  numeric(1)
+)
+print(c(mean(bloodsamples), expected_eir))
+hist(bloodsamples)
+```
 
 # R sampling
 
@@ -181,36 +200,15 @@ world <- build_world(5, 20)
 travel <- sample_travel(world)
 mosquitoes <- sample_mosquitoes(world)
 ```
-## Some debugging on the code version
-```{r}
-b = world$b
-c = world$c
-dispersion = world$dispersion
-h_cnt <- world$h_cnt
-l_cnt <- world$l_cnt
 
-bite_weight.lh <- travel %*% diag(b)
-bite_weight.l <- rowSums(bite_weight.lh)
+My biggest question is whether it samples correctly. By correctly, I mean that
+the mean of the bites per location matches what we expect from the mosquito
+biting rate. In addition, I would ask that the shape of the distribution of
+bites per location match a Poisson distribution's shape, because that's our
+starting assumption.
 
-bite_rate.l <- mosquitoes * c
-fraction_of_bites_to_each_human <- diag(1 / bite_weight.l) %*% bite_weight.lh
-bite_rate.h <- bite_rate.l %*% fraction_of_bites_to_each_human
-bite_rate.lh <- fraction_of_bites_to_each_human * bite_rate.l
-
-bites.h <- vapply(
-  bite_rate.h,
-  function(bites) bloodmeal_nbinom(bites, dispersion),
-  numeric(1)
-)
-bites.lh <- vapply(
-  1:h_cnt,
-  function(h_idx) {
-    rmultinom(1, size = bites.h[h_idx], prob = bite_rate.lh[, h_idx])
-    },
-  numeric(l_cnt)
-)
-```
-
+We answer that question by generating a lot of samples from the same
+time-at-risk matrix and the same mosquito count.
 ```{r}
 sample_cnt <- 10000
 bites_l_draws <- vapply(1:sample_cnt, function(i) {
@@ -221,17 +219,23 @@ bites_l_draws <- vapply(1:sample_cnt, function(i) {
 hist(bites_l_draws[4, ])
 ```
 This KDE uses jitter on the integer values. It looks pretty bad, though.
-```{r, eval = FALSE}
-for (loc_idx in 1:l_cnt) {
+```{r}
+xlim <- 0
+for (lim_idx in 1:world$l_cnt) {
+  xlim <- max(xlim, unname(quantile(bites_l_draws[lim_idx,], 0.99)))
+}
+for (loc_idx in 1:world$l_cnt) {
   loc1 <- kde1d::kde1d(bites_l_draws[loc_idx,], xmin = 0, deg = 2)
   if (loc_idx == 1) {
-    plot(loc1)
+    plot(loc1, xlim = c(0, xlim), ylim = c(0, 0.03))
   } else {
     lines(loc1)
   }
 }
 ```
-
+Then compare the results with a Poisson distribution where the rate is
+the mosquito count times the biting rate for that location. We use robust
+estimators, as a default practice.
 ```{r}
 expected_location_bites <- mosquitoes * world$c
 trimmed_mean <- function(data, indices) {
@@ -265,21 +269,37 @@ compare_over_statistic <- function(statistic) {
   expected_bites <- vapply(mean_generated, function(m) m$t0, numeric(1))
   cbind(sampled_bites, expected_bites)
 }
-print(compare_over_statistic(trimmed_mean))
+```
+
+Now look at the trimmed mean.
+```{r compare_trimmed_mean}
+compare_over_statistic(trimmed_mean)
+```
+
+And look at the mean absolute deviation (MAD).
+```{r compare_association}
 compare_over_statistic(mean_absolute_deviation)
 ```
 The net result is that I'm concerned about the final distributions
 because they don't appear to be Poisson in variance.
 
-Go back and check the bloodmeal. It has the correct expected value.
+# Find infectiousness of bites
+
+Here we assume that we have the bites in a location of a human. How do we count the bites that are infectious to either party in this interaction?
+
+The probability a mosquito is infectious is $z=Z/M$. We know both of these for the location, so we can draw from $Bernoulli(z)$ to find if the mosquito is infectious.
 ```{r}
-expected_eir <- 10
-bloodsamples <- vapply(
-  1:10000,
-  function(x) bloodmeal_nbinom(expected_eir, 3),
-  numeric(1)
-)
-print(c(mean(bloodsamples), expected_eir))
-hist(bloodsamples)
+z <- 0.1
+rbinom(1, 1, z)
 ```
+
+
+For the human, we could do a better or worse job of it. The better job draws a time for the bite, between zero and the total time spent in the location. Then it looks at the human's travel events to determine when, during the day, the human accumulated that much time in the location.
+```{r}
+fraction_of_day <- 0.3
+bite_time_within_location <- runif(1, 0, fraction_of_day)
+# Loop through location events to find the right time.
+```
+
+The worse job would choose a random time in the day and say that's good enough. Sounds terrible, but it may not matter.
 

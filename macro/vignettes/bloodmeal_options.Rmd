@@ -1,0 +1,39 @@
+---
+title: "Bloodmeal Options"
+output: html_notebook
+---
+
+# Introduction
+
+This notebook describes the bloodmeal module for MASH. It looks at different ways we could define a bloodmeal. Actually, I'll be happy if it describes one option well.
+
+There are a few points of the computation that are well-defined. We can say what information comes from the health, location, and mosquito modules to the bloodmeal, and we can say what the bloodmeal returns. Then, inside the bloodmeal, we can classify algorithms by looking at it as a stochastic process.
+
+Notation will follow Smith, Battle, et al 2012.
+
+# Continuous-time health and location, daily-step mosquitoes
+
+## Inputs and outputs
+
+This bloodmeal algorithm assumes the following inputs from the health module, location module, and mosquito module.
+
+* Health module: A set of events that are health states of humans, in continuous time. That means they can occur at any time of day and no two events are simultaneous. Humans also have a an individual biting weight, $b_h$.
+
+* Location module: A set of events that are changes in the location of humans in continuous time.
+
+* Mosquito module: The mosquito module produces events that are the number of mosquitoes in states $(M, Y, Z)$ on a day in a location. These are counts. They are accompanied by a biting rate per location, $a_l$.
+
+The output of the bloodmeal goes to the health and mosquito modules.
+
+* Health output: Bite events on a human in a location, in continuous time, with infectivity of that bite. We may exclude bites that aren't infectious.
+
+* Mosquito output: Infectious bites of susceptible mosquitoes in a location on a day.
+
+## Bloodmeal processes
+
+The bloodmeal creates its output using two different random variables. The first is the number of bites on a person in a location. The second determines times for bites and infectiousness of bites.
+
+For the first step, the state is a number of bites, in a day, of a person in a location. The input mosquito information is a count of mosquitoes and a biting rate in a location. The input human information is the fraction of time a human spends in a location on a day and the biting weight of that human. We can discuss later how to sample the state from the given inputs.
+
+The second step now has, as input, the number of bites of a person in a location. It also has the other inputs, including the fraction of the day spent in that location and the health state record of that human. With these, it can sample to get a biting time, an infection status of the human, and, by looking at $(M, Y, Z)$, an infection status for the mosquito. The output for the human includes the time. The output for the mosquito module will be a count of bites over the day.
+

@@ -21,6 +21,10 @@ bloodmeal_nbinom <- function(eir, dispersion) {
   rnbinom(1, size = k, prob = p)
 }
 
+#' Create parameters for a small model of mosquito bites.
+#' @param locations The count of locations.
+#' @param humans_per_location The count of humans per location, a single integer.
+#' @export
 build_world <- function(locations, humans_per_location) {
   l_cnt <- as.integer(locations)
   humans_per_location <- as.integer(humans_per_location)
@@ -66,6 +70,7 @@ build_world <- function(locations, humans_per_location) {
 #' Given a probability to be in each place, sample human movement.
 #' @param world Parameters that include a travel pattern matrix.
 #' @return A matrix of dwell locations for each person.
+#' @export
 sample_travel <- function(world) {
   with(world, {
     tar <- vapply(1:h_cnt, travel_pattern, numeric(l_cnt))
@@ -76,6 +81,9 @@ sample_travel <- function(world) {
 }
 
 
+#' Creates a population of mosquitoes for a given day.
+#' @param world The parameters for the simulate
+#' @export
 sample_mosquitoes <- function(world) {
   with(world, {
     multitudes_of_mosquitoes <- rbinom(l_cnt, 5, 0.4)
@@ -89,6 +97,7 @@ sample_mosquitoes <- function(world) {
 #' @param travel is the location x human matrix of dwell times for each human.
 #' @param world is parameters for the simulation.
 #' @return a location x human matrix of bites.
+#' @export
 sample_bites <- function(travel, mosquitoes, world) {
   # Naming: It's what.axes, so bites = count, bite_rate = numeric,
   # bite_weight=numeric. Axes are l=location, h=human, or lh for matrix.
