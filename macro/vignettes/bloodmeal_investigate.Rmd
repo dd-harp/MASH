@@ -305,6 +305,8 @@ The worse job would choose a random time in the day and say that's good enough. 
 
 # Building from MASH data
 
+## Make the input
+
 Let's start from the MASH data and convert things until we get to the format above. I will work here and then move it to the code.
 ```{r mash_data_examples}
 human_cnt <- 10L
@@ -367,5 +369,100 @@ dwell_loc_day_human <- vapply(
 )
 # We want to work a day at a time, so permute to put that data first.
 dwell_loc_human_day <- aperm(dwell_loc_day_human, c(1, 3, 2))
+```
+
+Convert the bites data table, as well. We don't want a bites table. We want a mosquito count and a rate of biting, but the conversion will be the same. It's taking a data.table and turning it into an array.
+```{r}
+#' Given a data table, generate an array form.
+#' @param dt the data table
+#' @param row the name of the column to use as row values. Must be integers.
+#' @param col name of column to use as column values. Must be integers.
+#' @param value name of column to use as values.
+#' @return an array with size from min to max in row and column, assuming
+#'     they are integers that are in order.
+data_table_to_array <- function(dt, row, col, value) {
+  row_min <- min(dt[[row]])
+  row_cnt <- max(dt[[row]]) - row_min + 1
+  col_min <- min(dt[[col]])
+  col_cnt <- max(dt[[col]]) - col_min + 1
+  
+  arr <- array(0, dim = c(row_cnt, col_cnt))
+  row_offset <- 1 - row_min
+  col_offset <- 1 - col_min
+  for (row_idx in 1:nrow(dt)) {
+    rec <- dt[row_idx,]
+    arr[rec[[row]] + row_offset, rec[[col]] + col_offset] <- rec[[value]]
+  }
+  arr
+}
+bite_arr <- data_table_to_array(bite_dt, "Location", "Time", "Bites")
+```
+
+Now I have the pieces for the main computation. The numbers of locations and humans currently disagree, but you get the point. We pull out a day and do the computation for that day.
+```{r, eval = FALSE}
+day_idx <- 1
+bites.lh <- sample_bites(dwell_loc_human_day[, , day_idx], bite_arr[, day_idx], world)
+```
+
+
+## Take bite count for location and human and make individual bites
+
+So I'll have a $Z$ and an $M$ for each location and day. Let's say I ran them both through the `data_table_to_array` function above, so that they are two matrices. Then $z=Z / M$ will work, exactly as that, in code, to give me an array of the probability a mosquito is infectious.
+
+For the human infectiousness, let's generate a set of bite times and then ask whether the human is infectious or not.
+```{r}
+bites_in_location <- 8
+day_duration <- 1
+day_idx <- 3
+bite_times <- runif(bites_in_location, (day_idx - 1) * day_duration, day_idx * day_duration)
+bite_times
+```
+Now assign mosquito infection status.
+```{r}
+z <- runif(10L, 0.2, 0.4)  # make up some z values.
+mosquito_infection <- rbinom(bites_in_location, 1, z[day_idx])
+mosquito_infection
+```
+Then take the timings of the bites and see where they fit in the health state. Each bite gets the time of the last entry that's before that time.
+```{r}
+h_idx == 1
+health_rec <- health_dt[health_dt$ID == h_idx,]
+time_cols <- grep("Time", names(health_rec))
+level_cols <- c(time_cols[1] - 1, time_cols + 1)
+
+assign_levels_to_bites <- function(health_rec, time_cols, level_cols) {
+  times <- c(0, unlist(health_rec[, ..time_cols]))
+  levels <- unlist(health_rec[, ..level_cols])
+  vapply(
+    bite_times,
+    function(t0) {
+      times < t0 & is.finite(times)
+      tail(levels[times < t0 & is.finite(times)], n = 1)
+    },
+    FUN.VALUE = numeric(1)
+    )
+}
+human_status <- assign_levels_to_bites(health_rec, time_cols, level_cols)
+data.table(
+  bite_times = bite_times,
+  mosy_level = mosquito_infection,
+  human_level = human_status
+)
+
+```
+Let's try another method.
+```{r}
+assign_levels_to_bites <- function(health_rec, time_cols, level_cols) {
+  times <- c(0, unlist(health_rec[, ..time_cols]))
+  levels <- unlist(health_rec[, ..level_cols])
+  ts <- c(unname(times[is.finite(times)]), 10)
+  unname(levels[cut(c(1, 2,3 ,4, 5, 6,7,8,9,9.9), breaks = ts, labels = FALSE)])
+}
+human_status <- assign_levels_to_bites(health_rec, time_cols, level_cols)
+data.table(
+  bite_times = bite_times,
+  mosy_level = mosquito_infection,
+  human_level = human_status
+)
 ```
 
