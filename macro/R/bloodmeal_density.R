@@ -199,6 +199,112 @@ bld_bite_outcomes <- function(location_events, bites) {
   )
 }
 
+single_dwell <- function(h_record, location_cnt, move_cnt, step_duration, day_duration = 1) {
+  day_cnt <- as.integer(step_duration / day_duration)
+  loc_dwell <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
+
+  loc_previous <- h_record$Start
+  day_previous <- 1
+  time_previous <- (day_previous - 1) * day_duration
+  for (move_idx in 1:move_cnt) {
+    next_time <- h_record[[sprintf("Time%d", move_idx)]]
+    if (is.finite(next_time)) {
+      while (ceiling(next_time / day_duration) > day_previous) {
+        loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + day_previous * day_duration - time_previous
+        time_previous <- day_previous * day_duration
+        day_previous <- day_previous + 1
+      }
+      loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + next_time - time_previous
+      time_previous <- next_time
+      loc_previous <- h_record[[sprintf("Location%d", move_idx)]]
+    }
+  }
+  next_time <- step_duration
+  while (ceiling(next_time / day_duration) > day_previous) {
+    loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + day_previous * day_duration - time_previous
+    time_previous <- day_previous * day_duration
+    day_previous <- day_previous + 1
+  }
+  loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + next_time - time_previous
+  loc_dwell
+}
+
+#' Given a data table, generate an array form.
+#' @param dt the data table
+#' @param row the name of the column to use as row values. Must be integers.
+#' @param col name of column to use as column values. Must be integers.
+#' @param value name of column to use as values.
+#' @return an array with size from min to max in row and column, assuming
+#'     they are integers that are in order.
+data_table_to_array <- function(dt, row, col, value) {
+  row_min <- min(dt[[row]])
+  row_cnt <- max(dt[[row]]) - row_min + 1
+  col_min <- min(dt[[col]])
+  col_cnt <- max(dt[[col]]) - col_min + 1
+
+  arr <- array(0, dim = c(row_cnt, col_cnt))
+  row_offset <- 1 - row_min
+  col_offset <- 1 - col_min
+  for (row_idx in 1:nrow(dt)) {
+    rec <- dt[row_idx,]
+    arr[rec[[row]] + row_offset, rec[[col]] + col_offset] <- rec[[value]]
+  }
+  arr
+}
+
+
+human_dwell <- function(movement_dt, params) {
+  location_cnt <- params$location_cnt
+  step_duration <- params$duration
+
+  day_cnt <- as.integer(step_duration / 1)
+  move_cnt <- length(grep("Time", names(movement_dt)))
+
+  humans <- sort(unique(movement_dt$ID))
+  dwell_loc_day_human <- vapply(
+    humans,
+    function(h_idx) {
+      h_record <- movement_dt[movement_dt$ID == h_idx, ]
+      single_dwell(h_record, location_cnt, move_cnt, step_duration)
+    },
+    FUN.VALUE = array(0, dim=c(location_cnt, day_cnt))
+  )
+  aperm(dwell_loc_day_human, c(1, 3, 2))
+}
+
+
+#' Assign bite levels for bites of a single human.
+#' @param health_rec a single row of the health data table.
+#'
+#' health_rec <- health_dt[health_dt$ID == h_idx,]
+#' time_cols <- grep("Time", names(health_rec))
+#' level_cols <- c(time_cols[1] - 1, time_cols + 1)
+assign_levels_to_bites <- function(health_rec, bite_cnt, time_cols, level_cols, params) {
+  times <- c(0, unlist(health_rec[, ..time_cols]))
+  levels <- unlist(health_rec[, ..level_cols])
+  ts <- c(unname(times[is.finite(times)]), 10)
+  bite_times <- with(params,
+    runif(bites_cnt, (day_idx - 1) * day_duration, day_idx * day_duration)
+  )
+  data.table(
+    human_level = unname(levels[cut(bite_times, breaks = ts, labels = FALSE)]),
+    times = bite_times
+    )
+}
+
+
+#' @param bites_df has `human_level` and `times` for each bite
+#' @param M is number of adult females
+#' @param Y is number of exposed adult females
+#' @param Z is number of infectious adult females
+#' @return adds `infect_mosquito` and `infect_human` to the data frame.
+assign_mosquito_status <- function(bites_df, M, Y, Z) {
+  category <- rmultinom(nrow(bites_df), 1, c(M - Y - Z, Y, Z))
+  bites_df$infect_mosquito = category[1, ] & bites_df$human_level
+  bites_df$infect_human = category[3, ]
+  bites_df
+}
+
 
 #' Assign bites to people, the top-level function.
 #'
@@ -209,13 +315,31 @@ bld_bite_outcomes <- function(location_events, bites) {
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
-bld_bloodmeal_process <- function(health_dt, movement_dt, bites_dt) {
+bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt) {
   movement_from_to <- bld_convert_to_source_destination(movement_dt)
   movement_events <- bld_convert_to_enter_events(movement_from_to)
   health_events <- bld_health_as_events(health_dt)
   movement_health_events <- bld_combine_health_and_movement(health_events, movement_events)
-  bites <- bld_bite_outcomes(movement_health_events, bites_dt)
-  bites
+
+  dwell.lh <- human_dwell(movement_dt, params)
+  M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Adult")
+  Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Infected")
+
+  bites.lh <- sample_bites(dwell.lh, M_arr, params)
+  infectious_to_mosquito.lt <- array(0, dim = c(location_cnt, day_cnt))
+  # This is for each entry in the matrix
+  bite_cnt <- bites.ln[row_idx, col_idx]
+  human_status <- assign_levels_to_bites(health_rec, bite_cnt, time_cols, level_cols, params)
+  # M, Y, Z are entries from the matrix of locations by days.
+  with_mosquito <- assign_mosquito_status(human_status, M, Y, Z)
+  infectious_to_mosquito.lt[row_idx, col_idx] <- sum(with_mosquito$infect_mosquito)
+  human_events[[length(human_events) + 1]] <- with_mosquito[with_mosquito$infect_human > 0,]
+
+  all_human_events <- do.call(rbind, human_events)
+  list(
+    human_events = all_human_events,
+    mosquito_events = infectious_to_mosquito.lt
+  )
 }
 
 
