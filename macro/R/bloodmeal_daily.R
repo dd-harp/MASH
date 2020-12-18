@@ -16,10 +16,15 @@
 # Then draw from that.
 
 bloodmeal_nbinom <- function(eir, dispersion) {
-  p <- dispersion / (dispersion + eir)
-  k <- (eir * p) / (1 - p)
-  rnbinom(1, size = k, prob = p)
+  if (eir > 0) {
+    p <- dispersion / (dispersion + eir)
+    k <- (eir * p) / (1 - p)
+    rnbinom(1, size = k, prob = p)
+  } else {
+    0
+  }
 }
+
 
 #' Create parameters for a small model of mosquito bites.
 #' @param locations The count of locations.
@@ -56,8 +61,8 @@ build_world <- function(locations, humans_per_location) {
   stopifnot(abs(colSums(tar) - rep(1, l_cnt)) < 1e-10)
   stopifnot(dim(tar) == c(l_cnt, h_cnt))
   list(
-    l_cnt = l_cnt,
-    h_cnt = h_cnt,
+    location_cnt = l_cnt,
+    human_cnt = h_cnt,
     b = b,
     c = c,
     dispersion = 1.5,
@@ -73,9 +78,9 @@ build_world <- function(locations, humans_per_location) {
 #' @export
 sample_travel <- function(world) {
   with(world, {
-    tar <- vapply(1:h_cnt, travel_pattern, numeric(l_cnt))
-    stopifnot(abs(colSums(tar) - rep(1, l_cnt)) < 1e-10)
-    stopifnot(dim(tar) == c(l_cnt, h_cnt))
+    tar <- vapply(1:human_cnt, travel_pattern, numeric(location_cnt))
+    stopifnot(abs(colSums(tar) - rep(1, location_cnt)) < 1e-10)
+    stopifnot(dim(tar) == c(location_cnt, human_cnt))
     tar
   })
 }
@@ -86,8 +91,8 @@ sample_travel <- function(world) {
 #' @export
 sample_mosquitoes <- function(world) {
   with(world, {
-    multitudes_of_mosquitoes <- rbinom(l_cnt, 5, 0.4)
-    mosquitoes <- rbinom(l_cnt, mosquito_cnt*multitudes_of_mosquitoes, 0.2)
+    multitudes_of_mosquitoes <- rbinom(location_cnt, 5, 0.4)
+    mosquitoes <- rbinom(location_cnt, mosquito_cnt*multitudes_of_mosquitoes, 0.2)
     mosquitoes
   })
 }
@@ -95,17 +100,20 @@ sample_mosquitoes <- function(world) {
 
 #' Determines an integral numbers of bites at each location.
 #' @param travel is the location x human matrix of dwell times for each human.
+#' @param mosquitoes The array of mosquito counts for this day.
+#' @param bite_rate The biting rate for each location. It's `a` in our notation.
+#' @param bite_weight Bite weight per person.
 #' @param world is parameters for the simulation.
 #' @return a location x human matrix of bites.
 #' @export
-sample_bites <- function(travel, mosquitoes, world) {
+sample_bites <- function(travel, mosquitoes, biting_rate, bite_weight, world) {
   # Naming: It's what.axes, so bites = count, bite_rate = numeric,
   # bite_weight=numeric. Axes are l=location, h=human, or lh for matrix.
   with(world, {
-    bite_weight.lh <- travel %*% diag(b)
+    bite_weight.lh <- travel %*% diag(bite_weight)
     bite_weight.l <- rowSums(bite_weight.lh)
 
-    bite_rate.l <- mosquitoes * c
+    bite_rate.l <- mosquitoes * biting_rate
     fraction_of_bites_to_each_human <- diag(1 / bite_weight.l) %*% bite_weight.lh
     bite_rate.h <- bite_rate.l %*% fraction_of_bites_to_each_human
     bite_rate.lh <- fraction_of_bites_to_each_human * bite_rate.l
@@ -116,11 +124,16 @@ sample_bites <- function(travel, mosquitoes, world) {
       numeric(1)
     )
     bites.lh <- vapply(
-      1:h_cnt,
+      1:human_cnt,
       function(h_idx) {
-        rmultinom(1, size = bites.h[h_idx], prob = bite_rate.lh[, h_idx])
+        bite_cnt <- bites.h[h_idx]
+        if (bite_cnt > 0) {
+          rmultinom(1, bite_cnt, bite_rate.lh[, h_idx])
+        } else {
+          numeric(location_cnt)
+        }
         },
-      numeric(l_cnt)
+      numeric(location_cnt)
     )
     bites.lh
   })

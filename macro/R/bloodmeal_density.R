@@ -341,8 +341,10 @@ bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
   dwell.lh <- human_dwell(movement_dt, params)
   M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Adult")
   Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Infected")
+  biting_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "a")
 
-  bites.lh <- sample_bites(dwell.lh, M_arr, params)
+  day_idx <- 1
+  bites.lh <- sample_bites(dwell.lh, M_arr[,, day_idx], biting_arr[,, day_idx], params)
   infectious_to_mosquito.lt <- array(0, dim = c(location_cnt, day_cnt))
   # This is for each entry in the matrix
   bite_cnt <- bites.ln[row_idx, col_idx]

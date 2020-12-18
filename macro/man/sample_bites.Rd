@@ -4,12 +4,18 @@
 \alias{sample_bites}
 \title{Determines an integral numbers of bites at each location.}
 \usage{
-sample_bites(travel, mosquitoes, world)
+sample_bites(travel, mosquitoes, biting_rate, bite_weight, world)
 }
 \arguments{
 \item{travel}{is the location x human matrix of dwell times for each human.}
 
+\item{mosquitoes}{The array of mosquito counts for this day.}
+
+\item{bite_weight}{Bite weight per person.}
+
 \item{world}{is parameters for the simulation.}
+
+\item{bite_rate}{The biting rate for each location. It's \code{a} in our notation.}
 }
 \value{
 a location x human matrix of bites.

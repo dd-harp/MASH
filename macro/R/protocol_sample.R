@@ -45,9 +45,6 @@ sample_health_infection_status <- function(human_cnt = 10L, time_step = 10.0) {
 #'
 #' @export
 sample_move_location <- function(human_cnt = 10L, place_cnt = 5L, time_step = 10.0) {
-  human_cnt <- 10L
-  place_cnt <- 3L
-  time_step <- 10.0
   rate <- 0.2
 
   events <- data.table(
