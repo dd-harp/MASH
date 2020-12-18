@@ -107,7 +107,6 @@ sample_mosquito_half_bites <- function(bite_cnt = 10L, place_cnt = 3L, time_step
 }
 
 
-
 #' Create a sample dataset from mosquitoes to bloodmeal.
 #'
 #' @param place_cnt Integer number of locations to do the biting.
@@ -126,6 +125,39 @@ sample_mosquito_kappa <- function(place_cnt = 3L, time_step = 10.0) {
   events
 }
 
+
+
+#' Sample dataset output from mosquito to bloodmeal using (M, Y, Z).
+#'
+#' @param place_cnt Integer number of locations to do the biting.
+#' @param time_step Duration of time step within which to bite.
+#'
+#' @export
+sample_mosquito_myz <- function(place_cnt = 3L, time_step = 10.0) {
+  step_cnt <- as.integer(time_step)
+  adults_order.l <- sample(0:4 * 500, place_cnt)
+  adults.l <- round(rpois(place_cnt * step_cnt, rep(adults_order.l, step_cnt)))
+  infected.l <- runif(place_cnt, 0, .40)
+  biting_rate <- rep(runif(place_cnt, 0.3, 0.5), step_cnt)
+  events <- data.table(
+    Location = rep(1:place_cnt, step_cnt),
+    Time = rep(1:step_cnt - 1, each = place_cnt),
+    a = biting_rate,
+    M = adults.l,
+    infected_rate = rep(infected.l, place_cnt)
+  )
+  SYZ <- t(vapply(
+    1:nrow(events),
+    function(row_idx) {
+      infr <- events[row_idx, "infected_rate"]
+      rmultinom(1, events[row_idx]$M, c(1 - 2 * infr, infr, infr))
+    },
+    numeric(3)
+  ))
+  events[, Y := SYZ[, 2]]
+  events[, Z := SYZ[, 3]]
+  events[, c("Location", "Time", "a", "M", "Y", "Z")]
+}
 
 
 #' Create a sample dataset from bloodmeal to mosquitoes.
