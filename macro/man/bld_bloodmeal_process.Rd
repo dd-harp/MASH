@@ -4,7 +4,7 @@
 \alias{bld_bloodmeal_process}
 \title{Assign bites to people, the top-level function.}
 \usage{
-bld_bloodmeal_process(health_dt, movement_dt, bites_dt)
+bld_bloodmeal_process(health_dt, movement_dt, mosquito_dt, params)
 }
 \arguments{
 \item{health_dt}{Health events from the protocol.}

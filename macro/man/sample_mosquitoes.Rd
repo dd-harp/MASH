@@ -7,7 +7,7 @@
 sample_mosquitoes(world)
 }
 \arguments{
-\item{world}{The parameters for the simulat}
+\item{world}{The parameters for the simulate}
 }
 \description{
 Creates a population of mosquitoes for a given day.

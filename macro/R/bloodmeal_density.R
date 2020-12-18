@@ -59,7 +59,6 @@ bld_convert_to_enter_events <- function(location_changes_dt) {
 }
 
 
-
 #' Converts wide data table of health events into a long one.
 #' @param health_dt One row per individual, two columns per change.
 #'     The two columns are for time and state.
@@ -199,6 +198,17 @@ bld_bite_outcomes <- function(location_events, bites) {
   )
 }
 
+
+#' Given the movement history of a single person, calculate fraction of
+#' time in any place.
+#'
+#' @param h_record A row from the movement table.
+#' @param location_cnt The number of locations.
+#' @param move_cnt The maximum number of moves possible (width of movement table/2)
+#' @param step_duration Amount of time for all time steps.
+#' @param day_duration How long each time step is.
+#' @return an array with fraction of time in each location on each day.
+#'     The size is location x days.
 single_dwell <- function(h_record, location_cnt, move_cnt, step_duration, day_duration = 1) {
   day_cnt <- as.integer(step_duration / day_duration)
   loc_dwell <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
@@ -229,6 +239,7 @@ single_dwell <- function(h_record, location_cnt, move_cnt, step_duration, day_du
   loc_dwell
 }
 
+
 #' Given a data table, generate an array form.
 #' @param dt the data table
 #' @param row the name of the column to use as row values. Must be integers.
@@ -253,6 +264,14 @@ data_table_to_array <- function(dt, row, col, value) {
 }
 
 
+#' Given all human movement, return a matrix of fraction of time at each
+#' location on each day.
+#' @param movement_dt The movement data table where each row is a person
+#'     and columns are locations and times.
+#' @param params A list or data frame that has simulation parameters such
+#'     as location_cnt and duration of the time step.
+#' @return A three-dimensional array, location x human x days, so that
+#'     we can process a day at a time.
 human_dwell <- function(movement_dt, params) {
   location_cnt <- params$location_cnt
   step_duration <- params$duration
@@ -269,6 +288,7 @@ human_dwell <- function(movement_dt, params) {
     },
     FUN.VALUE = array(0, dim=c(location_cnt, day_cnt))
   )
+  # Reorder days to be last so that we can later access each day quickly.
   aperm(dwell_loc_day_human, c(1, 3, 2))
 }
 
@@ -293,6 +313,7 @@ assign_levels_to_bites <- function(health_rec, bite_cnt, time_cols, level_cols, 
 }
 
 
+#' Given a number of bites, assign them to classes of mosquitoes.
 #' @param bites_df has `human_level` and `times` for each bite
 #' @param M is number of adult females
 #' @param Y is number of exposed adult females
@@ -315,11 +336,7 @@ assign_mosquito_status <- function(bites_df, M, Y, Z) {
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
-bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt) {
-  movement_from_to <- bld_convert_to_source_destination(movement_dt)
-  movement_events <- bld_convert_to_enter_events(movement_from_to)
-  health_events <- bld_health_as_events(health_dt)
-  movement_health_events <- bld_combine_health_and_movement(health_events, movement_events)
+bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
 
   dwell.lh <- human_dwell(movement_dt, params)
   M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Adult")

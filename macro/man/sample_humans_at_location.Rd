@@ -7,6 +7,10 @@
 sample_humans_at_location(human_cnt = 10L, move_period = 20, time_step = 10)
 }
 \arguments{
+\item{human_cnt}{Number of humans.}
+
+\item{move_period}{Not used}
+
 \item{time_step}{Defaults to 10.}
 }
 \value{

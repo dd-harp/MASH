@@ -222,8 +222,8 @@ one_human_at_location <- function(id) {
 
 #' Sample of human activity at a location, within the bloodmeal.
 #'
-#' @param human_cnt
-#' @param rate
+#' @param human_cnt Number of humans.
+#' @param move_period Not used
 #' @param time_step Defaults to 10.
 #' @return A data.table with the columns `ID`, `Level`, `Time`
 #'     `Location`, and `Event`. The location will be 1 for all
