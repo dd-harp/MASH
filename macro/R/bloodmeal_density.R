@@ -358,17 +358,26 @@ bld_single_day <- function(
       health_rec <- health_dt[health_dt$ID == h_idx,]
       human_status <- macro:::assign_levels_to_bites(health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
       with_mosquito <- macro:::assign_mosquito_status(human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
+      human_infections <- with_mosquito[with_mosquito$infect_human > 0, c("times")]
+      human_infections$human <- h_idx
       list(
         mosquito_infections = data.frame(
           location = l_idx,
           human = h_idx,
-          mosquito_infections = sum(with_mosquito$infect_mosquito)
+          mosquito_infections = sum(with_mosquito$infect_mosquito),
+          time = day_idx - 1
         ),
-        human_infections = with_mosquito[with_mosquito$infect_human > 0, ]
+        human_infections = human_infections
       )
     })
+  mosquitos_by_human <- do.call(rbind, lapply(combined_df, function(x) x[[1]]))
+  infections_in_location <- aggregate(
+    mosquitos_by_human$mosquito_infections, list(mosquitos_by_human$location),
+    FUN=sum)
+  colnames(infections_in_location) <- c("location", "mosquito_infections")
+  infections_in_location$time <- (day_idx - 1) * params$day_duration
   list(
-    mosquito_infections = do.call(rbind, lapply(combined_df, function(x) x[[1]])),
+    mosquito_infections = infections_in_location,
     human_infections = do.call(rbind, lapply(combined_df, function(x) x[[2]]))
   )
 }
@@ -413,9 +422,12 @@ bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
 #' @return a module for bloodmeal
 #' @export
 bloodmeal_density_module <- function(parameters) {
-  invisible(parameters)
-  module <- list(outcome = NULL)
-  class(module) <- "bloodmeal_linear"
+  module <- list(
+    parameters = parameters,
+    mosquito_events = NULL,
+    human_events = NULL
+    )
+  class(module) <- "bloodmeal_density"
   module
 }
 
@@ -429,31 +441,32 @@ bloodmeal_density_module <- function(parameters) {
 #' @return Returns the simulation that's updated.
 #' @export
 mash_step.bloodmeal_density <- function(simulation, health_dt, movement_dt, bites_dt) {
-  outcome_dt <- bld_bloodmeal_process(health_dt, movement_dt, bites_dt)
-  simulation[["outcome"]] <- outcome_dt
-  class(simulation) <- "bloodmeal_linear"
+  outcome <- bld_bloodmeal_process(health_dt, movement_dt, bites_dt, simulation[["parameters"]])
+  simulation$mosquito_events <- outcome$mosquito_events
+  simulation$human_events <- outcome$human_events
+  class(simulation) <- "bloodmeal_density"
   simulation
 }
 
 
 #' Extract human bites from the bloodmeal module.
 #'
-#' @param simulation The bloodmeal_linear module.
+#' @param simulation The bloodmeal_density module.
 #' @return A data.table with bite information. These are all bites
 #'     of humans where the mosquito was infectious.
 #' @export
 infects_human_path.bloodmeal_density <- function(simulation) {
-  simulation[["outcome"]][Bite > 0]
+  simulation$human_events
 }
 
 
 #' Extract mosquito bites from the bloodmeal module.
 #'
-#' @param simulation The bloodmeal_linear module.
+#' @param simulation The bloodmeal_density module.
 #' @return A data.table with bite information.
 #'     These are only bites where the mosquito was not infectious
 #'     but the human was.
 #' @export
 infects_mosquito_path.bloodmeal_density <- function(simulation) {
-  simulation[["outcome"]][(Level > 0) & (Bite == 0)]
+  simulation$mosquito_events
 }
