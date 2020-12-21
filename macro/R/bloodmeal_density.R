@@ -299,12 +299,12 @@ human_dwell <- function(movement_dt, params) {
 #' health_rec <- health_dt[health_dt$ID == h_idx,]
 #' time_cols <- grep("Time", names(health_rec))
 #' level_cols <- c(time_cols[1] - 1, time_cols + 1)
-assign_levels_to_bites <- function(health_rec, bite_cnt, time_cols, level_cols, params) {
+assign_levels_to_bites <- function(health_rec, bite_cnt, day_idx, time_cols, level_cols, params) {
   times <- c(0, unlist(health_rec[, ..time_cols]))
   levels <- unlist(health_rec[, ..level_cols])
   ts <- c(unname(times[is.finite(times)]), 10)
   bite_times <- with(params,
-    runif(bites_cnt, (day_idx - 1) * day_duration, day_idx * day_duration)
+    runif(bite_cnt, (day_idx - 1) * day_duration, day_idx * day_duration)
   )
   data.table(
     human_level = unname(levels[cut(bite_times, breaks = ts, labels = FALSE)]),
@@ -320,10 +320,57 @@ assign_levels_to_bites <- function(health_rec, bite_cnt, time_cols, level_cols, 
 #' @param Z is number of infectious adult females
 #' @return adds `infect_mosquito` and `infect_human` to the data frame.
 assign_mosquito_status <- function(bites_df, M, Y, Z) {
-  category <- rmultinom(nrow(bites_df), 1, c(M - Y - Z, Y, Z))
-  bites_df$infect_mosquito = category[1, ] & bites_df$human_level
-  bites_df$infect_human = category[3, ]
+  if (M > 0) {
+    category <- rmultinom(nrow(bites_df), 1, c(M - Y - Z, Y, Z))
+    bites_df$infect_mosquito = category[1, ] & bites_df$human_level
+    bites_df$infect_human = category[3, ]
+  } else {
+    bites_df$infect_mosquito <- 0
+    bites_df$infect_human <- 0
+  }
   bites_df
+}
+
+
+bld_single_day <- function(
+      day_idx, M_arr, Y_arr, Z_arr, biting_arr, dwell.lh, bite_weight,
+      health_dt, params
+      ) {
+  M_day <- M_arr[, day_idx]
+  Y_day <- Y_arr[, day_idx]
+  Z_day <- Z_arr[, day_idx]
+  bites.lh <- sample_bites(
+    dwell.lh[,, day_idx], M_arr[,day_idx], biting_arr[, day_idx],
+    bite_weight, params)
+  infectious_to_mosquito.lt <- array(0, dim = c(params$location_cnt, params$day_cnt))
+  # This is for each entry in the matrix
+  time_cols <- grep("Time", colnames(health_dt))
+  level_cols <- c(time_cols[1] - 1, time_cols + 1)
+  lh_df <- expand.grid(1:params$location_cnt, 1:params$human_cnt)
+  # Produces a list where each item is a list with mosquito infections
+  # and human infections
+  combined_df <- lapply(
+    1:nrow(lh_df),
+    function(lh_idx) {
+      l_idx <- lh_df[lh_idx, 1]
+      h_idx <- lh_df[lh_idx, 2]
+      bite_cnt <- bites.lh[l_idx, h_idx]
+      health_rec <- health_dt[health_dt$ID == h_idx,]
+      human_status <- macro:::assign_levels_to_bites(health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
+      with_mosquito <- macro:::assign_mosquito_status(human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
+      list(
+        mosquito_infections = data.frame(
+          location = l_idx,
+          human = h_idx,
+          mosquito_infections = sum(with_mosquito$infect_mosquito)
+        ),
+        human_infections = with_mosquito[with_mosquito$infect_human > 0, ]
+      )
+    })
+  list(
+    mosquito_infections = do.call(rbind, lapply(combined_df, function(x) x[[1]])),
+    human_infections = do.call(rbind, lapply(combined_df, function(x) x[[2]]))
+  )
 }
 
 
@@ -332,32 +379,30 @@ assign_mosquito_status <- function(bites_df, M, Y, Z) {
 #' @param health_dt Health events from the protocol.
 #' @param movement_dt Movement events from the protocol.
 #' @param bites_dt Bite events from the protocol.
-#'
+#' @param params Has `human_cnt`, `location_cnt`, `duration`,
+#'     `day_duration`, `dispersion`, `day_cnt`.
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
 bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
+  health_dt <- sample_health_infection_status(params$human_cnt, params$duration)
+  bite_weight <- runif(params$human_cnt, 0.2, 0.8)
+  movement_dt <- sample_move_location(params$human_cnt, params$location_cnt, params$duration)
+  mosquito_dt <- sample_mosquito_myz(params$location_cnt, params$duration)
+  dwell.lh <- macro:::human_dwell(movement_dt, params)
+  M_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "M")
+  Y_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "Y")
+  Z_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "Z")
+  biting_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "a")
 
-  dwell.lh <- human_dwell(movement_dt, params)
-  M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Adult")
-  Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Infected")
-  biting_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "a")
-
-  day_idx <- 1
-  bites.lh <- sample_bites(dwell.lh, M_arr[,, day_idx], biting_arr[,, day_idx], params)
-  infectious_to_mosquito.lt <- array(0, dim = c(location_cnt, day_cnt))
-  # This is for each entry in the matrix
-  bite_cnt <- bites.ln[row_idx, col_idx]
-  human_status <- assign_levels_to_bites(health_rec, bite_cnt, time_cols, level_cols, params)
-  # M, Y, Z are entries from the matrix of locations by days.
-  with_mosquito <- assign_mosquito_status(human_status, M, Y, Z)
-  infectious_to_mosquito.lt[row_idx, col_idx] <- sum(with_mosquito$infect_mosquito)
-  human_events[[length(human_events) + 1]] <- with_mosquito[with_mosquito$infect_human > 0,]
-
-  all_human_events <- do.call(rbind, human_events)
+  days_df <- lapply(
+    1:params$day_cnt,
+    function(day_idx) bld_single_day(day_idx, M_arr, Y_arr, Z_arr, biting_arr,
+                                     dwell.lh, bite_weight, health_dt, params)
+  )
   list(
-    human_events = all_human_events,
-    mosquito_events = infectious_to_mosquito.lt
+    mosquito_events = do.call(rbind, lapply(days_df, function(x) x[[1]])),
+    human_events = do.call(rbind, lapply(days_df, function(x) x[[2]]))
   )
 }
 

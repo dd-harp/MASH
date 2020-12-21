@@ -112,15 +112,19 @@ sample_bites <- function(travel, mosquitoes, biting_rate, bite_weight, world) {
   with(world, {
     bite_weight.lh <- travel %*% diag(bite_weight)
     bite_weight.l <- rowSums(bite_weight.lh)
+    bite_norm.l <- ifelse(bite_weight.l > 0, 1 / bite_weight.l, 0)
 
     bite_rate.l <- mosquitoes * biting_rate
-    fraction_of_bites_to_each_human <- diag(1 / bite_weight.l) %*% bite_weight.lh
+    fraction_of_bites_to_each_human <- diag(bite_norm.l) %*% bite_weight.lh
     bite_rate.h <- bite_rate.l %*% fraction_of_bites_to_each_human
     bite_rate.lh <- fraction_of_bites_to_each_human * bite_rate.l
 
+    logdebug(paste("sample_bites rate", paste0(bite_rate.h, collapse = ", ")))
     bites.h <- vapply(
       bite_rate.h,
-      function(bites) bloodmeal_nbinom(bites, dispersion),
+      function(bite_rate) {
+       bloodmeal_nbinom(bite_rate, dispersion)
+      },
       numeric(1)
     )
     bites.lh <- vapply(
