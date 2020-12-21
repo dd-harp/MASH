@@ -1,0 +1,468 @@
+---
+title: "Bloodmeal Investigation"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r load_libs, echo = FALSE}
+library(macro)
+```
+
+
+# Introduction
+I want to write down a way to sample the number of bites for each person
+in each location and check that it looks right. In particular, let's write
+down the version that draws from a negative binomial for the number of
+bites per person, because that's the harder case.
+
+# Distributions
+Before I use the negative binomial distribution in R, I'll check that
+R's definition matches something known. There are always alternative forms
+of distributions, so it helps to be sure from the start.
+
+According to R's documentation, the R negative binomial distribution has density
+$$
+ f(x;n, p) = \frac{\Gamma(x+n)}{\Gamma(n) x!} p^n (1-p)^x.
+$$
+Here, $\Gamma(n)=(n-1)!$ for integer $n$, so that's equivalent to
+$$
+ f(x;n, p) = \frac{(x+n-1)!}{(n-1)! x!} p^n (1-p)^x.
+$$
+For comparison, Wikipedia's [entry for the negative binomial](https://en.wikipedia.org/wiki/Negative_binomial_distribution)
+writes it with a choose-notation.
+$$
+f(k; r,p) = \left(k+r-1\atop r-1\right)p^r(1-p)^k
+$$
+That's the same as above, swapping $(x,n,p)\rightarrow (k,r,p)$.
+
+Fine. From this, we know the mean of R's distribution.
+$$
+\int_0^\infty xf(x;n,p)dx = \frac{n(1-p)}{p}
+$$
+The variance is the mean over $1-p$.
+$$
+\int_0^\infty (x-\mu)^2f(x;n,p)dx = \frac{n(1-p)}{p^2}
+$$
+# Parametrize the distribution
+
+We want to parametrize the bloodmeal with two values, the EIR and the
+dispersion. The mean should be the EIR.
+$$
+  E = \frac{n(1-p)}{p}
+$$
+When we use the term dispersion, we could measure that a number of different
+ways. One is the standard deviation.
+$$
+D = \frac{\sqrt{n(1-p)}}{p}
+$$
+If I look at the C++ implementation, it seems to use a ratio of dispersion
+to the mean. **Why is this the dispersion measure?**
+$$
+\frac{D}{E} = \frac{p}{1-p}
+$$
+Let's go with that, which implies a simple formulat for $p$.
+$$
+p = \frac{D}{D+E}
+$$
+Given this value for $p$, what $n$ should be.
+
+We need the mean number of bites to equal the EIR.
+$$
+n = \frac{Ep}{1-p}
+$$
+That looks like the C++ function.
+```{r cpp_bloodmeal, eval = FALSE}
+int queue_bites_nbinom::sample_bites(const double eir){
+  double p = disp / (disp + eir);
+  int k = (eir*p)/(1.-p);
+  return R::rnbinom(k,p);
+}
+```
+It's the same in R.
+```{r r_bloodmeal}
+bloodmeal_nbinom <- function(eir, dispersion) {
+  p <- dispersion / (dispersion + eir)
+  k <- (eir * p) / (1 - p)
+  rnbinom(1, size = k, prob = p)
+}
+```
+
+Check the bloodmeal. It has the correct expected value.
+```{r}
+expected_eir <- 10
+bloodsamples <- vapply(
+  1:10000,
+  function(x) bloodmeal_nbinom(expected_eir, 3),
+  numeric(1)
+)
+print(c(mean(bloodsamples), expected_eir))
+hist(bloodsamples)
+```
+
+# R sampling
+
+There are humans, $h$, and locations $l$.
+People have biting weights, $b_h$. The mosquitoes in a location have a biting
+rate, $c_l$. We start with a list of which people dwelled in which locations.
+Let's start by giving each person a home location and drawing their dwell time
+from a multinomial over the locations.
+```{r build_world}
+l_cnt <- 2L
+humans_per_location <- 3L
+h_cnt <- humans_per_location * l_cnt
+home <- rep(1:l_cnt, each = humans_per_location)
+b <- runif(h_cnt, 0.5, 1)
+c <- runif(l_cnt, 0.2, 0.5)
+# A human in a location has a distribution for where they go.
+travel_distribution <- function (l_idx, l_cnt) {
+  shape = 1
+  preference <- rexp(l_cnt, shape)
+  highest <- which.max(preference)
+  save <- preference[l_idx]
+  preference[l_idx] <- highest
+  preference[highest] <- save
+  preference / sum(preference)
+}
+location_travel <- vapply(
+  1:l_cnt,
+  function(l_idx) travel_distribution(l_idx, l_cnt), FUN.VALUE = numeric(l_cnt)
+  )
+stopifnot(abs(colSums(location_travel) - rep(1, l_cnt)) < 1e-10)
+# Each human's travel is a draw from that distribution, for 30min segments.
+travel_pattern <- function(h_idx) {
+  time_chunks <- rmultinom(1, 48, location_travel[, home[h_idx]])
+  time_chunks / sum(time_chunks)
+}
+tar <- vapply(1:h_cnt, travel_pattern, numeric(l_cnt))
+stopifnot(abs(colSums(tar) - rep(1, l_cnt)) < 1e-10)
+stopifnot(dim(tar) == c(l_cnt, h_cnt))
+```
+
+Now turn that into a total biting weight per location and person.
+```{r total_biting_weight}
+tar_biting_weight <- tar %*% diag(b)
+location_biting_weight <- rowSums(tar_biting_weight)
+location_biting_weight
+```
+Let's give the location a tendency for mosquitoes. Make it rocky, so that
+there is some chance of none, some of many.
+```{r mosquitoes_at_location}
+multitudes_of_mosquitoes <- rbinom(l_cnt, 5, 0.4)
+mosquitoes <- rbinom(l_cnt, 1000*multitudes_of_mosquitoes, 0.1)
+```
+
+We could sample, for a location, the number of bites. That would look like
+this.
+```{r mosquito_bites, eval = FALSE}
+bites_at_location <- rbinom(l_cnt, mosquitoes, c)
+```
+But how would we assign them to people?
+
+Instead, take the biting rate and turn that back onto each person.
+```{r}
+biterate_location <- mosquitoes * c
+print(biterate_location)
+fraction_of_bites_to_each_human <- diag(1 / rowSums(tar_biting_weight)) %*% tar_biting_weight
+fraction_of_bites_to_each_human
+average_bites_per_human <- biterate_location %*% fraction_of_bites_to_each_human
+print(average_bites_per_human)
+print(fraction_of_bites_to_each_human * biterate_location)
+```
+We can use that as our average for sampling.
+```{r}
+dispersion <- 1.5
+bites_per_human <- vapply(
+  average_bites_per_human,
+  function(bites) bloodmeal_nbinom(bites, dispersion),
+  numeric(1)
+  )
+```
+Then allocate these back to the locations with a multinomial.
+```{r allocate_bites_back}
+bites_matrix <- vapply(
+  1:h_cnt,
+  function(h_idx) rmultinom(1, bites_per_human[h_idx], tar_biting_weight[, h_idx]),
+  numeric(l_cnt)
+)
+bites_at_location <- rowSums(bites_matrix)
+stopifnot(sum(bites_at_location) == sum(bites_per_human))
+```
+
+# Distribution from that sampling
+
+We worked out a way to sample. Now let's run this a bunch of times and see if
+the distribution of samples looks OK. I took the above code and put it
+into `bloodmeal_daily.R` so that we have functions to call.
+
+```{r}
+world <- build_world(5, 20)
+travel <- sample_travel(world)
+mosquitoes <- sample_mosquitoes(world)
+```
+
+My biggest question is whether it samples correctly. By correctly, I mean that
+the mean of the bites per location matches what we expect from the mosquito
+biting rate. In addition, I would ask that the shape of the distribution of
+bites per location match a Poisson distribution's shape, because that's our
+starting assumption.
+
+We answer that question by generating a lot of samples from the same
+time-at-risk matrix and the same mosquito count.
+```{r}
+sample_cnt <- 10000
+bites_l_draws <- vapply(1:sample_cnt, function(i) {
+    bites <- sample_bites(travel, mosquitoes, world)
+    rowSums(bites)
+  },
+  numeric(world$l_cnt))
+hist(bites_l_draws[4, ])
+```
+This KDE uses jitter on the integer values. It looks pretty bad, though.
+```{r}
+xlim <- 0
+for (lim_idx in 1:world$l_cnt) {
+  xlim <- max(xlim, unname(quantile(bites_l_draws[lim_idx,], 0.99)))
+}
+for (loc_idx in 1:world$l_cnt) {
+  loc1 <- kde1d::kde1d(bites_l_draws[loc_idx,], xmin = 0, deg = 2)
+  if (loc_idx == 1) {
+    plot(loc1, xlim = c(0, xlim), ylim = c(0, 0.03))
+  } else {
+    lines(loc1)
+  }
+}
+```
+Then compare the results with a Poisson distribution where the rate is
+the mosquito count times the biting rate for that location. We use robust
+estimators, as a default practice.
+```{r}
+expected_location_bites <- mosquitoes * world$c
+trimmed_mean <- function(data, indices) {
+  mean(data[indices], trim = 0.2)
+}
+full_mean <- function(data, indices) {
+  mean(data[indices])
+}
+mean_absolute_deviation <- function(data, indices) {
+  max(data[indices], constant = 1.4826)
+}
+compare_over_statistic <- function(statistic) {
+  # Generate a robust estimator of the Poisson distribution
+  mean_generated <- lapply(1:world$l_cnt, function(l_idx) {
+    basic_rate <- rpois(1000, expected_location_bites[l_idx])
+    boot::boot(
+      data = basic_rate,
+      statistic = statistic,
+      R = 599
+    )
+  })
+  # Compare with same robust estimator on observed values
+  mean_est <- lapply(1:world$l_cnt, function(l_idx) {
+      boot::boot(
+      data = bites_l_draws[l_idx,],
+      statistic = statistic,
+      R = 599
+      )
+    })
+  sampled_bites <- vapply(mean_est, function(m) m$t0, numeric(1))
+  expected_bites <- vapply(mean_generated, function(m) m$t0, numeric(1))
+  cbind(sampled_bites, expected_bites)
+}
+```
+
+Now look at the trimmed mean.
+```{r compare_trimmed_mean}
+compare_over_statistic(trimmed_mean)
+```
+
+And look at the mean absolute deviation (MAD).
+```{r compare_association}
+compare_over_statistic(mean_absolute_deviation)
+```
+The net result is that I'm concerned about the final distributions
+because they don't appear to be Poisson in variance.
+
+# Find infectiousness of bites
+
+Here we assume that we have the bites in a location of a human. How do we count the bites that are infectious to either party in this interaction?
+
+The probability a mosquito is infectious is $z=Z/M$. We know both of these for the location, so we can draw from $Bernoulli(z)$ to find if the mosquito is infectious.
+```{r}
+z <- 0.1
+rbinom(1, 1, z)
+```
+
+
+For the human, we could do a better or worse job of it. The better job draws a time for the bite, between zero and the total time spent in the location. Then it looks at the human's travel events to determine when, during the day, the human accumulated that much time in the location.
+```{r}
+fraction_of_day <- 0.3
+bite_time_within_location <- runif(1, 0, fraction_of_day)
+# Loop through location events to find the right time.
+```
+
+The worse job would choose a random time in the day and say that's good enough. Sounds terrible, but it may not matter.
+
+# Building from MASH data
+
+## Make the input
+
+Let's start from the MASH data and convert things until we get to the format above. I will work here and then move it to the code.
+```{r mash_data_examples}
+human_cnt <- 10L
+place_cnt <- 5L
+time_step <- 10.0
+health_dt <- sample_health_infection_status(human_cnt, time_step)
+move_dt <- sample_move_location(human_cnt, place_cnt, time_step)
+bite_dt <- sample_mosquito_kappa(place_cnt, time_step)
+```
+
+```{r}
+location_cnt <- 10L
+step_duration <- 10.0
+day_cnt <- as.integer(step_duration / 1)
+move_cnt <- length(grep("Time", names(move_dt)))
+h_idx <- 1
+
+single_dwell <- function(h_record, location_cnt, move_cnt, step_duration, day_duration = 1) {
+  day_cnt <- as.integer(step_duration / day_duration)
+  loc_dwell <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
+
+  loc_previous <- h_record$Start
+  day_previous <- 1
+  time_previous <- (day_previous - 1) * day_duration
+  for (move_idx in 1:move_cnt) {
+    next_time <- h_record[[sprintf("Time%d", move_idx)]]
+    if (is.finite(next_time)) {
+      while (ceiling(next_time / day_duration) > day_previous) {
+        loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + day_previous * day_duration - time_previous
+        time_previous <- day_previous * day_duration
+        day_previous <- day_previous + 1
+      }
+      loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + next_time - time_previous
+      time_previous <- next_time
+      loc_previous <- h_record[[sprintf("Location%d", move_idx)]]
+    }
+  }
+  next_time <- step_duration
+  while (ceiling(next_time / day_duration) > day_previous) {
+    loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + day_previous * day_duration - time_previous
+    time_previous <- day_previous * day_duration
+    day_previous <- day_previous + 1
+  }
+  loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + next_time - time_previous
+  loc_dwell
+}
+h_record <- move_dt[move_dt$ID == 7, ]
+single_dwell(h_record, location_cnt, move_cnt, step_duration)
+```
+Now turn that into an array of times.
+```{r}
+human_cnt <- max(move_dt$ID)
+dwell_loc_day_human <- vapply(
+  1:human_cnt,
+  function(h_idx) {
+    h_record <- move_dt[move_dt$ID == h_idx, ]
+    single_dwell(h_record, location_cnt, move_cnt, step_duration)
+  },
+  FUN.VALUE = array(0, dim=c(location_cnt, day_cnt))
+)
+# We want to work a day at a time, so permute to put that data first.
+dwell_loc_human_day <- aperm(dwell_loc_day_human, c(1, 3, 2))
+```
+
+Convert the bites data table, as well. We don't want a bites table. We want a mosquito count and a rate of biting, but the conversion will be the same. It's taking a data.table and turning it into an array.
+```{r}
+#' Given a data table, generate an array form.
+#' @param dt the data table
+#' @param row the name of the column to use as row values. Must be integers.
+#' @param col name of column to use as column values. Must be integers.
+#' @param value name of column to use as values.
+#' @return an array with size from min to max in row and column, assuming
+#'     they are integers that are in order.
+data_table_to_array <- function(dt, row, col, value) {
+  row_min <- min(dt[[row]])
+  row_cnt <- max(dt[[row]]) - row_min + 1
+  col_min <- min(dt[[col]])
+  col_cnt <- max(dt[[col]]) - col_min + 1
+  
+  arr <- array(0, dim = c(row_cnt, col_cnt))
+  row_offset <- 1 - row_min
+  col_offset <- 1 - col_min
+  for (row_idx in 1:nrow(dt)) {
+    rec <- dt[row_idx,]
+    arr[rec[[row]] + row_offset, rec[[col]] + col_offset] <- rec[[value]]
+  }
+  arr
+}
+bite_arr <- data_table_to_array(bite_dt, "Location", "Time", "Bites")
+```
+
+Now I have the pieces for the main computation. The numbers of locations and humans currently disagree, but you get the point. We pull out a day and do the computation for that day.
+```{r, eval = FALSE}
+day_idx <- 1
+bites.lh <- sample_bites(dwell_loc_human_day[, , day_idx], bite_arr[, day_idx], world)
+```
+
+
+## Take bite count for location and human and make individual bites
+
+So I'll have a $Z$ and an $M$ for each location and day. Let's say I ran them both through the `data_table_to_array` function above, so that they are two matrices. Then $z=Z / M$ will work, exactly as that, in code, to give me an array of the probability a mosquito is infectious.
+
+For the human infectiousness, let's generate a set of bite times and then ask whether the human is infectious or not.
+```{r}
+bites_in_location <- 8
+day_duration <- 1
+day_idx <- 3
+bite_times <- runif(bites_in_location, (day_idx - 1) * day_duration, day_idx * day_duration)
+bite_times
+```
+Now assign mosquito infection status.
+```{r}
+z <- runif(10L, 0.2, 0.4)  # make up some z values.
+mosquito_infection <- rbinom(bites_in_location, 1, z[day_idx])
+mosquito_infection
+```
+Then take the timings of the bites and see where they fit in the health state. Each bite gets the time of the last entry that's before that time.
+```{r}
+h_idx == 1
+health_rec <- health_dt[health_dt$ID == h_idx,]
+time_cols <- grep("Time", names(health_rec))
+level_cols <- c(time_cols[1] - 1, time_cols + 1)
+
+assign_levels_to_bites <- function(health_rec, time_cols, level_cols) {
+  times <- c(0, unlist(health_rec[, ..time_cols]))
+  levels <- unlist(health_rec[, ..level_cols])
+  vapply(
+    bite_times,
+    function(t0) {
+      times < t0 & is.finite(times)
+      tail(levels[times < t0 & is.finite(times)], n = 1)
+    },
+    FUN.VALUE = numeric(1)
+    )
+}
+human_status <- assign_levels_to_bites(health_rec, time_cols, level_cols)
+data.table(
+  bite_times = bite_times,
+  mosy_level = mosquito_infection,
+  human_level = human_status
+)
+
+```
+Let's try another method.
+```{r}
+assign_levels_to_bites <- function(health_rec, time_cols, level_cols) {
+  times <- c(0, unlist(health_rec[, ..time_cols]))
+  levels <- unlist(health_rec[, ..level_cols])
+  ts <- c(unname(times[is.finite(times)]), 10)
+  unname(levels[cut(c(1, 2,3 ,4, 5, 6,7,8,9,9.9), breaks = ts, labels = FALSE)])
+}
+human_status <- assign_levels_to_bites(health_rec, time_cols, level_cols)
+data.table(
+  bite_times = bite_times,
+  mosy_level = mosquito_infection,
+  human_level = human_status
+)
+```
+

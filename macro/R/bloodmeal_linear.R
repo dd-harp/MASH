@@ -1,5 +1,13 @@
+# Bloodmeal-linear
+# This assumes that the mosquito module sends a list of bites at locations
+# and times. It assigns those bites to humans at those locations and times.
 library(data.table)
 
+#' Converts from incoming wide format data table to a long one.
+#' @param location_dt Data table with one individual per row and two columns
+#'     for each movement. One column for when, one for where.
+#' @return Output data table is a sequence of movements, so columns are
+#'     person, time, source, destination.
 convert_to_source_destination <- function(location_dt) {
   location_linear <- location_dt[, .(ID = ID, Previous = NA, Location = Start, Time = 0.0)]
   step_cnt <- length(grep("Time", names(location_dt)))
@@ -22,6 +30,8 @@ convert_to_source_destination <- function(location_dt) {
 }
 
 
+#' Takes location movements and turns them into a sequence of entering
+#' leaving events for each location.
 convert_to_enter_events <- function(location_changes_dt) {
   enter <- location_changes_dt[
     , .(ID = ID, Location = Location, Time = Time, Event = 1)]
@@ -32,6 +42,11 @@ convert_to_enter_events <- function(location_changes_dt) {
 }
 
 
+#' Converts wide data table of health events into a long one.
+#' @param health_dt One row per individual, two columns per change.
+#'     The two columns are for time and state.
+#' @param Output data table is ID, Level, Time, with a row for each
+#'     change for each person, plus starting rows for starting states.
 health_as_events <- function(health_dt) {
   h0 <- health_dt[, .(ID = ID, Level = Start, Time = 0.0)]
   step_cnt <- length(grep("Time", names(health_dt)))
@@ -105,6 +120,12 @@ location_next_state <- function(location_events, query_times, previous_state = N
 }
 
 
+#' Assign bites to humans present at location.
+#' Events has columns (ID, Level, Time, Location, Event).
+#' Events include enter 1, leave -1, and change infectiousness level 2.
+#' Bites has columns (Location, Bite, Time).
+#' Returned bites have an ID for the human, that can be -1 for not-a-human,
+#' and a Level, for the infectiousness of the human bitten.
 bites_at_location <- function(events, bites) {
   previous_time <- 0.0
   previous_state <- NULL
@@ -114,10 +135,16 @@ bites_at_location <- function(events, bites) {
     bite_level <- bites[bite_idx]$Bite
     human_state <- location_next_state(events, c(previous_time, bite_time), previous_state)
 
-    # This samples humans with an equal probability, but this is where we weight it.
-    human_idx <- sample(1:nrow(human_state), 1)
-    bites[bite_idx, "ID"] <- human_state[human_idx, ID]
-    bites[bite_idx, "Level"] <- human_state[human_idx, Level]
+    if (nrow(human_state > 0)) {
+      # This samples humans with an equal probability, but this is where we weight it.
+      human_idx <- sample(1:nrow(human_state), 1)
+      bites[bite_idx, "ID"] <- human_state[human_idx, ID]
+      bites[bite_idx, "Level"] <- human_state[human_idx, Level]
+    } else {
+      # There were no humans at this location to bite, so the bite is lost.
+      bites[bite_idx, "ID"] <- -1  # This defines a not-a-human bitten.
+      bites[bite_idx, "Level"] <- 0.0
+    }
 
     previous_time <- bite_time
     previous_state <- human_state
