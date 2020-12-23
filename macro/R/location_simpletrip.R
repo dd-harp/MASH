@@ -96,7 +96,11 @@ simple_trip_observer <- function(transition_name, former_state, new_state, curti
 #'    * \code{home}: vector of everybody's home
 #'    * \code{current}: vector of everybody's current location
 #'
-#' @param parameters A list or environment
+#' @param parameters A list or environment. If you make an environment with
+#'     `as.environment` then you may get an error "could not find function".
+#'     That's because the environment inherits from the empty environment.
+#'     Instead, use `list2env` to create the environment and it will, by
+#'     default, inherit from the parent frame.
 #'
 #' @return A simulation object, which is a list.
 #' @export
@@ -108,7 +112,7 @@ simple_trip_module <- function(parameters) {
 
   # parameter checking
   stopifnot(all(diag(parameters$trip_dest) == 0))
-  stopifnot(all(rowSums(parameters$trip_dest) == 1))
+  stopifnot(all(abs(rowSums(parameters$trip_dest) - 1) < 1e-15))
   stopifnot(nrow(parameters$trip_dest)==parameters$npatch & ncol(parameters$trip_dest)==parameters$npatch)
 
   stopifnot(nrow(parameters$return_home_rate)==parameters$npatch & ncol(parameters$return_home_rate)==parameters$npatch)

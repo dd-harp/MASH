@@ -1,3 +1,5 @@
+library(data.table)
+
 test_that("look_back_eip is right for small problem", {
   ll <- look_back_eip(c(3,3,2,2,2))
   compare <- list(c(2), c(2), numeric(0), c(3), c(3, 2))

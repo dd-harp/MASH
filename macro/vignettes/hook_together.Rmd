@@ -1,0 +1,55 @@
+---
+title: "Hook Some Things Together"
+output: html_notebook
+---
+
+```{r load_libs, show = FALSE}
+library(macro)
+library(data.table)
+```
+
+
+# Introduction
+
+We have some components that should form a malaria simulation. Let's walk through creating them and hooking them together.
+
+There are four parts: a human health module, a human movement module, a mosquito module, and a bloodmeal module. Each needs to be created to describe a set of locations with humans and mosquitoes. We can start with a general notion, for instance that there are three locations with 40 humans among them.
+```{r initial_sense}
+parameters <- list(
+  human_cnt = 40L,
+  location_cnt = 3L,
+  duration_days = 10
+)
+parameters$humans.l <- c(rmultinom(1, parameters$human_cnt, c(0.1, 0.3, 0.6)))
+```
+Here, the `.l` means it's a vector over locations. We'll use `.h` to mean a vector over humans. It's a convenient signal about what a variable's dimensions are for.
+
+# Movement Module
+
+This module is independent of the others, so let's take care of it first. It needs a stochastic matrix for movement, where rows are people and columns are locations.
+
+```{r make_simpletrip}
+start_at_home <- rep(1:parameters$location_cnt, parameters$humans.l)
+stopifnot(length(start_at_home) == parameters$human_cnt)
+
+stochastic_matrix <- matrix(runif(parameters$location_cnt^2), nrow = parameters$location_cnt)
+diag(stochastic_matrix) <- 0
+# The rows should sum to one.
+stochastic_matrix <- diag(1 / rowSums(stochastic_matrix)) %*% stochastic_matrix
+return_matrix <- matrix(1, nrow = parameters$location_cnt, ncol = parameters$location_cnt)
+diag(return_matrix) <- 0
+return_matrix <- diag(1 / rowSums(return_matrix)) %*% return_matrix
+
+simpletrip_parameters <- list2env(list(
+  trip_rate = rep(0.1, parameters$location_cnt),
+  trip_dest = stochastic_matrix,
+  return_home_rate = return_matrix,
+  npatch = parameters$location_cnt,
+  home = start_at_home,
+  current = start_at_home
+))
+movement <- simple_trip_module(simpletrip_parameters)
+movement <- mash_step(movement, parameters$duration_days, NULL)
+locations <- location_path(movement)
+```
+The resulting data structure is a list with an entry for each location. Each member is a data.table with three columns: `arrive`, `leave`, and `time`. The values in `arrive` or `leave` are the ID of the individual, where either one or the other is the ID, and the other one is `NaN`.

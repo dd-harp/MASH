@@ -75,6 +75,14 @@ look_back_eip <- function(EIP) {
 #' @return A square matrix. You right-multiply a population, and it gets
 #'     a day older by moving a column to the right.
 #'
+#' Takes this matrix:
+#'  1 2 3
+#'  6 7 8
+#'
+#' and turns it into this matrix:
+#'  0 1 5
+#'  0 6 15
+#'
 #' This is for half-open intervals, meaning the last column of the matrix
 #' doesn't shift. It accumulates individuals that are added from the previous
 #' day. This number will be gradually reduced by the survival.
@@ -172,8 +180,9 @@ mosquito_rm_aquatic <- function(lambda) {
 #'
 #' @param state The internal state.
 #' @param parameters The internal parameters.
-#' @param kappa Net infectiousness of humans to mosquitoes, the probability
-#'     a mosquito becomes infected after feeding on a human. Vector per patch.
+#' @param bites Net infectiousness of humans to mosquitoes expressed
+#'     as a number of infectious bites in each location. The units on bites
+#'     must match the M units, which can be either a fraction or a count.
 #' @param aquatic The function to call to get the emergence.
 #' @return a list with five values: the vectors `M`, `Y`, `Z`, and the
 #'     parameters `a` and `simulation_day`.
@@ -183,7 +192,7 @@ mosquito_rm_aquatic <- function(lambda) {
 #' the rest is deterministic.
 #'
 #' @export
-mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic = mosquito_rm_aquatic) {
+mosquito_rm_dynamics <- function(state, parameters, bites, aquatic = mosquito_rm_aquatic) {
   with(parameters, {
     with(state, {
       simulation_day <- simulation_day + 1
@@ -202,7 +211,9 @@ mosquito_rm_dynamics <- function(state, parameters, kappa, aquatic = mosquito_rm
         }
       }
 
-      Y0 <- a * kappa * (M - rowSums(Y))
+      # This would be a * kappa * (M - rowSums(Y)) but has been calculated
+      # inside the bloodmeal because we sent it M, Y, Z, and a.
+      Y0 <- min(bites, (M - rowSums(Y)))
       Y0[Y0 < 0] <- 0
       Y <- Y %*% one_day_older
       Y[, 1] <- Y0
@@ -307,7 +318,7 @@ mosquito_rm_trended_kappa <- function(kappa) {
 #' One discrete time step for the mosquito_rm module.
 #'
 #' @param module The mosquito_rm module.
-#' @param past_kappa Infectiousness to mosquitoes over discrete-time step.
+#' @param bites_arr Infectious bites to mosquitoes over discrete-time step.
 #' @return Observation of the time step and new state as a list
 #'     with `future_state` and `output`.
 #'
@@ -318,13 +329,13 @@ mosquito_rm_trended_kappa <- function(kappa) {
 #' it is called.
 #'
 #' @export
-mosquito_rm_discrete_step <- function(module, past_kappa) {
+mosquito_rm_discrete_step <- function(module, bites_arr) {
   params <- module$parameters
   today_state <- module$state
   for (i in 1:params$duration) {
-    today_state <- mosquito_rm_dynamics(today_state, params, past_kappa[, i])
+    today_state <- mosquito_rm_dynamics(today_state, params, bites_arr[, i])
   }
-  future_kappa <- mosquito_rm_average_kappa(past_kappa)
+  future_kappa <- mosquito_rm_average_kappa(bites_arr)
   future_state <- mosquito_rm_copy_state(today_state)
   output <- vector(mode = "list", length = params$duration)
   for (i in 1:params$duration) {
@@ -348,11 +359,12 @@ mosquito_rm_discrete_step <- function(module, past_kappa) {
 #' One discrete time step for the mosquito_rm module.
 #' @param module The mosquito_rm module.
 #' @param bloodmeal_dt The input bloodmeal data from the last time step.
+#'     This has Bites, Time, Location in a data table.
 #' @return The mosqutio_rm module back again, after the time step.
 #' @export
 mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
-  past_kappa <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
-  step_output <- mosquito_rm_discrete_step(module, past_kappa)
+  past_bites <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
+  step_output <- mosquito_rm_discrete_step(module, past_bites)
   stepped_module <- list(
     external_parameters = module$external_parameters,
     parameters = module$parameters,
