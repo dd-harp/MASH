@@ -63,7 +63,7 @@ test_that("mosquito-rm maternal stable population is stable", {
   for (i in 1:10) {
     state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
   }
-  expect_true(within_absolute_error(state$M, initial_state$M, 1e-5))
+  expect_true(macro:::within_absolute_error(state$M, initial_state$M, 1e-5))
 })
 
 
@@ -85,7 +85,7 @@ test_that("mosquito-rm aggregates Y0 geometrically", {
   for (i in 1:100) {
     state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
   }
-  expect_true(within_absolute_error(state$Y[, 1] / (1 - params$p), rowSums(state$Y), 1e-5))
+  expect_true(macro:::within_absolute_error(state$Y[, 1] / (1 - params$p), rowSums(state$Y), 1e-5))
 })
 
 
@@ -110,7 +110,7 @@ test_that("mosquito-rm incubating is stable", {
   }
   y0_expected <- with(params,
     rep(a * kappa / (1 + a * kappa * p / (1 - p)), patch_cnt))
-  expect_true(within_absolute_error(state$Y[, 1], y0_expected, 1e-5))
+  expect_true(macro:::within_absolute_error(state$Y[, 1], y0_expected, 1e-5))
 })
 
 
@@ -137,7 +137,7 @@ test_that("mosquito-rm infectious is stable", {
   eip = params$EIP[[1]]
   p = params$p
   z_expected <- rep(p^eip * y0_expected / (1 - p), patch_cnt)
-  expect_true(within_absolute_error(state$Z, z_expected, 1e-4))
+  expect_true(macro:::within_absolute_error(state$Z, z_expected, 1e-4))
 })
 
 
@@ -174,7 +174,7 @@ test_that("mosquito-rm converts incoming kappa to internal shape", {
   patch_cnt <- 5
   duration <- 10
   kappa_dt <- sample_mosquito_kappa(patch_cnt, duration)
-  kappa <- mosquito_rm_convert_bloodmeal(kappa_dt)
+  kappa <- macro:::mosquito_rm_convert_bloodmeal(kappa_dt)
   expect_equal(dim(kappa)[1], patch_cnt)
   expect_equal(dim(kappa)[2], duration)
 })
@@ -197,7 +197,11 @@ test_that("mosquito-rm module can do a time step", {
   bloodmeal_dt <- sample_mosquito_kappa(patch_cnt, user_parameters$duration)
   module <- mash_step(module_initial, bloodmeal_dt)
   expect_equal(names(module_initial), names(module))
-  expect_equal(dim(module$output), c(patch_cnt, user_parameters$duration))
+  result <- module$output
+  expect_equal(nrow(result), patch_cnt * user_parameters$duration)
+  expect_true(all(result$M >= 0))
+  expect_true(all(result$Y >= 0))
+  expect_true(all(result$Z >= 0))
 })
 
 
@@ -205,7 +209,11 @@ test_that("mosquito-rm module can observe results", {
   patch_cnt <- 5L
   user_parameters <- build_biting_parameters(patch_cnt)
   module <- mosquito_rm_module(user_parameters)
-  module$output <- matrix(nrow = patch_cnt, ncol = user_parameters$duration)
+  bloodmeal_dt <- data.table(expand.grid(1:patch_cnt, 1:user_parameters$duration))
+  names(bloodmeal_dt) <- c("Location", "Time")
+  bloodmeal_dt$Time <- bloodmeal_dt$Time - 1
+  bloodmeal_dt$Bites <- sample(10:20, nrow(bloodmeal_dt), replace = TRUE)
+  module <- mash_step(module, bloodmeal_dt)
   bites_dt <- mosquito_path(module)
   expect_equal(nrow(bites_dt), patch_cnt * user_parameters$duration)
 })

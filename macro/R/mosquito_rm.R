@@ -175,6 +175,8 @@ mosquito_rm_aquatic <- function(lambda) {
 #' @param kappa Net infectiousness of humans to mosquitoes, the probability
 #'     a mosquito becomes infected after feeding on a human. Vector per patch.
 #' @param aquatic The function to call to get the emergence.
+#' @return a list with five values: the vectors `M`, `Y`, `Z`, and the
+#'     parameters `a` and `simulation_day`.
 #'
 #' This is a single-day dynamics step for a discrete-time analog
 #' of the Ross-Macdonald model. The aquatic lifecycle is stochastic, but
@@ -327,12 +329,18 @@ mosquito_rm_discrete_step <- function(module, past_kappa) {
   output <- vector(mode = "list", length = params$duration)
   for (i in 1:params$duration) {
     future_state <- mosquito_rm_dynamics(future_state, params, future_kappa[, i])
-    output[[i]] <- params$a * future_state$Z
+    output[[i]] <- with(future_state, data.table(
+      Location = 1:length(M),
+      Time = simulation_day - 1,
+      M = M,
+      Y = M - Z,  # The Y in the state is a matrix.
+      Z = Z
+    ))
   }
   list(
     state = today_state,
     future_state = future_state,  # Pass future state in order to check it.
-    output = do.call(cbind, output)
+    output = do.call(rbind, output)
   )
 }
 
@@ -359,19 +367,8 @@ mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
 #' Get the output of the time step for Ross Macdonald mosquitoes.
 #'
 #' @param module A `mosquito_rm` module.
-#' @return A data.table with three columns, `Bites`, `Location`, and
-#'     `Time`.
+#' @return A data.table
 #' @export
 mosquito_path.mosquito_rm <- function(module) {
-  bites <- as.numeric(module$output)
-  place_cnt <- module$parameters$N
-  day_cnt <- module$parameters$duration
-
-  places <- rep(1:place_cnt, day_cnt)
-  days <- rep(1:day_cnt, each = place_cnt)
-  data.table(
-    Bites = bites,
-    Location = places,
-    Time = days - 1  # -1 because time starts at 0.
-    )
+  cbind(module$output, rep(module$parameters$a, nrow(module$output)))
 }
