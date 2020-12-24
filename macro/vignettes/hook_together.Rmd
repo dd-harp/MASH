@@ -78,3 +78,54 @@ mash_step(health, bites)
 trajectory <- human_disease_path(health)
 ```
 
+# Mosquito Module
+
+```{r make_mosquito_module}
+year_days <- 365
+mosquito_parameters <- list(
+  duration = parameters$duration_days,
+  N = parameters$location_cnt,
+  lambda = matrix(rep(0.1, year_days * parameters$location_cnt), nrow = parameters$location_cnt),
+    psi = diag(parameters$location_cnt),  # diffusion matrix
+    EIP = rep(12, year_days),  # Extrinsic incubation period,
+    maxEIP = 12,  # Maximum length of EIP.
+    p = 0.9,  # survival
+    # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
+    a = 0.6,
+    year_day_start = 1,
+    # Does not affect calculation value.
+    adult_scale = NULL  # Scale for mosquito population.
+  )
+module <- mosquito_rm_module(mosquito_parameters)
+bloodmeal_dt <- data.table(expand.grid(1:parameters$location_cnt, 1:parameters$duration_days))
+names(bloodmeal_dt) <- c("Location", "Time")
+bloodmeal_dt$Time <- bloodmeal_dt$Time - 1
+bloodmeal_dt$Bites <- sample(10:20, nrow(bloodmeal_dt), replace = TRUE)
+module <- mash_step(module, bloodmeal_dt)
+bites_dt <- mosquito_path(module)
+bites_dt
+```
+
+# Bloodmeal module
+
+```{r make_bloodmeal}
+params <- list(
+  human_cnt = 8L,
+  location_cnt = 5L,
+  duration = 10,
+  day_duration = 1,
+  dispersion = 1.5,
+  day_cnt = 10
+)
+health_dt <- sample_health_infection_status(params$human_cnt, params$duration)
+bite_weight <- runif(params$human_cnt, 0.2, 0.8)
+movement_dt <- sample_move_location(params$human_cnt, params$location_cnt, params$duration)
+mosquito_dt <- sample_mosquito_myz(params$location_cnt, params$duration)
+
+bloodmeal <- bloodmeal_density_module(params)
+bloodmeal <- mash_step(bloodmeal, health_dt, movement_dt, mosquito_dt)
+human_infections <- infects_human_path(bloodmeal)
+mosquito_infections <- infects_mosquito_path(bloodmeal)
+mosquito_infections
+```
+
