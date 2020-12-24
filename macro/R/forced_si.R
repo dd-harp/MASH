@@ -153,9 +153,16 @@ forced_si_module <- function(parameters) {
 #' }
 #' @export
 mash_step.forced_si <- function(simulation, bites) {
+  # Save previous state so we know start what the recorded events are changing.
+  simulation$previous_state <- simulation$state[, .(who, disease)]
+  # We need to turn the bites into events within the stochastic system.
+  first_infectious_bite <- 1
   simulation$state$bites <- vapply(
     1:nrow(simulation$state),
-    function(h_idx) ifelse(length(bites[[h_idx]]) > 0, bites[[h_idx]][1], -1),
+    function(h_idx) ifelse(
+      length(bites[[h_idx]]) > 0,
+      bites[[h_idx]][first_infectious_bite],
+      -1),
     FUN.VALUE=numeric(1)
   )
   simulation$state[simulation$state$disease == 'S' & simulation$state$bites >= 0, when := bites]
@@ -172,30 +179,25 @@ mash_step.forced_si <- function(simulation, bites) {
 #' @export
 human_disease_path.forced_si <- function(simulation) {
   # Create a wide dataframe with a column for each time the state changes.
-  # Set each person to start with their ending disease state. Fix the others
-  # along the way when we find out there was an event for them.
-  events <- simulation$state[, .(who, disease)]
-  # Some question about what to do if there are a lot of events for one individual.
-  events[, paste0("t", 1:7)] <- 0.0
-  events[, paste0("t", 1:7)] <- NA
+  health_dt <- data.table(
+    ID = simulation$previous_state$who,
+    Start = ifelse(simulation$previous_state$disease == "I", 1, 0)
+    )
+  # Add some NA columns so we don't have to expand while working.
+  health_dt[, paste0(c("Time", "Level"), rep(1:4, each = 2))] <- 0
+  health_dt[, paste0(c("Time", "Level"), rep(1:4, each = 2))] <- NA
   if (simulation$trajectory_cnt > 0) {
     trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
-    # Each trajectory entry is created by forced_si_observer().
     for (tidx in 1:simulation$trajectory_cnt) {
       entry <- trajectory[tidx][[1]]
       who <- entry$id
-      last_event <- which.max(events[who, 3:ncol(events)])
-      if (length(last_event) > 0) {
-        time_point <- paste0("t", last_event + 1)
-        events[who, ..time_point := entry$curtime]
-      } else {
-        # Fix the initial state if there was an event for this person.
-        actual_initial_state <- ifelse(entry$name == "recover", "I", "S")
-        events[who, disease := actual_initial_state]
-        events[who, t1 := entry$curtime]
-      }
+      next_event <- (sum(!is.na(health_dt[who,])) - 2) %/% 2 + 1
+      tstring <- paste0("Time", next_event)
+      lstring <- paste0("Level", next_event)
+      health_dt[who, (tstring) := entry$curtime]
+      level <- ifelse(entry$name == "infect", 1, 0)
+      health_dt[who, (lstring) := level]
     }
-    simulation$trajectory_cnt <- 0
-  }  # else return an empty list.
-  events
+  }
+  health_dt
 }

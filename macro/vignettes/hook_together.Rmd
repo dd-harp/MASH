@@ -91,6 +91,28 @@ health_path <- human_disease_path(health)
 health_path
 ```
 
+```{r figure_out_conversion}
+health$previous_state
+health_dt <- data.table(
+  ID = health$previous_state$who,
+  Start = ifelse(health$previous_state$disease == "I", 1, 0)
+)
+# Add some NA columns so we don't have to expand while working.
+health_dt[, paste0(c("Time", "Level"), rep(1:4, each = 2))] <- 0
+health_dt[, paste0(c("Time", "Level"), rep(1:4, each = 2))] <- NA
+trajectory <- health$trajectory[1:health$trajectory_cnt]
+tidx <- 1
+entry <- trajectory[tidx][[1]]
+who <- entry$id
+next_event <- (sum(!is.na(health_dt[who,])) - 2) %/% 2 + 1
+tstring <- paste0("Time", next_event)
+lstring <- paste0("Level", next_event)
+health_dt[who, (tstring) := entry$curtime]
+level <- ifelse(entry$name == "infect", 1, 0)
+health_dt[who, ..lstring := level]
+```
+
+
 # Mosquito Module
 
 ```{r make_mosquito_module}
