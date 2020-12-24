@@ -53,7 +53,15 @@ movement <- simple_trip_module(simpletrip_parameters)
 movement <- mash_step(movement, parameters$duration_days, NULL)
 locations <- location_path(movement)
 ```
-The resulting data structure is a list with an entry for each location. Each member is a data.table with three columns: `arrive`, `leave`, and `time`. The values in `arrive` or `leave` are the ID of the individual, where either one or the other is the ID, and the other one is `NaN`.
+
+```{r step_simpletrip}
+locations[[1]][1:8, ]
+```
+The resulting data structure is
+
+* a list with an entry for each location.
+* Each member is a data.table with three columns: `arrive`, `leave`, and `time`.
+* The values in `arrive` or `leave` are the ID of the individual, where either one or the other is the ID, and the other one is `NaN`.
 
 
 # Health Module
@@ -63,7 +71,8 @@ The parameters for the health module are few.
 health_parameters <- list(
   recovery_rate = 1 / 200,
   people_cnt = parameters$human_cnt,
-  duration_days = parameters$duration_days
+  duration_days = parameters$duration_days,
+  initial_pfpr = 0.4
 )
 health <- forced_si_module(health_parameters)
 current_time <- 0
@@ -74,8 +83,12 @@ bites <- lapply(
     sort(times[times < 10])
   }
   )
-mash_step(health, bites)
-trajectory <- human_disease_path(health)
+health <- mash_step(health, bites)
+health_path <- human_disease_path(health)
+```
+
+```{r show_trajectory}
+health_path
 ```
 
 # Mosquito Module

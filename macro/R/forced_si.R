@@ -113,15 +113,19 @@ forced_si_create_bites <- function(people_cnt, bite_rate, current_time, duration
 #' @return A simulation object, which is a list.
 #' @export
 forced_si_module <- function(parameters) {
-  expected_parameters <- c("recovery_rate", "people_cnt", "duration_days")
+  expected_parameters <- c(
+    "recovery_rate", "people_cnt", "duration_days", "initial_pfpr")
   stopifnot(all(names(parameters) %in% expected_parameters))
   stopifnot(all(expected_parameters %in% names(parameters)))
+  stopifnot(is.finite(parameters$pfpr))
+  stopifnot(0 <= parameters$pfpr)
+  stopifnot(parameters$pfpr < 1)
 
   transitions <- list(
     infect = forced_si_infect(),
     recover = forced_si_recover(parameters$recovery_rate)
   )
-  people_cnt <- parameters$people_cnt
+  people_cnt <- as.integer(parameters$people_cnt)
   pfpr <- parameters$initial_pfpr
   individuals <- forced_si_population(people_cnt, pfpr)
 
@@ -149,9 +153,14 @@ forced_si_module <- function(parameters) {
 #' }
 #' @export
 mash_step.forced_si <- function(simulation, bites) {
-  duration_days <- simulation$parameters$duration_days
-  simulation$state$bites <- bites
-  run_continuous(simulation, duration_days)
+  simulation$state$bites <- vapply(
+    1:nrow(simulation$state),
+    function(h_idx) ifelse(length(bites[[h_idx]]) > 0, bites[[h_idx]][1], -1),
+    FUN.VALUE=numeric(1)
+  )
+  simulation$state[simulation$state$disease == 'S' & simulation$state$bites >= 0, when := bites]
+  simulation$state[simulation$state$disease == 'S' & simulation$state$bites >= 0, infect := bites]
+  run_continuous(simulation, simulation$parameters$duration_days)
 }
 
 
