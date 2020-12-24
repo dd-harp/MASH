@@ -51,11 +51,34 @@ simpletrip_parameters <- list2env(list(
 ))
 movement <- simple_trip_module(simpletrip_parameters)
 movement <- mash_step(movement, parameters$duration_days, NULL)
-locations <- location_path(movement)
+locations <- person_path(movement)
 ```
 
+```{r}
+traj <- movement$trajectory[1:movement$trajectory_cnt]
+whos <- vapply(traj, function(entry) entry$id, FUN.VALUE=integer(1))
+npeople <- parameters$human_cnt
+max_moves <- max(vapply(1:npeople, function(i) sum(whos == i), FUN.VALUE=numeric(1)))
+
+move_dt <- data.table(
+  ID = movement$state$who,
+  Start = movement$state$current
+  )
+move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- 0L
+move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- NA
+event <- movement$trajectory[[1]]
+h_idx <- 1
+move_idx <- which(is.na(move_dt[h_idx,]))[1]
+if (move_idx == 3) {
+  move_dt[h_idx, Start] <- event$prev_location
+}  # No fixup if not the first event for this person.
+move_dt[h_idx, move_idx] <- event$curtime
+move_dt[h_idx, move_idx + 1] <- event$curr_location
+```
+
+
 ```{r step_simpletrip}
-locations[[1]][1:8, ]
+locations
 ```
 The resulting data structure is
 
