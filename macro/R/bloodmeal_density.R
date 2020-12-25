@@ -321,7 +321,12 @@ assign_levels_to_bites <- function(health_rec, bite_cnt, day_idx, time_cols, lev
 #' @return adds `infect_mosquito` and `infect_human` to the data frame.
 assign_mosquito_status <- function(bites_df, M, Y, Z) {
   if (M > 0) {
-    category <- rmultinom(nrow(bites_df), 1, c(M - Y - Z, Y, Z))
+    mosy_classes <- c(M - Y - Z, Y, Z)
+    if (any(mosy_classes < 0)) {
+      logdebug("negative M-Y-Z")
+      mosy_classes <- abs(mosy_classes)
+    }
+    category <- rmultinom(nrow(bites_df), 1, mosy_classes)
     bites_df$infect_mosquito = category[1, ] & bites_df$human_level
     bites_df$infect_human = category[3, ]
   } else {
@@ -356,8 +361,8 @@ bld_single_day <- function(
       h_idx <- lh_df[lh_idx, 2]
       bite_cnt <- bites.lh[l_idx, h_idx]
       health_rec <- health_dt[health_dt$ID == h_idx,]
-      human_status <- macro:::assign_levels_to_bites(health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
-      with_mosquito <- macro:::assign_mosquito_status(human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
+      human_status <- assign_levels_to_bites(health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
+      with_mosquito <- assign_mosquito_status(human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
       human_infections <- with_mosquito[with_mosquito$infect_human > 0, c("times")]
       human_infections$human <- h_idx
       list(
@@ -389,20 +394,18 @@ bld_single_day <- function(
 #' @param movement_dt Movement events from the protocol.
 #' @param bites_dt Bite events from the protocol.
 #' @param params Has `human_cnt`, `location_cnt`, `duration`,
-#'     `day_duration`, `dispersion`, `day_cnt`.
+#'     `day_duration`, `dispersion`, `day_cnt`, `biting_weight`.
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
 bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
-  health_dt <- sample_health_infection_status(params$human_cnt, params$duration)
-  bite_weight <- runif(params$human_cnt, 0.2, 0.8)
-  movement_dt <- sample_move_location(params$human_cnt, params$location_cnt, params$duration)
-  mosquito_dt <- sample_mosquito_myz(params$location_cnt, params$duration)
-  dwell.lh <- macro:::human_dwell(movement_dt, params)
-  M_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "M")
-  Y_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "Y")
-  Z_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "Z")
-  biting_arr <- macro:::data_table_to_array(mosquito_dt, "Location", "Time", "a")
+  stopifnot("biting_weight" %in% names(params))
+  bite_weight <- rep(params$biting_weight, params$human_cnt)
+  dwell.lh <- human_dwell(movement_dt, params)
+  M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "M")
+  Y_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Y")
+  Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Z")
+  biting_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "a")
 
   days_df <- lapply(
     1:params$day_cnt,
@@ -410,8 +413,8 @@ bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
                                      dwell.lh, bite_weight, health_dt, params)
   )
   list(
-    mosquito_events = do.call(rbind, lapply(days_df, function(x) x[[1]])),
-    human_events = do.call(rbind, lapply(days_df, function(x) x[[2]]))
+    mosquito_events = data.table::data.table(do.call(rbind, lapply(days_df, function(x) x[[1]]))),
+    human_events = data.table::data.table(do.call(rbind, lapply(days_df, function(x) x[[2]])))
   )
 }
 
@@ -468,5 +471,7 @@ infects_human_path.bloodmeal_density <- function(simulation) {
 #'     but the human was.
 #' @export
 infects_mosquito_path.bloodmeal_density <- function(simulation) {
-  simulation$mosquito_events
+  data.table::setnames(simulation$mosquito_events, "location", "Location")
+  data.table::setnames(simulation$mosquito_events, "mosquito_infections", "Bites")
+  data.table::setnames(simulation$mosquito_events, "time", "Time")
 }

@@ -51,34 +51,11 @@ simpletrip_parameters <- list2env(list(
 ))
 movement <- simple_trip_module(simpletrip_parameters)
 movement <- mash_step(movement, parameters$duration_days, NULL)
-locations <- person_path(movement)
+person_path <- person_path(movement)
 ```
-
-```{r}
-traj <- movement$trajectory[1:movement$trajectory_cnt]
-whos <- vapply(traj, function(entry) entry$id, FUN.VALUE=integer(1))
-npeople <- parameters$human_cnt
-max_moves <- max(vapply(1:npeople, function(i) sum(whos == i), FUN.VALUE=numeric(1)))
-
-move_dt <- data.table(
-  ID = movement$state$who,
-  Start = movement$state$current
-  )
-move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- 0L
-move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- NA
-event <- movement$trajectory[[1]]
-h_idx <- 1
-move_idx <- which(is.na(move_dt[h_idx,]))[1]
-if (move_idx == 3) {
-  move_dt[h_idx, Start] <- event$prev_location
-}  # No fixup if not the first event for this person.
-move_dt[h_idx, move_idx] <- event$curtime
-move_dt[h_idx, move_idx + 1] <- event$curr_location
-```
-
 
 ```{r step_simpletrip}
-locations
+person_path
 ```
 The resulting data structure is
 
@@ -99,14 +76,18 @@ health_parameters <- list(
 )
 health <- forced_si_module(health_parameters)
 current_time <- 0
-bites <- lapply(
+bites_df <- data.table(do.call(rbind, lapply(
   1:parameters$human_cnt,
   function(h_idx) {
     times <- rexp(1, 0.1)
-    sort(times[times < 10])
-  }
-  )
-health <- mash_step(health, bites)
+    remaining <- sort(times[times < 10])
+    if (length(remaining) > 0) {
+      c(human = h_idx, times = remaining[1])
+    } else {
+      NULL
+    }
+  })))
+health <- mash_step(health, bites_df)
 health_path <- human_disease_path(health)
 ```
 
@@ -124,6 +105,7 @@ mosquito_parameters <- list(
   N = parameters$location_cnt,
   lambda = matrix(rep(0.1, year_days * parameters$location_cnt), nrow = parameters$location_cnt),
     psi = diag(parameters$location_cnt),  # diffusion matrix
+    biting_weight = 0.4,  # The human biting weight. Should be from human.XXX
     EIP = rep(12, year_days),  # Extrinsic incubation period,
     maxEIP = 12,  # Maximum length of EIP.
     p = 0.9,  # survival
@@ -133,13 +115,15 @@ mosquito_parameters <- list(
     # Does not affect calculation value.
     adult_scale = NULL  # Scale for mosquito population.
   )
-module <- mosquito_rm_module(mosquito_parameters)
+mosquito_module <- mosquito_rm_module(mosquito_parameters)
 bloodmeal_dt <- data.table(expand.grid(1:parameters$location_cnt, 1:parameters$duration_days))
 names(bloodmeal_dt) <- c("Location", "Time")
 bloodmeal_dt$Time <- bloodmeal_dt$Time - 1
 bloodmeal_dt$Bites <- sample(10:20, nrow(bloodmeal_dt), replace = TRUE)
-module <- mash_step(module, bloodmeal_dt)
-bites_dt <- mosquito_path(module)
+mosquito_module <- mash_step(mosquito_module, bloodmeal_dt)
+bites_dt <- mosquito_path(mosquito_module)
+bites_dt[bites_dt$Y < 0, Y := 0]  # XXX what's wrong with the mosquito Y?
+bites_dt[M < Y + Z, M := (Y + Z + 0.1)]  # XXX something's wrong.
 bites_dt
 ```
 
@@ -147,22 +131,40 @@ bites_dt
 
 ```{r make_bloodmeal}
 params <- list(
-  human_cnt = 8L,
-  location_cnt = 5L,
-  duration = 10,
+  human_cnt = parameters$human_cnt,
+  location_cnt = parameters$location_cnt,
+  duration = parameters$duration_days,
   day_duration = 1,
   dispersion = 1.5,
-  day_cnt = 10
+  day_cnt = 10,
+  biting_weight = 0.5
 )
+# These are the sample inputs to bloodmeal
 health_dt <- sample_health_infection_status(params$human_cnt, params$duration)
-bite_weight <- runif(params$human_cnt, 0.2, 0.8)
 movement_dt <- sample_move_location(params$human_cnt, params$location_cnt, params$duration)
 mosquito_dt <- sample_mosquito_myz(params$location_cnt, params$duration)
 
 bloodmeal <- bloodmeal_density_module(params)
-bloodmeal <- mash_step(bloodmeal, health_dt, movement_dt, mosquito_dt)
+# The inputs from above are the health_path, person_path, and bites_dt.
+bloodmeal <- mash_step(bloodmeal, health_path, person_path, bites_dt)
 human_infections <- infects_human_path(bloodmeal)
 mosquito_infections <- infects_mosquito_path(bloodmeal)
+```
+
+```{r show_human_infections}
+human_infections
+```
+
+
+```{r show_mosquito_infections}
 mosquito_infections
+```
+Feed output of bloodmeal back into the health and mosquito modules.
+```{r back_into_others}
+health <- mash_step(health, human_infections)
+health_path <- human_disease_path(health)
+mosquito_module <- mash_step(mosquito_module, mosquito_infections)
+bites_dt <- mosquito_path(mosquito_module)
+
 ```
 

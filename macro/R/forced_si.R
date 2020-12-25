@@ -156,17 +156,16 @@ mash_step.forced_si <- function(simulation, bites) {
   # Save previous state so we know start what the recorded events are changing.
   simulation$previous_state <- simulation$state[, .(who, disease)]
   # We need to turn the bites into events within the stochastic system.
-  first_infectious_bite <- 1
-  simulation$state$bites <- vapply(
-    1:nrow(simulation$state),
-    function(h_idx) ifelse(
-      length(bites[[h_idx]]) > 0,
-      bites[[h_idx]][first_infectious_bite],
-      -1),
-    FUN.VALUE=numeric(1)
-  )
-  simulation$state[simulation$state$disease == 'S' & simulation$state$bites >= 0, when := bites]
-  simulation$state[simulation$state$disease == 'S' & simulation$state$bites >= 0, infect := bites]
+  infections <- bites[order(human), .(bite_time = min(times)), by = .(human)]
+  data.table::setkey(infections, "human")
+  data.table::setkey(simulation$state, "who")
+  joined <- infections[simulation$state]
+  joined[joined$disease == 'S' & !is.na(joined$bite_time) >= 0, when := bite_time]
+  joined[joined$disease == 'S' & !is.na(joined$bite_time), infect := bites]
+  simulation
+  joined[, bite_time := NULL]
+  setnames(joined, "human", "who")
+  simulation$state <- joined
   run_continuous(simulation, simulation$parameters$duration_days)
 }
 
