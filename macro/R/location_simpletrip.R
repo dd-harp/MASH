@@ -217,33 +217,30 @@ person_path.simple_trip <- function(simulation) {
   npeople <- nrow(simulation$state)
   nevent <- simulation$trajectory_cnt
 
-  person_path <- replicate(n = npeople, expr = {
-    data.frame(
-      location = rep(NaN, nevent),
-      time = rep(NaN, nevent)
-    )
-  }, simplify = FALSE)
+  # How wide should the data.table be?
+  trajectory <- simulation$trajectory[1:nevent]
+  whos <- vapply(trajectory, function(entry) entry$id, FUN.VALUE=integer(1))
+  max_moves <- max(vapply(1:npeople, function(i) sum(whos == i), FUN.VALUE=numeric(1)))
 
-  # process the events
+  move_dt <- data.table::data.table(
+    ID = simulation$state$who,
+    Start = simulation$state$current
+  )
+  move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- 0
+  move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- NA
+
   for(i in 1:nevent){
-    if (is.null(simulation$trajectory[[i]])) {
-      break
-    }
-
-    event <- simulation$trajectory[[i]]
-
-    person_path[[event$id]][which(is.nan(person_path[[event$id]]$time)), ] <- c(location = event$curr_location, time = event$curtime)
-
-
+    event <- trajectory[[i]]
+    h_idx <- event$id
+    move_idx <- which(is.na(move_dt[h_idx,]))[1]
+    if (move_idx == 3) {
+      move_dt[h_idx, Start := event$prev_location]
+    }  # No fixup if not the first event for this person.
+    move_dt[h_idx, (move_idx) := event$curtime]
+    move_dt[h_idx, (move_idx + 1) := event$curr_location]
   }
 
-  # trim excess
-  for(i in 1:npeople) {
-    person_path[[i]] <- person_path[[i]][which(!is.nan(person_path[[i]]$time)), ]
-  }
-
-
-  return(simulation)
+  return(move_dt)
 }
 
 

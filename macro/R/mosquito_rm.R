@@ -348,10 +348,13 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
       Z = Z
     ))
   }
+  unified_out <- do.call(rbind, output)
+  unified_out[, c("a") := params$a]
+  colnames(unified_out) <- c("Location", "Time", "M", "Y", "Z", "a")
   list(
     state = today_state,
     future_state = future_state,  # Pass future state in order to check it.
-    output = do.call(rbind, output)
+    output = unified_out
   )
 }
 
@@ -382,5 +385,5 @@ mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
 #' @return A data.table
 #' @export
 mosquito_path.mosquito_rm <- function(module) {
-  cbind(module$output, rep(module$parameters$a, nrow(module$output)))
+  module$output
 }

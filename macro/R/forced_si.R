@@ -113,15 +113,19 @@ forced_si_create_bites <- function(people_cnt, bite_rate, current_time, duration
 #' @return A simulation object, which is a list.
 #' @export
 forced_si_module <- function(parameters) {
-  expected_parameters <- c("recovery_rate", "people_cnt", "duration_days")
+  expected_parameters <- c(
+    "recovery_rate", "people_cnt", "duration_days", "initial_pfpr")
   stopifnot(all(names(parameters) %in% expected_parameters))
   stopifnot(all(expected_parameters %in% names(parameters)))
+  stopifnot(is.finite(parameters$pfpr))
+  stopifnot(0 <= parameters$pfpr)
+  stopifnot(parameters$pfpr < 1)
 
   transitions <- list(
     infect = forced_si_infect(),
     recover = forced_si_recover(parameters$recovery_rate)
   )
-  people_cnt <- parameters$people_cnt
+  people_cnt <- as.integer(parameters$people_cnt)
   pfpr <- parameters$initial_pfpr
   individuals <- forced_si_population(people_cnt, pfpr)
 
@@ -149,9 +153,20 @@ forced_si_module <- function(parameters) {
 #' }
 #' @export
 mash_step.forced_si <- function(simulation, bites) {
-  duration_days <- simulation$parameters$duration_days
-  simulation$state$bites <- bites
-  run_continuous(simulation, duration_days)
+  # Save previous state so we know start what the recorded events are changing.
+  simulation$previous_state <- simulation$state[, .(who, disease)]
+  # We need to turn the bites into events within the stochastic system.
+  infections <- bites[order(human), .(bite_time = min(times)), by = .(human)]
+  data.table::setkey(infections, "human")
+  data.table::setkey(simulation$state, "who")
+  joined <- infections[simulation$state]
+  joined[joined$disease == 'S' & !is.na(joined$bite_time) >= 0, when := bite_time]
+  joined[joined$disease == 'S' & !is.na(joined$bite_time), infect := bites]
+  simulation
+  joined[, bite_time := NULL]
+  setnames(joined, "human", "who")
+  simulation$state <- joined
+  run_continuous(simulation, simulation$parameters$duration_days)
 }
 
 
@@ -163,30 +178,25 @@ mash_step.forced_si <- function(simulation, bites) {
 #' @export
 human_disease_path.forced_si <- function(simulation) {
   # Create a wide dataframe with a column for each time the state changes.
-  # Set each person to start with their ending disease state. Fix the others
-  # along the way when we find out there was an event for them.
-  events <- simulation$state[, .(who, disease)]
-  # Some question about what to do if there are a lot of events for one individual.
-  events[, paste0("t", 1:7)] <- 0.0
-  events[, paste0("t", 1:7)] <- NA
+  health_dt <- data.table(
+    ID = simulation$previous_state$who,
+    Start = ifelse(simulation$previous_state$disease == "I", 1, 0)
+    )
+  # Add some NA columns so we don't have to expand while working.
+  health_dt[, paste0(c("Time", "Level"), rep(1:4, each = 2))] <- 0
+  health_dt[, paste0(c("Time", "Level"), rep(1:4, each = 2))] <- NA
   if (simulation$trajectory_cnt > 0) {
     trajectory <- simulation$trajectory[1:simulation$trajectory_cnt]
-    # Each trajectory entry is created by forced_si_observer().
     for (tidx in 1:simulation$trajectory_cnt) {
       entry <- trajectory[tidx][[1]]
       who <- entry$id
-      last_event <- which.max(events[who, 3:ncol(events)])
-      if (length(last_event) > 0) {
-        time_point <- paste0("t", last_event + 1)
-        events[who, ..time_point := entry$curtime]
-      } else {
-        # Fix the initial state if there was an event for this person.
-        actual_initial_state <- ifelse(entry$name == "recover", "I", "S")
-        events[who, disease := actual_initial_state]
-        events[who, t1 := entry$curtime]
-      }
+      next_event <- (sum(!is.na(health_dt[who,])) - 2) %/% 2 + 1
+      tstring <- paste0("Time", next_event)
+      lstring <- paste0("Level", next_event)
+      health_dt[who, (tstring) := entry$curtime]
+      level <- ifelse(entry$name == "infect", 1, 0)
+      health_dt[who, (lstring) := level]
     }
-    simulation$trajectory_cnt <- 0
-  }  # else return an empty list.
-  events
+  }
+  health_dt
 }
