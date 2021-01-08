@@ -54,18 +54,21 @@ test_that("mosquito-rm maternal stable population is stable", {
   internal_params <- build_internal_parameters(params)
   infectious <- rep(0.4, patch_cnt)
   mortality <- 1 - params$p
-  state <- mosquito_rm_build_biting_state(infectious, mortality, params$maxEIP)
+  state <- mosquito_rm_build_biting_state(params)
 
-  replacement <- (1 -params$p) / params$p
-  aquatic <- function(lambda) rep(replacement, length(lambda))
+  # Make a deterministic aquatic function.
+  aquatic <- function(lambda) lambda
 
-  kappa <- 0.2
-  kappa_patch = rep(kappa, patch_cnt)
+  b <- 0.011111108632842
+  # 1000 is M, by design.
+  bites_patch = b * (1 - params$infected_fraction) * 1000
   initial_state <- mosquito_rm_copy_state(state)
-  for (i in 1:10) {
-    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
+  for (i in 1:1000) {
+    state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
   }
-  expect_true(macro:::within_absolute_error(state$M, initial_state$M, 1e-5))
+  # The difference of params$p is from the initial application of survival
+  # to the aquatic input. That's why it's different from the model.
+  expect_true(macro:::within_absolute_error(state$M, params$p * initial_state$M, 1e-5))
 })
 
 

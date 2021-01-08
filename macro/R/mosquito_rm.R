@@ -5,8 +5,8 @@
 # Written from: Reiner Jr, Robert C., et al. "Estimating malaria transmission from
 # humans to mosquitoes in a noisy landscape." Journal of the Royal Society Interface
 # 12.111 (2015): 20150478.
-# Notation, and more explanation, from Smith, David L., et al. “Ross, Macdonald, and a theory for
-# the dynamics and control of mosquito-transmitted pathogens.” PLoS pathog 8.4 (2012): e1002588.
+# Notation, and more explanation, from Smith, David L., et al. "Ross, Macdonald, and a theory for
+# the dynamics and control of mosquito-transmitted pathogens." PLoS pathog 8.4 (2012): e1002588.
 
 
 #' Make a base set of parameters for R-M mosquitoes.
@@ -20,41 +20,42 @@ build_biting_parameters <- function(patch_cnt) {
   list(
     duration = 10L,  # number of days in module time step
     N = patch_cnt,  # patches
-    # emergence matrix
-    lambda = matrix(rep(0.1, year_days * patch_cnt), nrow = patch_cnt),
+    # emergence matrix, patches x days of the year.
+    # mosquito count is \lambda * p / (1-p) where p is conditional daily survival.
+    lambda = matrix(rep(100, year_days * patch_cnt), nrow = patch_cnt),
     psi = diag(patch_cnt),  # diffusion matrix
     EIP = rep(12, year_days),  # Extrinsic incubation period,
     maxEIP = 12,  # Maximum length of EIP.
-    p = 0.9,  # survival
+    p = 0.9,  # conditional daily survival
     # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
     a = 0.6,
-    year_day_start = 1,
-    # Does not affect calculation value.
-    adult_scale = NULL  # Scale for mosquito population.
+    # Fraction of mosquitoes infected on any day.
+    infected_fraction = rep(0.1, patch_cnt),
+    year_day_start = 1
   )
 }
 
 
-#' Given a day that counts past multiple years, what's year day.
+#' Given a day that counts past multiple years, what's day within year.
 #' @param day integer count of days since start of year.
 #' @param day_cnt It's 365 unless you're testing.
-#'
-#' This is what you get for counting from 1 instead of 0.
-#'
 #' @export
 day_within_year <- function(day, day_cnt = 365) {
   ((day - 1) %% day_cnt) + 1
 }
 
 
-#' This reverses the list of EIP per day of the year.
+#' This takes EIP as days in the future and returns it as days into the past.
 #'
-#' @param EIP a vector of the EIP on a day of the year.
-#' @return A list, 365 days long, where each entry is the day from
+#' @param EIP a vector of the number of days from infection to infectiousness
+#'     on each day of the year. 365 long.
+#' @return A list, 365 days long, where each entry is the days from
 #'     which to get the newly-adult mosquitoes.
 #'
+#' EIP is extrinsic incubation period.
 #' It tells you how many days back to get the newly-infected
-#' mosquitoes. The value is a ragged array by day of year.
+#' mosquitoes. It could be zero or more than one previous day.
+#' The value is a ragged array by day of year.
 #'
 #' @export
 look_back_eip <- function(EIP) {
@@ -74,6 +75,9 @@ look_back_eip <- function(EIP) {
 #' @param N The integer size of the square matrix.
 #' @return A square matrix. You right-multiply a population, and it gets
 #'     a day older by moving a column to the right.
+#'
+#' We use this matrix to make mosquitoes one day older. It's for the Y
+#' mosquitoes, the ones that are infected.
 #'
 #' Takes this matrix:
 #'  1 2 3
@@ -103,29 +107,63 @@ shift_with_open_interval <- function(N) {
 #' @export
 build_internal_parameters <- function(parameters) {
   with(parameters, {
-    adult_scale <- ifelse(is.null(adult_scale), 1.0, adult_scale)
     list(
       duration = duration,  # number of days in module time step
       N = N,  # patches
       lambda = lambda,  # emergence matrix
-      p_psi = p * psi,  # diffusion matrix
+      p_psi = p * psi,  # diffusion matrix with survival included.
       EIP_back = look_back_eip(EIP),
       maxEIP = maxEIP,
       a = a,
       one_day_older = shift_with_open_interval(maxEIP + 1),
-      year_day_offset = year_day_start - 1,
-      M0 = adult_scale
+      year_day_offset = year_day_start - 1
     )
   })
 }
 
 
+#' This stochastic matrix approximates the R-M model for initial values.
+#' @param b The fraction that bite infectious humans each round.
+#' @param parameters all other parameters
+#' @param location_idx which location to model for steady-state.
+#' @return A long-time steady state value.
+#' You might think we should just solve this matrix. Yes.
+long_term <- function(b, parameters, location_idx) {
+  lambda <- parameters$lambda[location_idx, 1]  # emergence per day
+  p <- parameters$p  # daily survival.
+  M0 <- lambda / (1 - p)  # The total number of mosquitoes, given emergence
+  EIP <- parameters$EIP[1]
+  m <- 1 - p  # mortality
+  # A stochastic matrix for susceptible, lots of Y, and one Z.
+  A <- matrix(0, nrow = EIP + 2, ncol = EIP + 2)
+  A[1, ] <- 1 - p
+  A[row(A) == col(A) + 1] <- p
+  A[1, 1] <- 1 - b
+  A[2, 1] <- b
+  A[EIP + 2, EIP + 2] <- p
+  x <- rep(M0 / (EIP + 2), EIP + 2)
+  for (i in 1:10) {
+    A <- A %*% A
+  }
+  A %*% x
+}
+
+
+#' Find fraction of mosquitoes bitten each day, given fraction infected.
+#' @param parameters The input module parameters.
+#' @return A function to use for optimization.
+make_tosolve <- function(parameters, location_idx) {
+  f <- parameters$infected_fraction[location_idx]
+  tosolve <- function(b) {
+    x <- long_term(b, parameters, location_idx)
+    abs(sum(x[2:length(x)]) / sum(x) - f)
+  }
+}
+
+
 #' Create a default state for mosquito-RM model.
 #'
-#' @param infectious An array of the count of infectious mosquitoes for each patch.
-#' @param replacement The fraction of infectious that should be in incubating for each day.
-#'     A good choice for this is the complement of the daily conditional survival.
-#' @param maxEIP The maximum length of the EIP for any day of the year, in days.
+#' @param parameters The initial array of parameters.
 #' @return A list of the main variables.
 #'     \itemize{
 #'       \item \eqn{M} is adult females. This will be an array with a float for each patch.
@@ -137,20 +175,39 @@ build_internal_parameters <- function(parameters) {
 #'     }
 #'
 #' @export
-mosquito_rm_build_biting_state <- function(infectious, replacement, maxEIP) {
-  # Add a category for mosquitoes that are past EIP but not yet
-  # removed from the system. This is the last column of the Y matrix.
-  N <- length(infectious)
-  EIP_open <- maxEIP + 1
-  Y_init = matrix(rep(replacement * infectious, EIP_open), nrow = N)
-  Y_init[, EIP_open] <- 0  # The last catch-all should be empty.
+mosquito_rm_build_biting_state <- function(parameters) {
+  f <- parameters$infected_fraction
+  p <- parameters$p
+  b <- (1 - p) * f / (1 + f)  # approximate biting rate.
+  for (solve_idx in 1:parameters$N) {
+    location_func <- make_tosolve(parameters, solve_idx)
+    b[solve_idx] = optim(
+      b[solve_idx],
+      location_func,
+      method = "Brent", lower = 0, upper = 1)$par
+  }
+  cat(paste("initial b is", b))
+  M <- parameters$lambda[, 1] / (1 - p)
+  EIP_open <- parameters$maxEIP + 1
+  EIP <- parameters$EIP[1]
+  Y <- matrix(0, nrow = parameters$N, ncol = EIP_open)
+  Z <- M[]
+  for (init_idx in 1:parameters$N) {
+    x <- long_term(b[init_idx], parameters, init_idx)
+    # The long-term estimate is a total Y. We allocate that into
+    # successive waves
+    Y[init_idx, 1:EIP] <- x[2:(2 + EIP - 1)]
+    Y[init_idx, EIP + 1] <- x[length(x)]  # The last entry in Y holds Z.
+    Z[init_idx] <- x[length(x)]  # And Z holds Z.
+  }
   list(
-    M = rep(1, N),
-    Y = Y_init,
-    Z = infectious,
+    M = M,
+    Y = Y,
+    Z = Z,
     simulation_day = 1
   )
 }
+
 
 #' Make a copy of the state of the Mosqutio-RM model.
 #'
@@ -246,12 +303,10 @@ mosquito_rm_convert_bloodmeal <- function(bloodmeal_dt) {
 #'
 #' @export
 mosquito_rm_module <- function(parameters) {
-  infectious <- rep(0.4, parameters$N)
-  mortality <- 1 - parameters$p
   module <- list(
     external_parameters = parameters,
     parameters = build_internal_parameters(parameters),
-    state = mosquito_rm_build_biting_state(infectious, mortality, parameters$maxEIP),
+    state = mosquito_rm_build_biting_state(parameters),
     output = NULL
     )
   class(module) <- "mosquito_rm"
