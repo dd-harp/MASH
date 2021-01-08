@@ -69,6 +69,13 @@ fire <- function(transition, individual, when, variables = NULL) {
 }
 
 
+check_missing_when <- function(new_when) {
+  if (any(is.na(new_when) | is.nan(new_when))) {
+    stop(paste("transition is na", is.na(when), "or nan", is.nan(when)))
+  }
+}
+
+
 #' Set up firing times given an initial state.
 #'
 #' @param individuals a data frame of individuals, including columns for times.
@@ -90,6 +97,7 @@ initialize_times <- function(individuals, transitions) {
         when[newly_enabled],
         FUN = function(x) x(state, curtime),
         FUN.VALUE = vector(mode = "numeric", length = 1))
+      check_missing_when(new_when)
       state[names(new_when)] <- new_when
       state["when"] <- min(new_when)
       individuals[person_idx, ] <- state

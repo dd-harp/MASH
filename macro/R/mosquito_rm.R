@@ -187,7 +187,6 @@ mosquito_rm_build_biting_state <- function(parameters) {
       location_func,
       method = "Brent", lower = 0, upper = 1)$par
   }
-  cat(paste("initial b is", b))
   M <- parameters$lambda[, 1] * p / (1 - p)
   EIP_open <- parameters$maxEIP + 1
   EIP <- parameters$EIP[1]

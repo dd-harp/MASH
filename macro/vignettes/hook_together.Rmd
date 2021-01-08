@@ -108,69 +108,6 @@ health_path
 
 # Mosquito Module
 
-How do we parameterize and initialize the state of the mosquito module? We need to choose initial values for $(M, Y, Z)$ We start with knowing the EIP, the daily survival, and the emergence rate. While we know the biting rate, $a$, we don't know the EIR yet.
-
-For starters, the total population comes from a geometric series, where we apply mortality in the first step. That makes $M=\lambda p / (1-p)$.
-```{r}
-b <- 1/10
-p <- 0.9
-m <- 1-p
-EIP <- 10
-A <- matrix(c(
-  1-(b+m), b, 0,
-  0, 1 - (m + 1/EIP), 1/EIP,
-  0, 0, 1-m
-), nrow = 3)
-lambda <- c(100, 0, 0)
-x <- c(100, 100, 100)
-for (i in 1:1000) {
-  x <- A %*% (x + lambda)
-}
-```
-
-```{r}
-make_tosolve <- function(parameters) {
-  tosolve <- function(b) {
-    lambda <- parameters$lambda  # emergence per day
-    p <- parameters$p  # survival.
-    M0 <- lambda / (1 - p)
-    EIP <- parameters$EIP[1]
-    A <- matrix(c(
-      1-(b+m), b, 0,
-      0, 1 - (m + 1/EIP), 1/EIP,
-      0, 0, 1-m
-    ), nrow = 3)
-    x <- c(M0 * 0.6, M0 * 0.2, M0 * 0.2)
-    for (i in 1:1000) {
-      x <- A %*% (x + c(lambda, 0, 0))
-    }
-    abs(sum(x[2:3]) / sum(x) - f)
-  }
-}
-f <- 0.2
-b <- (1 - p) * f / (1 + f)  # biting rate.
-optim(b, make_tosolve(0.2), method = "Brent", lower = 0, upper = 1)
-
-```
-Try again, but use the actual matrix.
-```{r}
-b <- 1 / 100
-p <- 0.9
-EIP <- 3
-A <- matrix(0, nrow = EIP + 2, ncol = EIP + 2)
-A[1, ] <- 1 - p
-A[row(A) == col(A) + 1] <- p
-A[1, 1] <- 1 - b
-A[2, 1] <- b
-A[EIP + 2, EIP + 2] <- p
-x <- rep(10, EIP + 2)
-for (i in 1:10000) {
-  x <- A %*% x
-}
-x
-```
-
-
 ```{r make_mosquito_module}
 year_days <- 365
 mosquito_parameters <- list(
@@ -205,6 +142,18 @@ bites_dt
 
 
 # Bloodmeal module
+```{r bloodmeal_parameters}
+params <- list(
+  human_cnt = parameters$human_cnt,
+  location_cnt = parameters$location_cnt,
+  duration = parameters$duration_days,
+  day_duration = 1,
+  dispersion = 1.5,
+  day_cnt = 10,
+  biting_weight = 0.5
+)
+```
+
 Let's compare inputs from above with the sample inputs to the bloodmeal.
 ```{r sample_inputs_to_bloodmeal}
 # These are the sample inputs to bloodmeal
@@ -228,15 +177,6 @@ print(colnames(bites_dt))
 
 
 ```{r make_bloodmeal}
-params <- list(
-  human_cnt = parameters$human_cnt,
-  location_cnt = parameters$location_cnt,
-  duration = parameters$duration_days,
-  day_duration = 1,
-  dispersion = 1.5,
-  day_cnt = 10,
-  biting_weight = 0.5
-)
 bloodmeal <- bloodmeal_density_module(params)
 # The inputs from above are the health_path, person_path, and bites_dt.
 bloodmeal <- mash_step(bloodmeal, health_path, person_path, bites_dt)
@@ -258,5 +198,16 @@ health <- mash_step(health, human_infections)
 health_path <- human_disease_path(health)
 mosquito_module <- mash_step(mosquito_module, mosquito_infections)
 bites_dt <- mosquito_path(mosquito_module)
+```
+
+```{r}
+modules = list(
+  location = movement,
+  health = health,
+  bloodmeal = bloodmeal,
+  mosquito = mosquito_module
+)
+observer <- complete_observer()
+step_mainloop(modules, observer, 10)
 ```
 
