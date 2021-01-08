@@ -131,7 +131,7 @@ build_internal_parameters <- function(parameters) {
 long_term <- function(b, parameters, location_idx) {
   lambda <- parameters$lambda[location_idx, 1]  # emergence per day
   p <- parameters$p  # daily survival.
-  M0 <- lambda / (1 - p)  # The total number of mosquitoes, given emergence
+  M0 <- lambda * p / (1 - p)  # The total number of mosquitoes, given emergence
   EIP <- parameters$EIP[1]
   m <- 1 - p  # mortality
   # A stochastic matrix for susceptible, lots of Y, and one Z.
@@ -141,11 +141,12 @@ long_term <- function(b, parameters, location_idx) {
   A[1, 1] <- 1 - b
   A[2, 1] <- b
   A[EIP + 2, EIP + 2] <- p
-  x <- rep(M0 / (EIP + 2), EIP + 2)
-  for (i in 1:10) {
-    A <- A %*% A
-  }
-  A %*% x
+  eval <- eigen(A)
+  # The first eigenvalue really is one, which means we want the first eigenvector.
+  stopifnot(abs(Im(eval$values[1])) < 1e-12)
+  stopifnot(abs(1 - Re(eval$values[1])) < 1e-12)
+  ll <- Re(eval$vectors[, 1])
+  M0 * ll / sum(ll)
 }
 
 
@@ -187,7 +188,7 @@ mosquito_rm_build_biting_state <- function(parameters) {
       method = "Brent", lower = 0, upper = 1)$par
   }
   cat(paste("initial b is", b))
-  M <- parameters$lambda[, 1] / (1 - p)
+  M <- parameters$lambda[, 1] * p / (1 - p)
   EIP_open <- parameters$maxEIP + 1
   EIP <- parameters$EIP[1]
   Y <- matrix(0, nrow = parameters$N, ncol = EIP_open)

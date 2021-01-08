@@ -61,14 +61,15 @@ test_that("mosquito-rm maternal stable population is stable", {
 
   b <- 0.011111108632842
   # 1000 is M, by design.
-  bites_patch = b * (1 - params$infected_fraction) * 1000
+  bites_patch = b * (1 - params$infected_fraction) * 900
   initial_state <- mosquito_rm_copy_state(state)
   for (i in 1:1000) {
     state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
   }
-  # The difference of params$p is from the initial application of survival
-  # to the aquatic input. That's why it's different from the model.
-  expect_true(macro:::within_absolute_error(state$M, params$p * initial_state$M, 1e-5))
+  expect_true(macro:::within_absolute_error(
+    state$M[1], initial_state$M[1], 1e-5))
+  expect_true(macro:::within_absolute_error(
+    state$Y[1, 1], initial_state$Y[1, 1], 1e-5))
 })
 
 
