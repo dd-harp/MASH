@@ -106,7 +106,9 @@ simple_trip_observer <- function(transition_name, former_state, new_state, curti
 #' @export
 simple_trip_module <- function(parameters) {
 
-  expected_parameters <- c("trip_rate","trip_dest","return_home_rate","npatch","home","current")
+  expected_parameters <- c(
+    "trip_rate", "trip_dest", "return_home_rate", "npatch", "home",
+    "current", "duration_days")
   stopifnot(all(names(parameters) %in% expected_parameters))
   stopifnot(all(expected_parameters %in% names(parameters)))
 
@@ -164,6 +166,7 @@ mash_step.simple_trip <- function(simulation, health_path) {
 
   return(simulation)
 }
+
 
 #' Return trajectory by location for Simple Trip model
 #'

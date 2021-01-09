@@ -12,6 +12,7 @@ test_that("simple trip model matches theoretical expectations", {
   parameters$trip_dest <- matrix(c(0,1,1,0),byrow = TRUE,nrow = 2,ncol = 2)
   parameters$return_home_rate <- matrix(c(0,1/5,1/3,0),byrow = TRUE,nrow = 2,ncol = 2)
   parameters$npatch <- 2
+  parameters$duration_days <- 10
 
   tau12 <- parameters$return_home_rate[1,2]
   tau21 <- parameters$return_home_rate[2,1]

@@ -71,7 +71,10 @@ fire <- function(transition, individual, when, variables = NULL) {
 
 check_missing_when <- function(new_when) {
   if (any(is.na(new_when) | is.nan(new_when))) {
-    stop(paste("transition is na", is.na(when), "or nan", is.nan(when)))
+    find_na <- which(is.na(new_when) | is.nan(new_when))
+    stop(paste(
+      "transition", names(new_when)[which],
+      "values na", is.na(new_when[which]), "nan", is.nan(new_when[which])))
   }
 }
 
@@ -148,6 +151,7 @@ update_individual <- function(state, transitions, observe) {
         FUN = function(x) x(new_state, current_time),
         FUN.VALUE = vector(mode = "numeric", length = 1))
     times[newly_enabled] <- new_times
+    check_missing_when(new_times)
   }
   new_state[when_col:length(new_state)] <- c(min(times), times)
   list(individual = new_state, curtime = current_time, entry = trajectory_entry)

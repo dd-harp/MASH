@@ -49,10 +49,11 @@ simpletrip_parameters <- list2env(list(
   return_home_rate = return_matrix,
   npatch = parameters$location_cnt,
   home = start_at_home,
-  current = start_at_home
+  current = start_at_home,
+  duration_days = parameters$duration_days
 ))
 movement <- simple_trip_module(simpletrip_parameters)
-movement <- mash_step(movement, parameters$duration_days, NULL)
+movement <- mash_step(movement, NULL)
 ```
 The resulting data structure is
 
