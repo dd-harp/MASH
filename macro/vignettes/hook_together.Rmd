@@ -127,6 +127,7 @@ mosquito_parameters <- list(
   infected_fraction = rep(0.1, parameters$location_cnt),
   year_day_start = 1
 )
+options(warn = 2)
 mosquito_module <- mosquito_rm_module(mosquito_parameters)
 bloodmeal_dt <- data.table(
   expand.grid(Location = 1:parameters$location_cnt, Time = 1:parameters$duration_days)

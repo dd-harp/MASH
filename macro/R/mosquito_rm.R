@@ -303,14 +303,27 @@ mosquito_rm_convert_bloodmeal <- function(bloodmeal_dt) {
 #'
 #' @export
 mosquito_rm_module <- function(parameters) {
+  required <- c(
+    "duration", "N", "lambda", "psi", "biting_weight", "EIP", "maxEIP",
+    "p", "a", "infected_fraction", "year_day_start"
+  )
+  stopifnot(sort(required) == sort(names(parameters)))
+  for (pv_idx in seq(parameters)) {
+    pv <- parameters[[pv_idx]]
+    if (is.null(pv) || is.na(pv)) {
+      logerror(paste("parameter", names(parameters)[pv_idx], "is null or na"))
+    }
+  }
   state = mosquito_rm_build_biting_state(parameters)
-  day_cnt <- parameters$duration_days
+  # We take the steady state and turn it into a long-term static state
+  # because this module has to bootstrap the simulation before it gets input.
+  day_cnt <- parameters$duration
   putative_past <- data.table::data.table(
-    Location = rep(1:parameters$location_cnt, day_cnt),
-    Time = rep(0:(parameters$duration_days - 1), day_cnt),
+    Location = rep(1:parameters$N, day_cnt),
+    Time = rep(-parameters$duration:-1, each = parameters$N),
     M = rep(state$M, day_cnt),
     Y = rep(state$M - state$Z, day_cnt),
-    Z = rep(state$Z, day_cnt),
+    Z = rep(state$Z, day_cnt)
   )
   putative_past[, c("a") := parameters$a]
   module <- list(
