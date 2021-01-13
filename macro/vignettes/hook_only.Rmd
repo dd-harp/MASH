@@ -1,0 +1,121 @@
+---
+title: "Make modules and run"
+output: html_notebook
+---
+
+```{r load_libs, show = FALSE}
+library(macro)
+library(data.table)
+```
+
+# Introduction
+
+Very directly make the modules and run them. No testing here.
+
+```{r initial_sense}
+parameters <- list(
+  human_cnt = 40L,
+  location_cnt = 3L,
+  duration_days = 10
+)
+# Count of humans in each location.
+parameters$humans.l <- c(rmultinom(1, parameters$human_cnt, c(0.1, 0.3, 0.6)))
+stopifnot(length(parameters$humans.l) == parameters$location_cnt)
+```
+Here, the `.l` means it's a vector over locations. We'll use `.h` to mean a vector over humans. It's a convenient signal about what a variable's dimensions are for.
+
+# Movement Module
+
+This module is independent of the others, so let's take care of it first. It needs a stochastic matrix for movement, where rows are people and columns are locations.
+
+```{r make_simpletrip}
+start_at_home <- rep(1:parameters$location_cnt, parameters$humans.l)
+stopifnot(length(start_at_home) == parameters$human_cnt)
+
+stochastic_matrix <- matrix(runif(parameters$location_cnt^2), nrow = parameters$location_cnt)
+diag(stochastic_matrix) <- 0
+# The rows should sum to one.
+stochastic_matrix <- diag(1 / rowSums(stochastic_matrix)) %*% stochastic_matrix
+return_matrix <- matrix(1, nrow = parameters$location_cnt, ncol = parameters$location_cnt)
+diag(return_matrix) <- 0
+return_matrix <- diag(1 / rowSums(return_matrix)) %*% return_matrix
+
+simpletrip_parameters <- list2env(list(
+  trip_rate = rep(0.1, parameters$location_cnt),
+  trip_dest = stochastic_matrix,
+  return_home_rate = return_matrix,
+  npatch = parameters$location_cnt,
+  home = start_at_home,
+  current = start_at_home,
+  duration_days = parameters$duration_days
+))
+movement <- simple_trip_module(simpletrip_parameters)
+```
+
+
+# Health Module
+
+The parameters for the S-I health module are few.
+```{r make_health}
+health_parameters <- list(
+  recovery_rate = 1 / 200,
+  people_cnt = parameters$human_cnt,
+  duration_days = parameters$duration_days,
+  initial_pfpr = 0.2
+)
+health <- forced_si_module(health_parameters)
+```
+
+
+# Mosquito Module
+
+```{r make_mosquito_module}
+year_days <- 365
+mosquito_parameters <- list(
+  duration = parameters$duration_days,
+  N = parameters$location_cnt,
+  lambda = matrix(
+    rep(100, year_days * parameters$location_cnt),
+    nrow = parameters$location_cnt),
+  psi = diag(parameters$location_cnt),  # diffusion matrix
+  biting_weight = 0.4,  # The human biting weight. Should be from human.XXX
+  EIP = rep(12, year_days),  # Extrinsic incubation period,
+  maxEIP = 12,  # Maximum length of EIP.
+  p = 0.9,  # survival
+  # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
+  a = 0.6,
+  infected_fraction = rep(0.1, parameters$location_cnt),
+  year_day_start = 1
+)
+mosquito_module <- mosquito_rm_module(mosquito_parameters)
+```
+
+
+# Bloodmeal module
+```{r bloodmeal_parameters}
+params <- list(
+  human_cnt = parameters$human_cnt,
+  location_cnt = parameters$location_cnt,
+  duration = parameters$duration_days,
+  day_duration = 1,
+  dispersion = 1.5,
+  day_cnt = 10,
+  biting_weight = 0.5
+)
+bloodmeal <- bloodmeal_density_module(params)
+```
+
+# Assemble and run
+
+```{r}
+macro:::local_logging("debug")
+modules = list(
+  location = movement,
+  health = health,
+  bloodmeal = bloodmeal,
+  mosquito = mosquito_module
+)
+observer <- complete_observer()
+dump_if <- function(step, idx) { step == "bloodmeal" }
+step_mainloop(modules, observer, 10, dump_if)
+```

@@ -400,8 +400,15 @@ bld_single_day <- function(
 #' @export
 bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
   stopifnot("biting_weight" %in% names(params))
-  bite_weight <- rep(params$biting_weight, params$human_cnt)
+  if (length(params$biting_weight) == 1) {
+    bite_weight <- rep(params$biting_weight, params$human_cnt)
+  } else {
+    stopifnot(length(params$biting_weight) == params$human_cnt)
+    bite_weight <- params$biting_weight
+  }
   dwell.lh <- human_dwell(movement_dt, params)
+  stopifnot(dim(dwell.lh)[2] == params$params$human_cnt)
+  logdebug(paste("dwell.lh dims", paste0(dim(dwell.lh), collapse=",")))
   M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "M")
   Y_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Y")
   Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Z")

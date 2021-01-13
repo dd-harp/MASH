@@ -83,7 +83,7 @@ health_parameters <- list(
   recovery_rate = 1 / 200,
   people_cnt = parameters$human_cnt,
   duration_days = parameters$duration_days,
-  initial_pfpr = 0.4
+  initial_pfpr = 0.2
 )
 health <- forced_si_module(health_parameters)
 current_time <- 0
@@ -178,6 +178,7 @@ print(colnames(bites_dt))
 
 
 ```{r make_bloodmeal}
+macro:::local_logging("debug")
 bloodmeal <- bloodmeal_density_module(params)
 # The inputs from above are the health_path, person_path, and bites_dt.
 bloodmeal <- mash_step(bloodmeal, health_path, person_path, bites_dt)

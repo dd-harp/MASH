@@ -303,12 +303,23 @@ mosquito_rm_convert_bloodmeal <- function(bloodmeal_dt) {
 #'
 #' @export
 mosquito_rm_module <- function(parameters) {
+  state = mosquito_rm_build_biting_state(parameters)
+  day_cnt <- parameters$duration_days
+  putative_past <- data.table::data.table(
+    Location = rep(1:parameters$location_cnt, day_cnt),
+    Time = rep(0:(parameters$duration_days - 1), day_cnt),
+    M = rep(state$M, day_cnt),
+    Y = rep(state$M - state$Z, day_cnt),
+    Z = rep(state$Z, day_cnt),
+  )
+  putative_past[, c("a") := parameters$a]
   module <- list(
     external_parameters = parameters,
     parameters = build_internal_parameters(parameters),
-    state = mosquito_rm_build_biting_state(parameters),
-    output = NULL
-    )
+    state = state,
+    future_state = NULL,
+    output = putative_past
+  )
   class(module) <- "mosquito_rm"
   module
 }

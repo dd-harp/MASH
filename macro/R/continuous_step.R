@@ -319,6 +319,7 @@ observe_continuous <- function(transition_name, former_state, new_state, time) {
 #' @return The trajectory of the run.
 #' @export
 run_continuous <- function(simulation, duration) {
+  stopifnot(is.finite(duration))
   step_idx <- 0L
   current_time <- simulation$time
   stop_time <- current_time + duration

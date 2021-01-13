@@ -155,14 +155,14 @@ simple_trip_module <- function(parameters) {
 #'
 #' @export
 mash_step.simple_trip <- function(simulation, health_path) {
-  stopifnot(is.finite(simulation$duration_days))
+  stopifnot(is.finite(simulation$variables$duration_days))
 
   # clear trajectory before starting
   simulation$trajectory <- NULL
   simulation$trajectory_cnt <- NULL
 
   # run sim
-  simulation <- run_continuous(simulation, simulation$duration_days)
+  simulation <- run_continuous(simulation, simulation$variables$duration_days)
 
   return(simulation)
 }
