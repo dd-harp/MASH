@@ -152,6 +152,7 @@ params <- list(
   day_duration = 1,
   dispersion = 1.5,
   day_cnt = 10,
+  day_start = 1,
   biting_weight = 0.5
 )
 ```

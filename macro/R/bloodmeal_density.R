@@ -225,9 +225,6 @@ single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_durat
     next_time <- h_record[[sprintf("Time%d", move_idx)]]
     if (is.finite(next_time)) {
       while (ceiling(next_time / day_duration) > day_previous) {
-        if (day_previous < 1 || day_previous > dim(dwell.lt)[2]) {
-          logwarn("single_dwell outside day bounds")
-        }
         dwell.lt[loc_previous, day_previous - day_start + 1] <-
           dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
         time_previous <- day_previous * day_duration
@@ -241,9 +238,6 @@ single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_durat
   }
   next_time <- step_duration
   while (ceiling(next_time / day_duration) > day_previous) {
-    if (day_previous < 1 || day_previous > dim(dwell.lt)[2]) {
-      logwarn("single_dwell outside day bounds")
-    }
     dwell.lt[loc_previous, day_previous - day_start + 1] <-
       dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
     time_previous <- day_previous * day_duration
@@ -449,7 +443,7 @@ bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, day_start
 bloodmeal_density_module <- function(parameters) {
   module <- list(
     parameters = parameters,
-    day_start = 1,
+    day_start = parameters$day_start,
     mosquito_events = NULL,
     human_events = NULL
     )
@@ -467,11 +461,11 @@ bloodmeal_density_module <- function(parameters) {
 #' @return Returns the simulation that's updated.
 #' @export
 mash_step.bloodmeal_density <- function(simulation, health_dt, movement_dt, bites_dt) {
-  simulation$day_start <- simulation$day_start + simulation$day_cnt
   outcome <- bld_bloodmeal_process(
     health_dt, movement_dt, bites_dt, simulation$day_start, simulation[["parameters"]])
   simulation$mosquito_events <- outcome$mosquito_events
   simulation$human_events <- outcome$human_events
+  simulation$day_start <- simulation$day_start + simulation$parameters$day_cnt
   class(simulation) <- "bloodmeal_density"
   simulation
 }
