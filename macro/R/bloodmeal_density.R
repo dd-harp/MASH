@@ -209,34 +209,43 @@ bld_bite_outcomes <- function(location_events, bites) {
 #' @param day_duration How long each time step is.
 #' @return an array with fraction of time in each location on each day.
 #'     The size is location x days.
-single_dwell <- function(h_record, location_cnt, move_cnt, step_duration, day_duration = 1) {
+single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1) {
   day_cnt <- as.integer(step_duration / day_duration)
-  loc_dwell <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
+  # lt = location, time.
+  dwell.lt <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
 
   loc_previous <- h_record$Start
-  day_previous <- 1
+  day_previous <- day_start
   time_previous <- (day_previous - 1) * day_duration
   for (move_idx in 1:move_cnt) {
+    # loop invariants
+    stopifnot(time_previous >= (day_previous - 1) * day_duration)
+    stopifnot(time_previous < day_previous * day_duration)
+
     next_time <- h_record[[sprintf("Time%d", move_idx)]]
     if (is.finite(next_time)) {
       while (ceiling(next_time / day_duration) > day_previous) {
-        loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + day_previous * day_duration - time_previous
+        dwell.lt[loc_previous, day_previous - day_start + 1] <-
+          dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
         time_previous <- day_previous * day_duration
         day_previous <- day_previous + 1
       }
-      loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + next_time - time_previous
+      dwell.lt[loc_previous, day_previous - day_start + 1] <-
+        dwell.lt[loc_previous, day_previous - day_start + 1] + next_time - time_previous
       time_previous <- next_time
       loc_previous <- h_record[[sprintf("Location%d", move_idx)]]
     }
   }
   next_time <- step_duration
   while (ceiling(next_time / day_duration) > day_previous) {
-    loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + day_previous * day_duration - time_previous
+    dwell.lt[loc_previous, day_previous - day_start + 1] <-
+      dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
     time_previous <- day_previous * day_duration
     day_previous <- day_previous + 1
   }
-  loc_dwell[loc_previous, day_previous] <- loc_dwell[loc_previous, day_previous] + next_time - time_previous
-  loc_dwell
+  dwell.lt[loc_previous, day_previous - day_start + 1] <-
+    dwell.lt[loc_previous, day_previous - day_start + 1] + next_time - time_previous
+  dwell.lt
 }
 
 
@@ -272,7 +281,7 @@ data_table_to_array <- function(dt, row, col, value) {
 #'     as location_cnt and duration of the time step.
 #' @return A three-dimensional array, location x human x days, so that
 #'     we can process a day at a time.
-human_dwell <- function(movement_dt, params) {
+human_dwell <- function(movement_dt, day_start, params) {
   location_cnt <- params$location_cnt
   step_duration <- params$duration
 
@@ -284,7 +293,7 @@ human_dwell <- function(movement_dt, params) {
     humans,
     function(h_idx) {
       h_record <- movement_dt[movement_dt$ID == h_idx, ]
-      single_dwell(h_record, location_cnt, move_cnt, step_duration)
+      single_dwell(h_record, location_cnt, move_cnt, day_start, step_duration)
     },
     FUN.VALUE = array(0, dim=c(location_cnt, day_cnt))
   )
@@ -398,10 +407,17 @@ bld_single_day <- function(
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
-bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
+bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, day_start, params) {
   stopifnot("biting_weight" %in% names(params))
-  bite_weight <- rep(params$biting_weight, params$human_cnt)
-  dwell.lh <- human_dwell(movement_dt, params)
+  if (length(params$biting_weight) == 1) {
+    bite_weight <- rep(params$biting_weight, params$human_cnt)
+  } else {
+    stopifnot(length(params$biting_weight) == params$human_cnt)
+    bite_weight <- params$biting_weight
+  }
+  dwell.lh <- human_dwell(movement_dt, day_start, params)
+  stopifnot(dim(dwell.lh)[2] == params$params$human_cnt)
+  logdebug(paste("dwell.lh dims", paste0(dim(dwell.lh), collapse=",")))
   M_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "M")
   Y_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Y")
   Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Z")
@@ -427,6 +443,7 @@ bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, params) {
 bloodmeal_density_module <- function(parameters) {
   module <- list(
     parameters = parameters,
+    day_start = parameters$day_start,
     mosquito_events = NULL,
     human_events = NULL
     )
@@ -444,9 +461,11 @@ bloodmeal_density_module <- function(parameters) {
 #' @return Returns the simulation that's updated.
 #' @export
 mash_step.bloodmeal_density <- function(simulation, health_dt, movement_dt, bites_dt) {
-  outcome <- bld_bloodmeal_process(health_dt, movement_dt, bites_dt, simulation[["parameters"]])
+  outcome <- bld_bloodmeal_process(
+    health_dt, movement_dt, bites_dt, simulation$day_start, simulation[["parameters"]])
   simulation$mosquito_events <- outcome$mosquito_events
   simulation$human_events <- outcome$human_events
+  simulation$day_start <- simulation$day_start + simulation$parameters$day_cnt
   class(simulation) <- "bloodmeal_density"
   simulation
 }

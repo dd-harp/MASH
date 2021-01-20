@@ -73,6 +73,18 @@ human_disease_path <- function(human_module) {
 }
 
 
+dump_arguments <- function(fn, step_idx, ...) {
+  datasets <- list(...)
+  for (didx in seq(datasets)) {
+    datafn <- paste0(
+      fn, step_idx, "_", names(datasets)[didx], ".csv", collapse="")
+    dt <- datasets[[didx]]
+    logdebug(paste("writing to", datafn, "a", paste0(class(dt), collapse=", ")))
+    data.table::fwrite(dt, datafn)
+  }
+}
+
+
 #' Main loop for a MASH simulation to run a discrete time step.
 #'
 #' @param modules A list of modules, named `location`, `bloodmeal`,
@@ -95,11 +107,12 @@ human_disease_path <- function(human_module) {
 #'     \code{\link{human_disease_path}}, \code{\link{infects_mosquito_path}},
 #'     \code{\link{human_infection_path}}
 #' @export
-step_mainloop <- function(modules, observer, step_cnt = 1) {
+step_mainloop <- function(modules, observer, step_cnt = 1, dump_condition = NULL) {
   location <- modules$location
   bloodmeal <- modules$bloodmeal
   health <- modules$health
   mosquito <- modules$mosquito
+  if (is.null(dump_condition)) { dump_condition <- function(...) FALSE }
 
   # These two modules take the past data and yield future data.
   health_path <- human_disease_path(health)
@@ -110,11 +123,15 @@ step_mainloop <- function(modules, observer, step_cnt = 1) {
 
     # Location depends on current health.
     location <- mash_step(location, health_path)
-    location_path <- location_path(location)
-    observe_location(observer, location_path, step_idx)
+    human_path <- person_path(location)
+    observe_location(observer, human_path, step_idx)
 
     # Bloodmeal is the central piece where things come together.
-    bloodmeal <- mash_step(bloodmeal, health_path, location_path, mosquito_trajectory)
+    if (dump_condition("bloodmeal", step_idx)) dump_arguments(
+      "bloodmeal", step_idx,
+      health=health_path, location=human_path, mosquito=mosquito_trajectory
+    )
+    bloodmeal <- mash_step(bloodmeal, health_path, human_path, mosquito_trajectory)
     human_bloodmeal_path <- infects_human_path(bloodmeal)
     mosquito_bloodmeal_path <- infects_mosquito_path(bloodmeal)
     observe_bloodmeal_human(observer, human_bloodmeal_path, step_idx)

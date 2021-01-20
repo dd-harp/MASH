@@ -69,6 +69,16 @@ fire <- function(transition, individual, when, variables = NULL) {
 }
 
 
+check_missing_when <- function(new_when) {
+  if (any(is.na(new_when) | is.nan(new_when))) {
+    find_na <- which(is.na(new_when) | is.nan(new_when))
+    stop(paste(
+      "transition", names(new_when)[which],
+      "values na", is.na(new_when[which]), "nan", is.nan(new_when[which])))
+  }
+}
+
+
 #' Set up firing times given an initial state.
 #'
 #' @param individuals a data frame of individuals, including columns for times.
@@ -90,6 +100,7 @@ initialize_times <- function(individuals, transitions) {
         when[newly_enabled],
         FUN = function(x) x(state, curtime),
         FUN.VALUE = vector(mode = "numeric", length = 1))
+      check_missing_when(new_when)
       state[names(new_when)] <- new_when
       state["when"] <- min(new_when)
       individuals[person_idx, ] <- state
@@ -140,6 +151,7 @@ update_individual <- function(state, transitions, observe) {
         FUN = function(x) x(new_state, current_time),
         FUN.VALUE = vector(mode = "numeric", length = 1))
     times[newly_enabled] <- new_times
+    check_missing_when(new_times)
   }
   new_state[when_col:length(new_state)] <- c(min(times), times)
   list(individual = new_state, curtime = current_time, entry = trajectory_entry)
@@ -307,6 +319,7 @@ observe_continuous <- function(transition_name, former_state, new_state, time) {
 #' @return The trajectory of the run.
 #' @export
 run_continuous <- function(simulation, duration) {
+  stopifnot(is.finite(duration))
   step_idx <- 0L
   current_time <- simulation$time
   stop_time <- current_time + duration

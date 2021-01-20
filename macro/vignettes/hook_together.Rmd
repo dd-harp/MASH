@@ -20,7 +20,9 @@ parameters <- list(
   location_cnt = 3L,
   duration_days = 10
 )
+# Count of humans in each location.
 parameters$humans.l <- c(rmultinom(1, parameters$human_cnt, c(0.1, 0.3, 0.6)))
+stopifnot(length(parameters$humans.l) == parameters$location_cnt)
 ```
 Here, the `.l` means it's a vector over locations. We'll use `.h` to mean a vector over humans. It's a convenient signal about what a variable's dimensions are for.
 
@@ -47,15 +49,11 @@ simpletrip_parameters <- list2env(list(
   return_home_rate = return_matrix,
   npatch = parameters$location_cnt,
   home = start_at_home,
-  current = start_at_home
+  current = start_at_home,
+  duration_days = parameters$duration_days
 ))
 movement <- simple_trip_module(simpletrip_parameters)
-movement <- mash_step(movement, parameters$duration_days, NULL)
-person_path <- person_path(movement)
-```
-
-```{r step_simpletrip}
-person_path
+movement <- mash_step(movement, NULL)
 ```
 The resulting data structure is
 
@@ -63,23 +61,36 @@ The resulting data structure is
 * Each member is a data.table with three columns: `arrive`, `leave`, and `time`.
 * The values in `arrive` or `leave` are the ID of the individual, where either one or the other is the ID, and the other one is `NaN`.
 
+Then we can extract the movement data table. This has an `ID` for the person,
+a `Start` location, and then a series of `Time1`, `Location1`, incrementing for
+each move. All humans have all columns, but they are NA if there was no movement.
+```{r step_simpletrip}
+person_path <- person_path(movement)
+person_path
+```
+
+Questions:
+
+1. Will this increment times correctly for the next time step?
+2. Will the starting locations be correct for the next time step?
+
 
 # Health Module
 
-The parameters for the health module are few.
+The parameters for the S-I health module are few.
 ```{r make_health}
 health_parameters <- list(
   recovery_rate = 1 / 200,
   people_cnt = parameters$human_cnt,
   duration_days = parameters$duration_days,
-  initial_pfpr = 0.4
+  initial_pfpr = 0.2
 )
 health <- forced_si_module(health_parameters)
 current_time <- 0
-bites_df <- data.table(do.call(rbind, lapply(
+bites_from_previous_step_df <- data.table::data.table(do.call(rbind, lapply(
   1:parameters$human_cnt,
   function(h_idx) {
-    times <- rexp(1, 0.1)
+    times <- rexp(1, 0.2 * 1/10)
     remaining <- sort(times[times < 10])
     if (length(remaining) > 0) {
       c(human = h_idx, times = remaining[1])
@@ -87,7 +98,7 @@ bites_df <- data.table(do.call(rbind, lapply(
       NULL
     }
   })))
-health <- mash_step(health, bites_df)
+health <- mash_step(health, bites_from_previous_step_df)
 health_path <- human_disease_path(health)
 ```
 
@@ -103,21 +114,25 @@ year_days <- 365
 mosquito_parameters <- list(
   duration = parameters$duration_days,
   N = parameters$location_cnt,
-  lambda = matrix(rep(0.1, year_days * parameters$location_cnt), nrow = parameters$location_cnt),
-    psi = diag(parameters$location_cnt),  # diffusion matrix
-    biting_weight = 0.4,  # The human biting weight. Should be from human.XXX
-    EIP = rep(12, year_days),  # Extrinsic incubation period,
-    maxEIP = 12,  # Maximum length of EIP.
-    p = 0.9,  # survival
-    # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
-    a = 0.6,
-    year_day_start = 1,
-    # Does not affect calculation value.
-    adult_scale = NULL  # Scale for mosquito population.
-  )
+  lambda = matrix(
+    rep(100, year_days * parameters$location_cnt),
+    nrow = parameters$location_cnt),
+  psi = diag(parameters$location_cnt),  # diffusion matrix
+  biting_weight = 0.4,  # The human biting weight. Should be from human.XXX
+  EIP = rep(12, year_days),  # Extrinsic incubation period,
+  maxEIP = 12,  # Maximum length of EIP.
+  p = 0.9,  # survival
+  # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
+  a = 0.6,
+  infected_fraction = rep(0.1, parameters$location_cnt),
+  year_day_start = 1
+)
+options(warn = 2)
 mosquito_module <- mosquito_rm_module(mosquito_parameters)
-bloodmeal_dt <- data.table(expand.grid(1:parameters$location_cnt, 1:parameters$duration_days))
-names(bloodmeal_dt) <- c("Location", "Time")
+bloodmeal_dt <- data.table(
+  expand.grid(Location = 1:parameters$location_cnt, Time = 1:parameters$duration_days)
+  )
+# Measure time from 0 but measure days from 1.
 bloodmeal_dt$Time <- bloodmeal_dt$Time - 1
 bloodmeal_dt$Bites <- sample(10:20, nrow(bloodmeal_dt), replace = TRUE)
 mosquito_module <- mash_step(mosquito_module, bloodmeal_dt)
@@ -127,9 +142,9 @@ bites_dt[M < Y + Z, M := (Y + Z + 0.1)]  # XXX something's wrong.
 bites_dt
 ```
 
-# Bloodmeal module
 
-```{r make_bloodmeal}
+# Bloodmeal module
+```{r bloodmeal_parameters}
 params <- list(
   human_cnt = parameters$human_cnt,
   location_cnt = parameters$location_cnt,
@@ -137,13 +152,35 @@ params <- list(
   day_duration = 1,
   dispersion = 1.5,
   day_cnt = 10,
+  day_start = 1,
   biting_weight = 0.5
 )
+```
+
+Let's compare inputs from above with the sample inputs to the bloodmeal.
+```{r sample_inputs_to_bloodmeal}
 # These are the sample inputs to bloodmeal
 health_dt <- sample_health_infection_status(params$human_cnt, params$duration)
 movement_dt <- sample_move_location(params$human_cnt, params$location_cnt, params$duration)
 mosquito_dt <- sample_mosquito_myz(params$location_cnt, params$duration)
+```
+Now the actual.
+```{r}
+print(colnames(movement_dt))
+print(colnames(person_path))
+```
+```{r}
+print(colnames(health_dt))
+print(colnames(health_path))
+```
+```{r}
+print(colnames(mosquito_dt))
+print(colnames(bites_dt))
+```
 
+
+```{r make_bloodmeal}
+macro:::local_logging("debug")
 bloodmeal <- bloodmeal_density_module(params)
 # The inputs from above are the health_path, person_path, and bites_dt.
 bloodmeal <- mash_step(bloodmeal, health_path, person_path, bites_dt)
@@ -165,6 +202,16 @@ health <- mash_step(health, human_infections)
 health_path <- human_disease_path(health)
 mosquito_module <- mash_step(mosquito_module, mosquito_infections)
 bites_dt <- mosquito_path(mosquito_module)
+```
 
+```{r}
+modules = list(
+  location = movement,
+  health = health,
+  bloodmeal = bloodmeal,
+  mosquito = mosquito_module
+)
+observer <- complete_observer()
+step_mainloop(modules, observer, 10)
 ```
 

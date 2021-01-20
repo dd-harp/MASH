@@ -48,24 +48,25 @@ test_that("mosquito-rm averaging of kappa runs", {
 
 # Maternal population should be stable when aquatic stage gives
 # (1-p)M new adults.
-test_that("mosquito-rm maternal stable population is stable", {
+test_that("mosquito-rm stable initialization is completely correct", {
   patch_cnt <- 5
   params <- build_biting_parameters(patch_cnt)
   internal_params <- build_internal_parameters(params)
-  infectious <- rep(0.4, patch_cnt)
-  mortality <- 1 - params$p
-  state <- mosquito_rm_build_biting_state(infectious, mortality, params$maxEIP)
+  state <- mosquito_rm_build_biting_state(params)
 
-  replacement <- (1 -params$p) / params$p
-  aquatic <- function(lambda) rep(replacement, length(lambda))
+  # Make a deterministic aquatic function.
+  aquatic <- function(lambda) lambda
 
-  kappa <- 0.2
-  kappa_patch = rep(kappa, patch_cnt)
+  b <- 0.011111108632842
+  bites_patch = b * (1 - params$infected_fraction) * 900
   initial_state <- mosquito_rm_copy_state(state)
-  for (i in 1:10) {
-    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
+  for (i in 1:1000) {
+    state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
   }
-  expect_true(macro:::within_absolute_error(state$M, initial_state$M, 1e-5))
+  expect_true(macro:::within_absolute_error(
+    state$M[1], initial_state$M[1], 1e-5))
+  expect_true(macro:::within_absolute_error(
+    state$Y[1, 1], initial_state$Y[1, 1], 1e-5))
 })
 
 
@@ -74,72 +75,17 @@ test_that("mosquito-rm aggregates Y0 geometrically", {
   patch_cnt <- 5
   params <- build_biting_parameters(patch_cnt)
   internal_params <- build_internal_parameters(params)
-  infectious <- rep(0.4, patch_cnt)
-  mortality <- 1 - params$p
-  state <- mosquito_rm_build_biting_state(infectious, mortality, params$maxEIP)
+  state <- mosquito_rm_build_biting_state(params)
 
-  replacement <- (1 -params$p) / params$p
-  aquatic <- function(lambda) rep(replacement, length(lambda))
+  aquatic <- function(lambda) lambda
 
-  kappa <- 0.2
-  kappa_patch = rep(kappa, patch_cnt)
+  b <- 0.011111108632842
+  bites_patch = b * (1 - params$infected_fraction) * 900
   initial_state <- mosquito_rm_copy_state(state)
   for (i in 1:100) {
-    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
+    state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
   }
   expect_true(macro:::within_absolute_error(state$Y[, 1] / (1 - params$p), rowSums(state$Y), 1e-5))
-})
-
-
-# When the maternal population is stable, the incubating population will
-# converge to a kappa (p - 1) / (p (1 + a kappa) - 1)
-test_that("mosquito-rm incubating is stable", {
-  patch_cnt <- 5
-  params <- build_biting_parameters(patch_cnt)
-  internal_params <- build_internal_parameters(params)
-  infectious <- rep(0.4, patch_cnt)
-  mortality <- 1 - params$p
-  state <- mosquito_rm_build_biting_state(infectious, mortality, params$maxEIP)
-
-  replacement <- (1 -params$p) / params$p
-  aquatic <- function(lambda) rep(replacement, length(lambda))
-
-  kappa <- 0.2
-  kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mosquito_rm_copy_state(state)
-  for (i in 1:100) {
-    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
-  }
-  y0_expected <- with(params,
-    rep(a * kappa / (1 + a * kappa * p / (1 - p)), patch_cnt))
-  expect_true(macro:::within_absolute_error(state$Y[, 1], y0_expected, 1e-5))
-})
-
-
-# When the maternal population is stable, the incubating population will
-# converge to a kappa (p - 1) / (p (1 + a kappa) - 1)
-test_that("mosquito-rm infectious is stable", {
-  patch_cnt <- 5
-  params <- build_biting_parameters(patch_cnt)
-  internal_params <- build_internal_parameters(params)
-  infectious <- rep(0.4, patch_cnt)
-  mortality <- 1 - params$p
-  state <- mosquito_rm_build_biting_state(infectious, mortality, params$maxEIP)
-
-  replacement <- (1 -params$p) / params$p
-  aquatic <- function(lambda) rep(replacement, length(lambda))
-
-  kappa <- 0.2
-  kappa_patch = rep(kappa, patch_cnt)
-  initial_state <- mosquito_rm_copy_state(state)
-  for (i in 1:100) {
-    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
-  }
-  y0_expected <- with(params, a * kappa / (1 + a * kappa * p / (1 - p)))
-  eip = params$EIP[[1]]
-  p = params$p
-  z_expected <- rep(p^eip * y0_expected / (1 - p), patch_cnt)
-  expect_true(macro:::within_absolute_error(state$Z, z_expected, 1e-4))
 })
 
 
@@ -149,20 +95,15 @@ test_that("mosquito-rm lag is correct for EIP", {
   params$EIP[1:49] <- 12
   params$EIP[50:365] <- 10
   internal_params <- build_internal_parameters(params)
-  infectious <- rep(0.4, patch_cnt)
-  mortality <- 1 - params$p
-  state <- mosquito_rm_build_biting_state(infectious, mortality, params$maxEIP)
-
-  replacement <- (1 -params$p) / params$p
-  aquatic <- function(lambda) rep(replacement, length(lambda))
-
-  kappa <- 0.2
-  kappa_patch = rep(kappa, patch_cnt)
+  state <- mosquito_rm_build_biting_state(params)
+  aquatic <- function(lambda) lambda
+  b <- 0.011111108632842
   initial_state <- mosquito_rm_copy_state(state)
+  bites_patch = b * (1 - params$infected_fraction) * 900
   iteration_cnt <- 100
   running_z <- numeric(iteration_cnt)
   for (i in 1:iteration_cnt) {
-    state <- mosquito_rm_dynamics(state, internal_params, kappa_patch, aquatic)
+    state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
     running_z[i] <- state$Z[1]
   }
   zmean <- mean(running_z[40:50])
@@ -211,7 +152,7 @@ test_that("mosquito-rm module can observe results", {
   patch_cnt <- 5L
   user_parameters <- build_biting_parameters(patch_cnt)
   module <- mosquito_rm_module(user_parameters)
-  bloodmeal_dt <- data.table(expand.grid(1:patch_cnt, 1:user_parameters$duration))
+  bloodmeal_dt <- data.table::data.table(expand.grid(1:patch_cnt, 1:user_parameters$duration))
   names(bloodmeal_dt) <- c("Location", "Time")
   bloodmeal_dt$Time <- bloodmeal_dt$Time - 1
   bloodmeal_dt$Bites <- sample(10:20, nrow(bloodmeal_dt), replace = TRUE)

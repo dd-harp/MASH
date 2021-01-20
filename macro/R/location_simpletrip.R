@@ -106,7 +106,9 @@ simple_trip_observer <- function(transition_name, former_state, new_state, curti
 #' @export
 simple_trip_module <- function(parameters) {
 
-  expected_parameters <- c("trip_rate","trip_dest","return_home_rate","npatch","home","current")
+  expected_parameters <- c(
+    "trip_rate", "trip_dest", "return_home_rate", "npatch", "home",
+    "current", "duration_days")
   stopifnot(all(names(parameters) %in% expected_parameters))
   stopifnot(all(expected_parameters %in% names(parameters)))
 
@@ -152,18 +154,19 @@ simple_trip_module <- function(parameters) {
 #' @param health_path The history of health states for each person.
 #'
 #' @export
-mash_step.simple_trip <- function(simulation, duration_days, health_path) {
-  stopifnot(is.finite(duration_days))
+mash_step.simple_trip <- function(simulation, health_path) {
+  stopifnot(is.finite(simulation$variables$duration_days))
 
   # clear trajectory before starting
   simulation$trajectory <- NULL
   simulation$trajectory_cnt <- NULL
 
   # run sim
-  simulation <- run_continuous(simulation, duration_days)
+  simulation <- run_continuous(simulation, simulation$variables$duration_days)
 
   return(simulation)
 }
+
 
 #' Return trajectory by location for Simple Trip model
 #'

@@ -160,9 +160,8 @@ mash_step.forced_si <- function(simulation, bites) {
   data.table::setkey(infections, "human")
   data.table::setkey(simulation$state, "who")
   joined <- infections[simulation$state]
-  joined[joined$disease == 'S' & !is.na(joined$bite_time) >= 0, when := bite_time]
-  joined[joined$disease == 'S' & !is.na(joined$bite_time), infect := bites]
-  simulation
+  joined[joined$disease == 'S' & !is.na(joined$bite_time), when := bite_time]
+  joined[joined$disease == 'S' & !is.na(joined$bite_time), infect := bite_time]
   joined[, bite_time := NULL]
   setnames(joined, "human", "who")
   simulation$state <- joined

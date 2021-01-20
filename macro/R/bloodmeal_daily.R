@@ -109,6 +109,7 @@ sample_mosquitoes <- function(world) {
 sample_bites <- function(travel, mosquitoes, biting_rate, bite_weight, world) {
   # Naming: It's what.axes, so bites = count, bite_rate = numeric,
   # bite_weight=numeric. Axes are l=location, h=human, or lh for matrix.
+  logdebug(paste("travel dimensions", paste0(dim(travel), collapse=",")))
   with(world, {
     bite_weight.lh <- travel %*% diag(bite_weight)
     bite_weight.l <- rowSums(bite_weight.lh)
