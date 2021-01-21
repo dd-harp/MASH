@@ -111,6 +111,12 @@ observe_end_step.complete_observer <- function(observer, step) {
 }
 
 
+summarize_complete_observer <- function(observer, step) {
+  step_str <- sprintf("%d", step)
+  cat(paste(""))
+}
+
+
 #' Observer that stores no data
 #'
 #' @export

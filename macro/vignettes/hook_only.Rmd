@@ -120,7 +120,31 @@ observer <- complete_observer()
 dump_if <- function(step, idx) { step == "bloodmeal" }
 seen <- list()
 for (main_idx in 1:10) {
-  modules <- step_mainloop(modules, observer, 10, dump_if)
+  cat(paste("Running step", main_idx))
+  modules <- step_mainloop(modules, observer, 1, dump_if)
   observer <- modules$observer
 }
 ```
+```{r}
+library(ggplot2)
+day_idx <- 1
+day_str <- sprintf("%d", day_idx)
+bm <- observer$bloodmeal_mosquito[[day_str]]
+aggregate(bm$Bites, by = list(Location=bm$Location), FUN=sum)
+ggplot(bm, aes(Bites)) + geom_histogram()
+```
+```{r}
+bh <- observer$bloodmeal_human[[day_str]]
+ggplot(bh, aes(times)) + geom_histogram()
+```
+```{r}
+bmosy <- observer$mosquito[[day_str]]
+bmosy1 <- bmosy[bmosy$Location == 1,]
+ymax <- 1.1 * max(bmosy1$M, bmosy1$Y, bmosy1$Z)
+plot(bmosy1$Time, bmosy1$M, type = "p", pch = 16,
+     ylim = c(0, ymax))
+points(bmosy1$Time, bmosy1$Y, col = "blue", pch = 16)
+points(bmosy1$Time, bmosy1$Z, col = "green", pch = 16)
+legend("bottomright", legend = c("M", "Y", "Z"), fill = c("black", "blue", "green"))
+```
+
