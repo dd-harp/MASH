@@ -115,8 +115,11 @@ step_mainloop <- function(modules, observer, step_cnt = 1, dump_condition = NULL
   if (is.null(dump_condition)) { dump_condition <- function(...) FALSE }
 
   # These two modules take the past data and yield future data.
-  health_path <- human_disease_path(health)
+  step_idx <- 0
   mosquito_trajectory <- mosquito_path(mosquito)
+  observer <- observe_mosquito(observer, mosquito_trajectory, step_idx)
+  health_path <- human_disease_path(health)
+  observer <- observe_health(observer, health_path, step_idx)
 
   for (step_idx in 1:step_cnt) {
     observer <- observe_begin_step(observer, step_idx)
@@ -133,8 +136,8 @@ step_mainloop <- function(modules, observer, step_cnt = 1, dump_condition = NULL
     )
     bloodmeal <- mash_step(bloodmeal, health_path, human_path, mosquito_trajectory)
     human_bloodmeal_path <- infects_human_path(bloodmeal)
-    mosquito_bloodmeal_path <- infects_mosquito_path(bloodmeal)
     observer <- observe_bloodmeal_human(observer, human_bloodmeal_path, step_idx)
+    mosquito_bloodmeal_path <- infects_mosquito_path(bloodmeal)
     observer <- observe_bloodmeal_mosquito(observer, mosquito_bloodmeal_path, step_idx)
 
     # The mosquito moves us to the next step.

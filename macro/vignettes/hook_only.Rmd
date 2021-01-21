@@ -138,6 +138,7 @@ bh <- observer$bloodmeal_human[[day_str]]
 ggplot(bh, aes(times)) + geom_histogram()
 ```
 ```{r}
+day_str <- "1"
 bmosy <- observer$mosquito[[day_str]]
 bmosy1 <- bmosy[bmosy$Location == 1,]
 ymax <- 1.1 * max(bmosy1$M, bmosy1$Y, bmosy1$Z)

@@ -356,7 +356,8 @@ bld_single_day <- function(
   bites.lh <- sample_bites(
     dwell.lh[,, day_idx], M_arr[,day_idx], biting_arr[, day_idx],
     bite_weight, params)
-  infectious_to_mosquito.lt <- array(0, dim = c(params$location_cnt, params$day_cnt))
+  infectious_to_mosquito.lt <- array(
+      0, dim = c(params$location_cnt, params$day_cnt))
   # This is for each entry in the matrix
   time_cols <- grep("Time", colnames(health_dt))
   level_cols <- c(time_cols[1] - 1, time_cols + 1)
@@ -370,9 +371,12 @@ bld_single_day <- function(
       h_idx <- lh_df[lh_idx, 2]
       bite_cnt <- bites.lh[l_idx, h_idx]
       health_rec <- health_dt[health_dt$ID == h_idx,]
-      human_status <- assign_levels_to_bites(health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
-      with_mosquito <- assign_mosquito_status(human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
-      human_infections <- with_mosquito[with_mosquito$infect_human > 0, c("times")]
+      human_status <- assign_levels_to_bites(
+          health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
+      with_mosquito <- assign_mosquito_status(
+          human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
+      human_infections <- with_mosquito[
+          with_mosquito$infect_human > 0, c("times")]
       human_infections$human <- h_idx
       list(
         mosquito_infections = data.frame(
@@ -407,7 +411,9 @@ bld_single_day <- function(
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
-bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, day_start, params) {
+bld_bloodmeal_process <- function(
+    health_dt, movement_dt, mosquito_dt, day_start, params
+    ) {
   stopifnot("biting_weight" %in% names(params))
   if (length(params$biting_weight) == 1) {
     bite_weight <- rep(params$biting_weight, params$human_cnt)

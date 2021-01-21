@@ -177,6 +177,10 @@ make_tosolve <- function(parameters, location_idx) {
 #'
 #' @export
 mosquito_rm_build_biting_state <- function(parameters) {
+  pnames <- c(
+    "infected_fraction", "p", "N", "EIP", "lambda", "maxEIP"
+  )
+  stopifnot(all(pnames %in% names(parameters)))
   f <- parameters$infected_fraction
   p <- parameters$p
   b <- (1 - p) * f / (1 + f)  # approximate biting rate.
@@ -204,7 +208,8 @@ mosquito_rm_build_biting_state <- function(parameters) {
     M = M,
     Y = Y,
     Z = Z,
-    simulation_day = 1
+    simulation_day = 1,
+    last_y = EIP - 1  # marks the last column in Y, not Z.
   )
 }
 
@@ -265,6 +270,7 @@ mosquito_rm_dynamics <- function(state, parameters, bites, aquatic = mosquito_rm
       if (length(broods) > 0) {
         for (brood in broods) {
           Z = Z + Y[, brood]
+          last_y <- brood - 1  # Marks the last column that is in Y, not Z.
         }
       }
 
@@ -278,7 +284,8 @@ mosquito_rm_dynamics <- function(state, parameters, bites, aquatic = mosquito_rm
         M = M,
         Y = Y,
         Z = Z,
-        simulation_day = simulation_day
+        simulation_day = simulation_day,
+        last_y = last_y
       )
     })
   })
@@ -315,6 +322,7 @@ mosquito_rm_module <- function(parameters) {
     }
   }
   state = mosquito_rm_build_biting_state(parameters)
+  stopifnot(all(c("M", "Y", "Z", "last_y") %in% names(state)))
   # We take the steady state and turn it into a long-term static state
   # because this module has to bootstrap the simulation before it gets input.
   day_cnt <- parameters$duration
@@ -322,7 +330,7 @@ mosquito_rm_module <- function(parameters) {
     Location = rep(1:parameters$N, day_cnt),
     Time = rep(-parameters$duration:-1, each = parameters$N),
     M = rep(state$M, day_cnt),
-    Y = rep(state$M - state$Z, day_cnt),
+    Y = rep(rowSums(state$Y[, 1:state$last_y]), day_cnt),
     Z = rep(state$Z, day_cnt)
   )
   putative_past[, c("a") := parameters$a]
@@ -423,7 +431,7 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
       Location = 1:length(M),
       Time = simulation_day - 1,
       M = M,
-      Y = M - Z,  # The Y in the state is a matrix.
+      Y = rowSums(Y[, 1:last_y]),
       Z = Z
     ))
   }
