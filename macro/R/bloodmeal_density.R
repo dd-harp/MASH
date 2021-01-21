@@ -429,14 +429,17 @@ bld_bloodmeal_process <- function(
   Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Z")
   biting_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "a")
 
-  days_df <- lapply(
+  days_list <- lapply(
     1:params$day_cnt,
     function(day_idx) bld_single_day(day_idx, M_arr, Y_arr, Z_arr, biting_arr,
                                      dwell.lh, bite_weight, health_dt, params)
   )
+  # day_list has an entry for each day. Each entry is a list of two dataframes.
   list(
-    mosquito_events = data.table::data.table(do.call(rbind, lapply(days_df, function(x) x[[1]]))),
-    human_events = data.table::data.table(do.call(rbind, lapply(days_df, function(x) x[[2]])))
+    mosquito_events = data.table::data.table(
+        do.call(rbind, lapply(days_list, function(x) x[[1]]))),
+    human_events = data.table::data.table(
+        do.call(rbind, lapply(days_list, function(x) x[[2]])))
   )
 }
 
@@ -499,4 +502,5 @@ infects_mosquito_path.bloodmeal_density <- function(simulation) {
   data.table::setnames(simulation$mosquito_events, "location", "Location")
   data.table::setnames(simulation$mosquito_events, "mosquito_infections", "Bites")
   data.table::setnames(simulation$mosquito_events, "time", "Time")
+  simulation$mosquito_events
 }
