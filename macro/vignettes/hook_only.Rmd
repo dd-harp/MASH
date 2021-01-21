@@ -118,5 +118,9 @@ modules = list(
 )
 observer <- complete_observer()
 dump_if <- function(step, idx) { step == "bloodmeal" }
-step_mainloop(modules, observer, 10, dump_if)
+seen <- list()
+for (main_idx in 1:10) {
+  modules <- step_mainloop(modules, observer, 10, dump_if)
+  observer <- modules$observer
+}
 ```
