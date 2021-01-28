@@ -9,8 +9,8 @@
 \arguments{
 \item{simulation}{A forced-SI model.}
 
-\item{bites}{A list of bites for each person. Each item in the list is
-a vector of times when an infectious bite happens.}
+\item{bites}{A datatable where each row has a human=ID
+and a bites=list(array of bite times).}
 }
 \value{
 a simulation object
