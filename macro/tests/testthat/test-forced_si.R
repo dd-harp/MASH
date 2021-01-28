@@ -57,7 +57,8 @@ test_that("forced si example runs", {
   individuals <- forced_si_population(people_cnt, pfpr)
   bite_rate <- 1 / 20
   duration_days <- 14
-  individuals$bites <- forced_si_create_bites(people_cnt, bite_rate, 0, duration_days)
+  individuals$bites <- forced_si_create_bites(
+    people_cnt, bite_rate, 0, duration_days)
 
   simulation <- continuous_simulation(
     individuals,

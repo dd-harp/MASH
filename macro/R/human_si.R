@@ -21,11 +21,14 @@ human_si_step_days <- function(compartments, bites, start_time, parameters) {
     infections <- which(compartments[, 1] & infect)
     recoveries <- which(compartments[, 2] & recover)
 
-    daily_events[[day_idx]] <- data.table::data.table(
-      ID = c(infections, recoveries),
-      Time = rep(start_time + day_idx - 1 + runif(1),
-                 length(infections) + length(recoveries)),
-      Level = c(rep(1, length(infections)), rep(0, length(recoveries)))
+    id <- c(infections, recoveries)
+    time <- rep(start_time + day_idx - 1 + runif(1),
+                 length(infections) + length(recoveries))
+    level <- c(rep(1, length(infections)), rep(0, length(recoveries)))
+    daily_events[[as.character(day_idx)]] <- data.table::data.table(
+      ID = id,
+      Time = time,
+      Level = level
     )
     compartments[infections, ] <- c(0, 1)
     compartments[recoveries, ] <- c(1, 0)
@@ -58,7 +61,7 @@ human_si_module <- function(parameters) {
   step_result <- human_si_step_days(
     simulation$state,
     NULL,
-    parameters$time,
+    simulation$time,
     simulation$parameters
   )
   simulation$events <- step_result$events
@@ -80,7 +83,7 @@ mash_step.human_si <- function(simulation, bites_dt) {
     simulation$parameters
     )
   simulation$state <- step_result$compartments
-  simulation$time = simulation$time + parameters$duration_days
+  simulation$time = simulation$time + simulation$parameters$duration_days
   # The second step has incorrect bites, so we don't save its state
   # but use its correct recovery events.
   step_result <- human_si_step_days(
@@ -115,16 +118,19 @@ human_disease_path.human_si <- function(simulation) {
   events <- simulation$events[order(simulation$events$Time),]
   for (eidx in 1:nrow(events)) {
     human_idx <- events[eidx, ID]
-    next_na <- which(is.na(dt[human_idx, ]))
+    next_na <- which(!is.finite(as.numeric(dt[human_idx, ])))
     if (length(next_na) > 1) {
       dt[human_idx, next_na[1]] <- events[eidx, Time]
       dt[human_idx, next_na[2]] <- events[eidx, Level]
       if (next_na[1] == 3) {
+        # We set the start to be the end state, but we can infer the start.
         dt[human_idx, "Start"] <- 1 - events[eidx, Level]
       }
-      cat(paste("human", human_idx, "time", events[eidx, Time], "\n"))
     } else {
-      stop("need another column in the human path data table")
+      msg <- paste(
+        "need another column", human_idx, "row", dt[human_idx,]
+      )
+      stop(msg)
     }
   }
   dt
