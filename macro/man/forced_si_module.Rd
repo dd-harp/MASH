@@ -18,5 +18,6 @@ misnamed parameters don't go unnoticed.}
 A simulation object, which is a list.
 }
 \description{
-This module drives infection by supplying bites.
+This module describes a human as being in an S state or an I state.
+An external list of bites forces humans into the I state.
 }

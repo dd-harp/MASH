@@ -7,7 +7,7 @@
 \method{infects_human_path}{bloodmeal_density}(simulation)
 }
 \arguments{
-\item{simulation}{The bloodmeal_linear module.}
+\item{simulation}{The bloodmeal_density module.}
 }
 \value{
 A data.table with bite information. These are all bites

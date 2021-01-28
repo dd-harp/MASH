@@ -4,12 +4,12 @@
 \alias{mosquito_rm_discrete_step}
 \title{One discrete time step for the mosquito_rm module.}
 \usage{
-mosquito_rm_discrete_step(module, past_kappa)
+mosquito_rm_discrete_step(module, bites_arr)
 }
 \arguments{
 \item{module}{The mosquito_rm module.}
 
-\item{past_kappa}{Infectiousness to mosquitoes over discrete-time step.}
+\item{bites_arr}{Infectious bites to mosquitoes over discrete-time step.}
 }
 \value{
 Observation of the time step and new state as a list

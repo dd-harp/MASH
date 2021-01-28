@@ -2,25 +2,35 @@
 % Please edit documentation in R/continuous_step.R
 \name{continuous_simulation}
 \alias{continuous_simulation}
-\title{Create a continuous-time simulation}
+\title{Create a continuous-time simulation for a dataframe of individuals.}
 \usage{
 continuous_simulation(individuals, transitions, observer, variables = NULL)
 }
 \arguments{
 \item{individuals}{a data.table with a row for each individual}
 
-\item{transitions}{Each transition is a list of enabling rule, enabling time, and firing
-functions.}
+\item{transitions}{Each transition is a list of enabling rule, enabling time,
+and firing functions.}
 
-\item{observer}{A function that examines each transition and stores information about it.
-For example, see \code{\link{observe_continuous}}}
+\item{observer}{A function that examines each transition and stores
+information about it. For example, see \code{\link{observe_continuous}}}
 
-\item{variables}{An environment containing global variables for this simulation.
-This can be NULL.}
+\item{variables}{An environment containing global variables for this
+simulation. This can be NULL.}
 }
 \value{
 A simulation object, as a list.
+
+This defines a continuous simulation by specifying a) system state
+b) a list of transitions, and c) an observer. The system state is
+a dataframe where each row represents an individual. Each column is a
+property of that individual. Each transition is a list containing three
+functions which act on the state, \code{is_enabled} to say whether the transition
+could fire given the current state, \code{when} to sample a time to fire, and
+\code{fire}, which changes the state for that individual.
+
+The observer is a function called each time a transition fires.
 }
 \description{
-Create a continuous-time simulation
+Create a continuous-time simulation for a dataframe of individuals.
 }

@@ -13,6 +13,17 @@ shift_with_open_interval(N)
 A square matrix. You right-multiply a population, and it gets
 a day older by moving a column to the right.
 
+We use this matrix to make mosquitoes one day older. It's for the Y
+mosquitoes, the ones that are infected.
+
+Takes this matrix:
+1 2 3
+6 7 8
+
+and turns it into this matrix:
+0 1 5
+0 6 15
+
 This is for half-open intervals, meaning the last column of the matrix
 doesn't shift. It accumulates individuals that are added from the previous
 day. This number will be gradually reduced by the survival.

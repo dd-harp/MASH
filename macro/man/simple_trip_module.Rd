@@ -7,7 +7,11 @@
 simple_trip_module(parameters)
 }
 \arguments{
-\item{parameters}{A list or environment}
+\item{parameters}{A list or environment. If you make an environment with
+\code{as.environment} then you may get an error "could not find function".
+That's because the environment inherits from the empty environment.
+Instead, use \code{list2env} to create the environment and it will, by
+default, inherit from the parent frame.}
 }
 \value{
 A simulation object, which is a list.

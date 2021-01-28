@@ -15,7 +15,8 @@ library(data.table)
 #' @export
 is_enabled <- function(transition, individual, when, variables = NULL) {
   transition_names <- names(transition)
-  enable_function <- ifelse(is.null(transition_names), transition[[1]], transition[["is_enabled"]])
+  enable_function <- ifelse(
+    is.null(transition_names), transition[[1]], transition[["is_enabled"]])
   if (!is.null(variables)) {
     environment(enable_function) <- variables
   }  # else don't need to create an environment
@@ -38,7 +39,8 @@ is_enabled <- function(transition, individual, when, variables = NULL) {
 #' @export
 when <- function(transition, individual, when, variables = NULL) {
   transition_names <- names(transition)
-  when_function <- ifelse(is.null(transition_names), transition[[2]], transition[["when"]])
+  when_function <- ifelse(
+    is.null(transition_names), transition[[2]], transition[["when"]])
   if (!is.null(variables)) {
     environment(when_function) <- variables
   }  # else don't need to create an environment
@@ -61,7 +63,8 @@ when <- function(transition, individual, when, variables = NULL) {
 #' @export
 fire <- function(transition, individual, when, variables = NULL) {
   transition_names <- names(transition)
-  fire_function <- ifelse(is.null(transition_names), transition[[3]], transition[["fire"]])
+  fire_function <- ifelse(is.null(transition_names),
+                          transition[[3]], transition[["fire"]])
   if (!is.null(variables)) {
     environment(fire_function) <- variables
   }  # else don't need to create an environment
@@ -85,10 +88,9 @@ check_missing_when <- function(new_when) {
 #' @param transitions a list of transitions for enabling and firing times
 #' @return a data frame of individuals, with times filled in
 #' @export
-initialize_times <- function(individuals, transitions) {
+initialize_times <- function(individuals, transitions, curtime) {
   is_enabled <- transitions$is_enabled
   when <- transitions$when
-  curtime <- 0
   for (person_idx in 1:nrow(individuals)) {
     state <- as.list(individuals[person_idx,])
     newly_enabled <- vapply(
@@ -96,7 +98,7 @@ initialize_times <- function(individuals, transitions) {
       FUN = function(x) x(state, curtime),
       FUN.VALUE = vector(mode = "logical", length = 1))
     if (any(newly_enabled)) {
-      new_when <- vapply(
+      new_when <- curtime + vapply(
         when[newly_enabled],
         FUN = function(x) x(state, curtime),
         FUN.VALUE = vector(mode = "numeric", length = 1))
@@ -121,7 +123,7 @@ update_individual <- function(state, transitions, observe) {
   is_enabled <- transitions$is_enabled
   when <- transitions$when
   fire <- transitions$fire
-  current_time <- state$when
+  firing_time <- state$when
   # Select the transition times (excluding the minimum time "when")
   # We assume that the lists of functions are all in the same order.
   when_col <- length(state) - length(fire)
@@ -130,31 +132,32 @@ update_individual <- function(state, transitions, observe) {
   # Fire!
   to_fire <- which.min(times)
   stopifnot(is.finite(times[to_fire]))
-  new_state <- fire[[to_fire]](state, current_time)
-  times[to_fire] <- Inf  # mark the one that fired as not being enabled so it can fire next.
-  trajectory_entry <- observe(names(to_fire), state, new_state, current_time)
+  new_state <- fire[[to_fire]](state, firing_time)
+  # mark the one that fired as not being enabled so it can fire next.
+  times[to_fire] <- Inf
+  trajectory_entry <- observe(names(to_fire), state, new_state, firing_time)
 
   # Turn transitions on/off as a result of firing.
   was_enabled <- is.finite(times)
   enabled <- vapply(
     is_enabled,
-    FUN = function(x) x(new_state, current_time),
+    FUN = function(x) x(new_state, firing_time),
     FUN.VALUE = vector(mode = "logical", length = 1))
   times[!enabled] <- Inf  # disable competing transitions
 
   # Compute times for newly-enabled transitions
   newly_enabled <- !was_enabled & enabled
   if (any(newly_enabled)) {
-    new_times <- current_time +
+    new_times <- firing_time +
       vapply(
         when[newly_enabled],
-        FUN = function(x) x(new_state, current_time),
+        FUN = function(x) x(new_state, firing_time),
         FUN.VALUE = vector(mode = "numeric", length = 1))
     times[newly_enabled] <- new_times
     check_missing_when(new_times)
   }
   new_state[when_col:length(new_state)] <- c(min(times), times)
-  list(individual = new_state, curtime = current_time, entry = trajectory_entry)
+  list(individual = new_state, curtime = firing_time, entry = trajectory_entry)
 }
 
 
@@ -169,50 +172,39 @@ check_continuous_setup <- function(individuals, transitions) {
   stopifnot(all(names(is_enabled) == names(fire)))
   when_col <- length(individuals) - length(is_enabled)
   stopifnot(names(individuals)[when_col] == "when")
-  stopifnot(all(names(individuals)[(when_col + 1):length(individuals)] == names(is_enabled)))
+  stopifnot(all(
+    names(individuals)[(when_col + 1):length(individuals)] ==
+      names(is_enabled)))
 }
 
 
-#' Run until a specified time.
-#'
-#' @param individuals a data frame of individuals, including columns for times.
-#' @param transitions a list of transitions for enabling and firing times
-#' @param end_time is a time beyond which nothing should fire
-#' @return a trajectory
-#' @export
-continuous_step <- function(individuals, transitions) {
-  check_continuous_setup(individuals, transitions)
-  # The current time and next firing times are part of the next state of the system.
-  # If a firing time is Inf, that means it isn't scheduled.
-  individuals <- initialize_times(individuals, transitions)
-
-  step_cnt <- 5
-  trajectory <- vector(mode = "list", length = step_cnt)
-  for (step_idx in 1:step_cnt) {
-    soonest <- order(individuals$when)[1]
-    individual <- as.list(individuals[soonest, ])
-    if (is.infinite(individual$when)) break
-    new_state <- update_individual(individual, transitions, function(...) {})
-    trajectory[[step_idx]] <- new_state$trajectory
-    individuals[soonest, ] <- new_state$individual
-  }
-  do.call(rbind, trajectory)
-}
-
-
-#' Create a continuous-time simulation
+#' Create a continuous-time simulation for a dataframe of individuals.
 #'
 #' @param individuals a data.table with a row for each individual
-#' @param transitions Each transition is a list of enabling rule, enabling time, and firing
-#'     functions.
-#' @param observer A function that examines each transition and stores information about it.
-#'     For example, see \code{\link{observe_continuous}}
-#' @param variables An environment containing global variables for this simulation.
-#'     This can be NULL.
+#' @param transitions Each transition is a list of enabling rule, enabling time,
+#'     and firing functions.
+#' @param observer A function that examines each transition and stores
+#'     information about it. For example, see \code{\link{observe_continuous}}
+#' @param variables An environment containing global variables for this
+#'     simulation. This can be NULL.
 #' @return A simulation object, as a list.
+#'
+#' This defines a continuous simulation by specifying a) system state
+#' b) a list of transitions, and c) an observer. The system state is
+#' a dataframe where each row represents an individual. Each column is a
+#' property of that individual. Each transition is a list containing three
+#' functions which act on the state, `is_enabled` to say whether the transition
+#' could fire given the current state, `when` to sample a time to fire, and
+#' `fire`, which changes the state for that individual.
+#'
+#' The observer is a function called each time a transition fires.
+#'
 #' @export
-continuous_simulation <- function(individuals, transitions, observer, variables = NULL) {
-  # The simulation needs lists of kinds of transitions, so unwrap what we're given.
+continuous_simulation <- function(
+  individuals, transitions, observer, variables = NULL
+  ) {
+  # The simulation needs lists of kinds of transitions,
+  # so unwrap what we're given.
   internal_transitions <- list(
     is_enabled = as.list(setNames(names(transitions), names(transitions))),
     when = as.list(setNames(names(transitions), names(transitions))),
@@ -229,7 +221,8 @@ continuous_simulation <- function(individuals, transitions, observer, variables 
       }
     } else {
       for (trans_idx in 1:length(internal_transitions)) {
-        internal_transitions[[internal_name]][[trans_idx]] <- transition_triple[[trans_idx]]
+        internal_transitions[[internal_name]][[trans_idx]] <-
+          transition_triple[[trans_idx]]
       }
     }
   }
@@ -237,13 +230,15 @@ continuous_simulation <- function(individuals, transitions, observer, variables 
   if (!is.null(variables)) {
     for (exec_trans in names(internal_transitions)) {
       for (trans_type in names(transitions)) {
-        environment(internal_transitions[[exec_trans]][[trans_type]]) <- variables
+        environment(
+          internal_transitions[[exec_trans]][[trans_type]]) <- variables
       }
     }
   }
 
   time_names <- c("when", names(transitions))
-  time_columns <- matrix(Inf, nrow = nrow(individuals), ncol = length(time_names))
+  time_columns <- matrix(
+    Inf, nrow = nrow(individuals), ncol = length(time_names))
   individuals[, time_names] <- data.table::as.data.table(time_columns)
   # Data.table will sort by firing time very quickly if we set this key.
   data.table::setkey(individuals, when)
@@ -264,20 +259,23 @@ continuous_simulation <- function(individuals, transitions, observer, variables 
 
 #' Given a simulation object, calculate enabled transitions.
 #'
-#' @param simulation This object is created by \code{\link{continuous_simulation}}
+#' @param simulation This object is created by
+#'     \code{\link{continuous_simulation}}
 #' @export
 init_continuous <- function(simulation) {
   transitions <- simulation$transitions
-  # The current time and next firing times are part of the next state of the system.
-  # If a firing time is Inf, that means it isn't scheduled.
-  simulation$state <- initialize_times(simulation$state, transitions)
+  # The current time and next firing times are part of the next state of the
+  # system. If a firing time is Inf, that means it isn't scheduled.
+  simulation$state <- initialize_times(
+    simulation$state, transitions, simulation$time)
 
   # set up the observer
   if (is.null(simulation$observer)) {
     simulation$observer <- observe_continuous
   } else {
     if (!is.function(simulation$observer)) {
-      stop("if 'observer' slot in simulation is not NULL, please provide it a function")
+      stop(paste(c("if 'observer' slot in simulation is not NULL,",
+                 "please provide it a function")))
     }
   }
 
@@ -302,8 +300,10 @@ next_step_over_time <- function(duration) {
 #' You may want to augment this to record the id of the individual.
 #'
 #' @param transition_name The string name of the transition.
-#' @param former_state a list describing the individual's state before the transition
-#' @param new_state a list describing the individual's state after the transition
+#' @param former_state a list describing the individual's state
+#'     before the transition
+#' @param new_state a list describing the individual's state
+#'     after the transition
 #' @param time The time at which this transition fires.
 #' @return a list with the name and time.
 #' @export
@@ -314,7 +314,8 @@ observe_continuous <- function(transition_name, former_state, new_state, time) {
 
 #' Run the simulation for a certain time.
 #'
-#' @param simulation This object is created by \code{\link{continuous_simulation}}
+#' @param simulation This object is created by
+#'     \code{\link{continuous_simulation}}
 #' @param duration How long to run
 #' @return The trajectory of the run.
 #' @export
@@ -341,7 +342,8 @@ run_continuous <- function(simulation, duration) {
   while (TRUE) {
     soonest <- order(individuals$when)[1]
     individual <- as.list(individuals[soonest, ])
-    should_end <- stop_condition(individuals, step_idx, current_time, individual$when)
+    should_end <- stop_condition(
+      individuals, step_idx, current_time, individual$when)
     if (is.infinite(individual$when) || should_end) {
       break
     }

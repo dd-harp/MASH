@@ -9,8 +9,8 @@
 \arguments{
 \item{simulation}{A forced-SI model.}
 
-\item{bites}{A list of bites for each person. Each item in the list is a vector
-of times when an infectious bite happens.}
+\item{bites}{A list of bites for each person. Each item in the list is
+a vector of times when an infectious bite happens.}
 }
 \value{
 a simulation object
@@ -20,6 +20,7 @@ Takes one time step of the discrete time step.
 }
 \examples{
 \dontrun{
-step_si_module(simulation, forced_si_create_bites(100, 1/20, current_time, 14))
+step_si_module(simulation,
+               forced_si_create_bites(100, 1/20, current_time, 14))
 }
 }

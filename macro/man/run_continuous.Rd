@@ -7,7 +7,8 @@
 run_continuous(simulation, duration)
 }
 \arguments{
-\item{simulation}{This object is created by \code{\link{continuous_simulation}}}
+\item{simulation}{This object is created by
+\code{\link{continuous_simulation}}}
 
 \item{duration}{How long to run}
 }

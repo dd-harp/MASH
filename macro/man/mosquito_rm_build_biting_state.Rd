@@ -4,15 +4,10 @@
 \alias{mosquito_rm_build_biting_state}
 \title{Create a default state for mosquito-RM model.}
 \usage{
-mosquito_rm_build_biting_state(infectious, replacement, maxEIP)
+mosquito_rm_build_biting_state(parameters)
 }
 \arguments{
-\item{infectious}{An array of the count of infectious mosquitoes for each patch.}
-
-\item{replacement}{The fraction of infectious that should be in incubating for each day.
-A good choice for this is the complement of the daily conditional survival.}
-
-\item{maxEIP}{The maximum length of the EIP for any day of the year, in days.}
+\item{parameters}{The initial array of parameters.}
 }
 \value{
 A list of the main variables.
@@ -21,7 +16,7 @@ A list of the main variables.
 \item \eqn{Y} are incubating mosquitoes, one for each patch, and one for each day
 of the EIP, so it's a matrix (patch x EIP day). The first column is newly-hatched.
 The last column are those incubating mosquitoes that are beyond the EIP.
-\item \eqn{Z} are infectious mosquitoes.
+\item \eqn{Z} are infectihttps://washington.zoom.us/j/99687781877ous mosquitoes.
 \item \code{simulation_day} This is the count of the number of days into the simulation.
 }
 }

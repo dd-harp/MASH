@@ -309,6 +309,7 @@ human_dwell <- function(movement_dt, day_start, params) {
 #' time_cols <- grep("Time", names(health_rec))
 #' level_cols <- c(time_cols[1] - 1, time_cols + 1)
 assign_levels_to_bites <- function(health_rec, bite_cnt, day_idx, time_cols, level_cols, params) {
+  stopifnot(nrow(health_rec) == 1)
   times <- c(0, unlist(health_rec[, ..time_cols]))
   levels <- unlist(health_rec[, ..level_cols])
   ts <- c(unname(times[is.finite(times)]), 10)

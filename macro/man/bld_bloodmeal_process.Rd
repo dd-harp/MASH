@@ -4,17 +4,19 @@
 \alias{bld_bloodmeal_process}
 \title{Assign bites to people, the top-level function.}
 \usage{
-bld_bloodmeal_process(health_dt, movement_dt, mosquito_dt, params)
+bld_bloodmeal_process(health_dt, movement_dt, mosquito_dt, day_start, params)
 }
 \arguments{
 \item{health_dt}{Health events from the protocol.}
 
 \item{movement_dt}{Movement events from the protocol.}
 
-\item{bites_dt}{Bite events from the protocol.
-
+\item{params}{Has \code{human_cnt}, \code{location_cnt}, \code{duration},
+\code{day_duration}, \code{dispersion}, \code{day_cnt}, \code{biting_weight}.
 infect_human <- outcome_dt\link{Bite > 0.0}
 infect_mosquito <- outcome_dt\link{(Bite == 0.0) & (Level > 0.0)}}
+
+\item{bites_dt}{Bite events from the protocol.}
 }
 \description{
 Assign bites to people, the top-level function.

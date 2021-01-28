@@ -87,7 +87,8 @@ test_that("runs as a module", {
   parameters <- list(
     recovery_rate = 1 / 200,
     people_cnt = 100,
-    duration_days = 14
+    duration_days = 14,
+    initial_pfpr = 0.3
   )
   simulation <- forced_si_module(parameters)
   options(warn = 2)
@@ -95,7 +96,11 @@ test_that("runs as a module", {
     current_time <- parameters$duration_days * (i - 1)
     bites <- forced_si_create_bites(
       parameters$people_cnt, 1/20, current_time, parameters$duration_days)
-    stepped <- mash_step(simulation, bites)
+    bites_dt <- data.table::data.table(
+      human = 1:parameters$people_cnt,
+      times = bites
+    )
+    stepped <- mash_step(simulation, bites_dt)
     simulation <- stepped
     trajectory <- human_disease_path(simulation)
     expect_gt(length(trajectory), 0)
