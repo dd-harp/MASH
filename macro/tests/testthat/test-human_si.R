@@ -48,10 +48,3 @@ test_that("human_si returns events at each step", {
     current_time <- current_time + parameters$duration_days
   }
 })
-
-library(data.table)
-dt <- data.table(
-  a = c(1, 2),
-  b = c(NaN, 3),
-  c = c(NaN, NaN)
-)

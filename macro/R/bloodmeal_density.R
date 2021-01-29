@@ -204,15 +204,19 @@ bld_bite_outcomes <- function(location_events, bites) {
 #'
 #' @param h_record A row from the movement table.
 #' @param location_cnt The number of locations.
-#' @param move_cnt The maximum number of moves possible (width of movement table/2)
+#' @param move_cnt The maximum number of moves possible
+#'     (width of movement table/2)
 #' @param step_duration Amount of time for all time steps.
 #' @param day_duration How long each time step is.
 #' @return an array with fraction of time in each location on each day.
 #'     The size is location x days.
-single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1) {
+single_dwell <- function(
+  h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1
+  ) {
   day_cnt <- as.integer(step_duration / day_duration)
   # lt = location, time.
-  dwell.lt <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
+  dwell.lt <- array(
+    numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
 
   loc_previous <- h_record$Start
   day_previous <- day_start

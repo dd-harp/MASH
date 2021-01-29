@@ -63,7 +63,7 @@ health_parameters <- list(
   duration_days = parameters$duration_days,
   initial_pfpr = 0.2
 )
-health <- forced_si_module(health_parameters)
+health <- human_si_module(health_parameters)
 ```
 
 
@@ -125,6 +125,7 @@ for (main_idx in 1:10) {
   observer <- modules$observer
 }
 ```
+
 ```{r}
 library(ggplot2)
 day_idx <- 1
