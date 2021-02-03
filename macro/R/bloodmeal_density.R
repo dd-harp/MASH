@@ -210,7 +210,7 @@ bld_bite_outcomes <- function(location_events, bites) {
 #' @param day_duration How long each time step is.
 #' @return an array with fraction of time in each location on each day.
 #'     The size is location x days.
-single_dwell <- function(
+single_dwell1 <- function(
   h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1
   ) {
   day_cnt <- as.integer(step_duration / day_duration)
@@ -230,12 +230,14 @@ single_dwell <- function(
     if (is.finite(next_time)) {
       while (ceiling(next_time / day_duration) > day_previous) {
         dwell.lt[loc_previous, day_previous - day_start + 1] <-
-          dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
+          dwell.lt[loc_previous, day_previous - day_start + 1] +
+          day_previous * day_duration - time_previous
         time_previous <- day_previous * day_duration
         day_previous <- day_previous + 1
       }
       dwell.lt[loc_previous, day_previous - day_start + 1] <-
-        dwell.lt[loc_previous, day_previous - day_start + 1] + next_time - time_previous
+        dwell.lt[loc_previous, day_previous - day_start + 1] +
+        next_time - time_previous
       time_previous <- next_time
       loc_previous <- h_record[[sprintf("Location%d", move_idx)]]
     }
@@ -243,13 +245,56 @@ single_dwell <- function(
   next_time <- step_duration
   while (ceiling(next_time / day_duration) > day_previous) {
     dwell.lt[loc_previous, day_previous - day_start + 1] <-
-      dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
+      dwell.lt[loc_previous, day_previous - day_start + 1] +
+      day_previous * day_duration - time_previous
     time_previous <- day_previous * day_duration
     day_previous <- day_previous + 1
   }
   dwell.lt[loc_previous, day_previous - day_start + 1] <-
-    dwell.lt[loc_previous, day_previous - day_start + 1] + next_time - time_previous
+    dwell.lt[loc_previous, day_previous - day_start + 1] +
+    next_time - time_previous
   dwell.lt
+}
+
+
+#' Count time in each place for a single individual.
+#'
+#' @param hrec The list of movements.
+#' @param loc_n How many locations.
+#' @param move_n The maximum number of possible moves.
+#' @param dio is day index, one-based. So time for day 1 is from 0 to 1.
+#' @param delta is step duration in days.
+#'
+#' Movement data comes in as a data.table with one row per individual.
+#' This calculates how much time one of those individuals spends in
+#' all locations over a time step.
+single_dwell <- function(
+  hrec, loc_n, move_n, dio, delta
+  )
+{
+  # This is dwell time by one human over all locations and days.
+  X.lt <- array(numeric(loc_n * delta), dim = c(loc_n, delta))
+  loc <- hrec$Start
+  now <- dio - 1
+  move_idx <- 1
+  for (day in dio:(dio + delta - 1)) {
+    while (TRUE) {
+      next_time <- if (move_idx <= move_n) {
+        pnt <- hrec[[sprintf("Time%d", move_idx)]]
+        ifelse(is.finite(pnt), pnt, Inf)
+      } else { Inf }
+      if (next_time < day) {
+        X.lt[loc, day - dio + 1] <- X.lt[loc, day - dio + 1] + next_time - now
+        now <- next_time
+        move_idx <- move_idx + 1
+      } else {
+        X.lt[loc, day - dio + 1] <- X.lt[loc, day - dio + 1] + day - now
+        now <- day
+        break
+      }
+    }
+  }
+  X.lt
 }
 
 
@@ -289,7 +334,7 @@ human_dwell <- function(movement_dt, day_start, params) {
   location_cnt <- params$location_cnt
   step_duration <- params$duration
 
-  day_cnt <- as.integer(step_duration / 1)
+  day_cnt <- as.integer(round(step_duration / 1))
   move_cnt <- length(grep("Time", names(movement_dt)))
 
   humans <- sort(unique(movement_dt$ID))

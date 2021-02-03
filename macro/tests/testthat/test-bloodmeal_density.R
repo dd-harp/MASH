@@ -65,12 +65,13 @@ test_that("single_dwell translates events to dwell times", {
   move_dt <- sample_move_location(human_cnt, place_cnt, time_step)
   day_cnt <- as.integer(step_duration / 1)
   move_cnt <- length(grep("Time", names(move_dt)))
-  h_idx <- 1
-  h_record <- move_dt[move_dt$ID == 7, ]
-  dwell.lt <- macro:::single_dwell(
-      h_record, location_cnt, move_cnt, 1, step_duration)
-  expect_true(all(colSums(dwell.lt) == 1))
-  expect_equal(dim(dwell.lt), c(location_cnt, day_cnt))
+  for (h_idx in 1:nrow(move_dt)) {
+    h_record <- move_dt[h_idx, ]
+    dwell.lt <- macro:::single_dwell(
+        h_record, location_cnt, move_cnt, 1, step_duration)
+    expect_true(all(abs(colSums(dwell.lt) - 1) < 1e-10))
+    expect_equal(dim(dwell.lt), c(location_cnt, day_cnt))
+  }
 })
 
 

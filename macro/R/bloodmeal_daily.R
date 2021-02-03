@@ -119,6 +119,9 @@ sample_bites <- function(travel, mosquitoes, biting_rate, bite_weight, world) {
     fraction_of_bites_to_each_human <- diag(bite_norm.l) %*% bite_weight.lh
     bite_rate.h <- bite_rate.l %*% fraction_of_bites_to_each_human
     bite_rate.lh <- fraction_of_bites_to_each_human * bite_rate.l
+    if (any(bite_rate.lh < 0)) {
+      stop("bite rate less than zero", paste0(bite_rate.lh, collapse = ", "))
+    }
 
     logdebug(paste("sample_bites rate", paste0(bite_rate.h, collapse = ", ")))
     bites.h <- vapply(
