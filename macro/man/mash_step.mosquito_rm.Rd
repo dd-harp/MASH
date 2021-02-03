@@ -9,7 +9,8 @@
 \arguments{
 \item{module}{The mosquito_rm module.}
 
-\item{bloodmeal_dt}{The input bloodmeal data from the last time step.}
+\item{bloodmeal_dt}{The input bloodmeal data from the last time step.
+This has Bites, Time, Location in a data table.}
 }
 \value{
 The mosqutio_rm module back again, after the time step.

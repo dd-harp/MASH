@@ -4,21 +4,26 @@
 \alias{mosquito_rm_dynamics}
 \title{Dynamics of Ross-Macdonald mosquitoes.}
 \usage{
-mosquito_rm_dynamics(state, parameters, kappa, aquatic = mosquito_rm_aquatic)
+mosquito_rm_dynamics(state, parameters, bites, aquatic = mosquito_rm_aquatic)
 }
 \arguments{
 \item{state}{The internal state.}
 
 \item{parameters}{The internal parameters.}
 
-\item{kappa}{Net infectiousness of humans to mosquitoes, the probability
-a mosquito becomes infected after feeding on a human. Vector per patch.}
+\item{bites}{Net infectiousness of humans to mosquitoes expressed
+as a number of infectious bites in each location. The units on bites
+must match the M units, which can be either a fraction or a count.}
 
-\item{aquatic}{The function to call to get the emergence.
+\item{aquatic}{The function to call to get the emergence.}
+}
+\value{
+a list with five values: the vectors \code{M}, \code{Y}, \code{Z}, and the
+parameters \code{a} and \code{simulation_day}.
 
 This is a single-day dynamics step for a discrete-time analog
 of the Ross-Macdonald model. The aquatic lifecycle is stochastic, but
-the rest is deterministic.}
+the rest is deterministic.
 }
 \description{
 Dynamics of Ross-Macdonald mosquitoes.

@@ -9,9 +9,11 @@ observe_continuous(transition_name, former_state, new_state, time)
 \arguments{
 \item{transition_name}{The string name of the transition.}
 
-\item{former_state}{a list describing the individual's state before the transition}
+\item{former_state}{a list describing the individual's state
+before the transition}
 
-\item{new_state}{a list describing the individual's state after the transition}
+\item{new_state}{a list describing the individual's state
+after the transition}
 
 \item{time}{The time at which this transition fires.}
 }

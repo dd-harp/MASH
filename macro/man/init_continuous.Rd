@@ -7,7 +7,8 @@
 init_continuous(simulation)
 }
 \arguments{
-\item{simulation}{This object is created by \code{\link{continuous_simulation}}}
+\item{simulation}{This object is created by
+\code{\link{continuous_simulation}}}
 }
 \description{
 Given a simulation object, calculate enabled transitions.

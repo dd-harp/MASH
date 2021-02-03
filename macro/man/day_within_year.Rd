@@ -2,17 +2,15 @@
 % Please edit documentation in R/mosquito_rm.R
 \name{day_within_year}
 \alias{day_within_year}
-\title{Given a day that counts past multiple years, what's year day.}
+\title{Given a day that counts past multiple years, what's day within year.}
 \usage{
 day_within_year(day, day_cnt = 365)
 }
 \arguments{
 \item{day}{integer count of days since start of year.}
 
-\item{day_cnt}{It's 365 unless you're testing.
-
-This is what you get for counting from 1 instead of 0.}
+\item{day_cnt}{It's 365 unless you're testing.}
 }
 \description{
-Given a day that counts past multiple years, what's year day.
+Given a day that counts past multiple years, what's day within year.
 }

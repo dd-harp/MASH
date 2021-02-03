@@ -204,15 +204,19 @@ bld_bite_outcomes <- function(location_events, bites) {
 #'
 #' @param h_record A row from the movement table.
 #' @param location_cnt The number of locations.
-#' @param move_cnt The maximum number of moves possible (width of movement table/2)
+#' @param move_cnt The maximum number of moves possible
+#'     (width of movement table/2)
 #' @param step_duration Amount of time for all time steps.
 #' @param day_duration How long each time step is.
 #' @return an array with fraction of time in each location on each day.
 #'     The size is location x days.
-single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1) {
+single_dwell1 <- function(
+  h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1
+  ) {
   day_cnt <- as.integer(step_duration / day_duration)
   # lt = location, time.
-  dwell.lt <- array(numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
+  dwell.lt <- array(
+    numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
 
   loc_previous <- h_record$Start
   day_previous <- day_start
@@ -226,12 +230,14 @@ single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_durat
     if (is.finite(next_time)) {
       while (ceiling(next_time / day_duration) > day_previous) {
         dwell.lt[loc_previous, day_previous - day_start + 1] <-
-          dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
+          dwell.lt[loc_previous, day_previous - day_start + 1] +
+          day_previous * day_duration - time_previous
         time_previous <- day_previous * day_duration
         day_previous <- day_previous + 1
       }
       dwell.lt[loc_previous, day_previous - day_start + 1] <-
-        dwell.lt[loc_previous, day_previous - day_start + 1] + next_time - time_previous
+        dwell.lt[loc_previous, day_previous - day_start + 1] +
+        next_time - time_previous
       time_previous <- next_time
       loc_previous <- h_record[[sprintf("Location%d", move_idx)]]
     }
@@ -239,13 +245,56 @@ single_dwell <- function(h_record, location_cnt, move_cnt, day_start, step_durat
   next_time <- step_duration
   while (ceiling(next_time / day_duration) > day_previous) {
     dwell.lt[loc_previous, day_previous - day_start + 1] <-
-      dwell.lt[loc_previous, day_previous - day_start + 1] + day_previous * day_duration - time_previous
+      dwell.lt[loc_previous, day_previous - day_start + 1] +
+      day_previous * day_duration - time_previous
     time_previous <- day_previous * day_duration
     day_previous <- day_previous + 1
   }
   dwell.lt[loc_previous, day_previous - day_start + 1] <-
-    dwell.lt[loc_previous, day_previous - day_start + 1] + next_time - time_previous
+    dwell.lt[loc_previous, day_previous - day_start + 1] +
+    next_time - time_previous
   dwell.lt
+}
+
+
+#' Count time in each place for a single individual.
+#'
+#' @param hrec The list of movements.
+#' @param loc_n How many locations.
+#' @param move_n The maximum number of possible moves.
+#' @param dio is day index, one-based. So time for day 1 is from 0 to 1.
+#' @param delta is step duration in days.
+#'
+#' Movement data comes in as a data.table with one row per individual.
+#' This calculates how much time one of those individuals spends in
+#' all locations over a time step.
+single_dwell <- function(
+  hrec, loc_n, move_n, dio, delta
+  )
+{
+  # This is dwell time by one human over all locations and days.
+  X.lt <- array(numeric(loc_n * delta), dim = c(loc_n, delta))
+  loc <- hrec$Start
+  now <- dio - 1
+  move_idx <- 1
+  for (day in dio:(dio + delta - 1)) {
+    while (TRUE) {
+      next_time <- if (move_idx <= move_n) {
+        pnt <- hrec[[sprintf("Time%d", move_idx)]]
+        ifelse(is.finite(pnt), pnt, Inf)
+      } else { Inf }
+      if (next_time < day) {
+        X.lt[loc, day - dio + 1] <- X.lt[loc, day - dio + 1] + next_time - now
+        now <- next_time
+        move_idx <- move_idx + 1
+      } else {
+        X.lt[loc, day - dio + 1] <- X.lt[loc, day - dio + 1] + day - now
+        now <- day
+        break
+      }
+    }
+  }
+  X.lt
 }
 
 
@@ -285,7 +334,7 @@ human_dwell <- function(movement_dt, day_start, params) {
   location_cnt <- params$location_cnt
   step_duration <- params$duration
 
-  day_cnt <- as.integer(step_duration / 1)
+  day_cnt <- as.integer(round(step_duration / 1))
   move_cnt <- length(grep("Time", names(movement_dt)))
 
   humans <- sort(unique(movement_dt$ID))
@@ -309,6 +358,7 @@ human_dwell <- function(movement_dt, day_start, params) {
 #' time_cols <- grep("Time", names(health_rec))
 #' level_cols <- c(time_cols[1] - 1, time_cols + 1)
 assign_levels_to_bites <- function(health_rec, bite_cnt, day_idx, time_cols, level_cols, params) {
+  stopifnot(nrow(health_rec) == 1)
   times <- c(0, unlist(health_rec[, ..time_cols]))
   levels <- unlist(health_rec[, ..level_cols])
   ts <- c(unname(times[is.finite(times)]), 10)
@@ -356,7 +406,8 @@ bld_single_day <- function(
   bites.lh <- sample_bites(
     dwell.lh[,, day_idx], M_arr[,day_idx], biting_arr[, day_idx],
     bite_weight, params)
-  infectious_to_mosquito.lt <- array(0, dim = c(params$location_cnt, params$day_cnt))
+  infectious_to_mosquito.lt <- array(
+      0, dim = c(params$location_cnt, params$day_cnt))
   # This is for each entry in the matrix
   time_cols <- grep("Time", colnames(health_dt))
   level_cols <- c(time_cols[1] - 1, time_cols + 1)
@@ -370,9 +421,12 @@ bld_single_day <- function(
       h_idx <- lh_df[lh_idx, 2]
       bite_cnt <- bites.lh[l_idx, h_idx]
       health_rec <- health_dt[health_dt$ID == h_idx,]
-      human_status <- assign_levels_to_bites(health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
-      with_mosquito <- assign_mosquito_status(human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
-      human_infections <- with_mosquito[with_mosquito$infect_human > 0, c("times")]
+      human_status <- assign_levels_to_bites(
+          health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
+      with_mosquito <- assign_mosquito_status(
+          human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
+      human_infections <- with_mosquito[
+          with_mosquito$infect_human > 0, c("times")]
       human_infections$human <- h_idx
       list(
         mosquito_infections = data.frame(
@@ -407,7 +461,9 @@ bld_single_day <- function(
 #' infect_human <- outcome_dt[Bite > 0.0]
 #' infect_mosquito <- outcome_dt[(Bite == 0.0) & (Level > 0.0)]
 #' @export
-bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, day_start, params) {
+bld_bloodmeal_process <- function(
+    health_dt, movement_dt, mosquito_dt, day_start, params
+    ) {
   stopifnot("biting_weight" %in% names(params))
   if (length(params$biting_weight) == 1) {
     bite_weight <- rep(params$biting_weight, params$human_cnt)
@@ -423,14 +479,17 @@ bld_bloodmeal_process <- function(health_dt, movement_dt, mosquito_dt, day_start
   Z_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "Z")
   biting_arr <- data_table_to_array(mosquito_dt, "Location", "Time", "a")
 
-  days_df <- lapply(
+  days_list <- lapply(
     1:params$day_cnt,
     function(day_idx) bld_single_day(day_idx, M_arr, Y_arr, Z_arr, biting_arr,
                                      dwell.lh, bite_weight, health_dt, params)
   )
+  # day_list has an entry for each day. Each entry is a list of two dataframes.
   list(
-    mosquito_events = data.table::data.table(do.call(rbind, lapply(days_df, function(x) x[[1]]))),
-    human_events = data.table::data.table(do.call(rbind, lapply(days_df, function(x) x[[2]])))
+    mosquito_events = data.table::data.table(
+        do.call(rbind, lapply(days_list, function(x) x[[1]]))),
+    human_events = data.table::data.table(
+        do.call(rbind, lapply(days_list, function(x) x[[2]])))
   )
 }
 
@@ -493,4 +552,5 @@ infects_mosquito_path.bloodmeal_density <- function(simulation) {
   data.table::setnames(simulation$mosquito_events, "location", "Location")
   data.table::setnames(simulation$mosquito_events, "mosquito_infections", "Bites")
   data.table::setnames(simulation$mosquito_events, "time", "Time")
+  simulation$mosquito_events
 }

@@ -4,7 +4,14 @@
 \alias{assign_levels_to_bites}
 \title{Assign bite levels for bites of a single human.}
 \usage{
-assign_levels_to_bites(health_rec, bite_cnt, time_cols, level_cols, params)
+assign_levels_to_bites(
+  health_rec,
+  bite_cnt,
+  day_idx,
+  time_cols,
+  level_cols,
+  params
+)
 }
 \arguments{
 \item{health_rec}{a single row of the health data table.

@@ -4,7 +4,7 @@
 \alias{initialize_times}
 \title{Set up firing times given an initial state.}
 \usage{
-initialize_times(individuals, transitions)
+initialize_times(individuals, transitions, curtime)
 }
 \arguments{
 \item{individuals}{a data frame of individuals, including columns for times.}

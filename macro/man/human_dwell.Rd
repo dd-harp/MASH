@@ -5,7 +5,7 @@
 \title{Given all human movement, return a matrix of fraction of time at each
 location on each day.}
 \usage{
-human_dwell(movement_dt, params)
+human_dwell(movement_dt, day_start, params)
 }
 \arguments{
 \item{movement_dt}{The movement data table where each row is a person

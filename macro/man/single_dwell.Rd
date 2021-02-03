@@ -5,7 +5,14 @@
 \title{Given the movement history of a single person, calculate fraction of
 time in any place.}
 \usage{
-single_dwell(h_record, location_cnt, move_cnt, step_duration, day_duration = 1)
+single_dwell(
+  h_record,
+  location_cnt,
+  move_cnt,
+  day_start,
+  step_duration,
+  day_duration = 1
+)
 }
 \arguments{
 \item{h_record}{A row from the movement table.}

@@ -23,6 +23,3 @@ The memory use of this method could be improved. We could construct a
 data.table into which to store the trajectory, so that it overwrites
 lines in the data.table. By returning lists, we're churning memory.
 }
-\details{
-You may want to augment this to record the id of the individual.
-}

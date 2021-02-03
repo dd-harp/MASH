@@ -10,8 +10,7 @@
 \item{module}{A \code{mosquito_rm} module.}
 }
 \value{
-A data.table with three columns, \code{Bites}, \code{Location}, and
-\code{Time}.
+A data.table
 }
 \description{
 Get the output of the time step for Ross Macdonald mosquitoes.

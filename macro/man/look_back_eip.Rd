@@ -2,20 +2,23 @@
 % Please edit documentation in R/mosquito_rm.R
 \name{look_back_eip}
 \alias{look_back_eip}
-\title{This reverses the list of EIP per day of the year.}
+\title{This takes EIP as days in the future and returns it as days into the past.}
 \usage{
 look_back_eip(EIP)
 }
 \arguments{
-\item{EIP}{a vector of the EIP on a day of the year.}
+\item{EIP}{a vector of the number of days from infection to infectiousness
+on each day of the year. 365 long.}
 }
 \value{
-A list, 365 days long, where each entry is the day from
+A list, 365 days long, where each entry is the days from
 which to get the newly-adult mosquitoes.
 
+EIP is extrinsic incubation period.
 It tells you how many days back to get the newly-infected
-mosquitoes. The value is a ragged array by day of year.
+mosquitoes. It could be zero or more than one previous day.
+The value is a ragged array by day of year.
 }
 \description{
-This reverses the list of EIP per day of the year.
+This takes EIP as days in the future and returns it as days into the past.
 }

@@ -20,6 +20,8 @@ forced_si_infect <- function() {
       }
       ),
     when = function(state, curtime) with(state, {
+      # The time of infection is given by a list of bites, so this
+      # doesn't sample for times.
       bite_vec <- bites[[1]]
       next_bite <- which(bite_vec > curtime)
       ifelse(length(next_bite) > 0L, bite_vec[next_bite[1]], Inf)
@@ -53,7 +55,8 @@ forced_si_recover <- function(rate) {
 forced_si_population <- function(people_cnt, pfpr) {
   data.table::data.table(
     who = 1L:people_cnt,  # identify each person.
-    disease = factor(ifelse(rbinom(people_cnt, 1, 0.4), "I", "S"), levels = c("S", "I")),
+    disease = factor(ifelse(rbinom(people_cnt, 1, pfpr), "I", "S"),
+      levels = c("S", "I")),
     bites = lapply(1:people_cnt, function(x) numeric(0))
     )
 }
@@ -64,8 +67,6 @@ forced_si_population <- function(people_cnt, pfpr) {
 #' The memory use of this method could be improved. We could construct a
 #' data.table into which to store the trajectory, so that it overwrites
 #' lines in the data.table. By returning lists, we're churning memory.
-#'
-#' You may want to augment this to record the id of the individual.
 #'
 #' @param transition_name The string name of the transition.
 #' @param former_state a list describing the individual's state before the transition
@@ -93,16 +94,17 @@ forced_si_observer <- function(transition_name, former_state, new_state, curtime
 #' @export
 forced_si_create_bites <- function(people_cnt, bite_rate, current_time, duration) {
   lapply(1:people_cnt, function(x) {
+    # Generate 3x too many bites so that they likely cover the duration.
     bites <- cumsum(rexp(round(bite_rate * duration * 3), bite_rate))
     current_time + bites[bites < duration]
   })
 }
 
 
-
 #' Creates a MASH module that runs forced SI.
 #'
-#' This module drives infection by supplying bites.
+#' This module describes a human as being in an S state or an I state.
+#' An external list of bites forces humans into the I state.
 #'
 #' @param parameters These are simulation parameters. They are
 #'     \code{recovery_rate} for recovery, \code{people_cnt} for
@@ -117,20 +119,20 @@ forced_si_module <- function(parameters) {
     "recovery_rate", "people_cnt", "duration_days", "initial_pfpr")
   stopifnot(all(names(parameters) %in% expected_parameters))
   stopifnot(all(expected_parameters %in% names(parameters)))
-  stopifnot(is.finite(parameters$pfpr))
-  stopifnot(0 <= parameters$pfpr)
-  stopifnot(parameters$pfpr < 1)
+  stopifnot(is.finite(parameters$initial_pfpr))
+  stopifnot(0 <= parameters$initial_pfpr)
+  stopifnot(parameters$initial_pfpr < 1)
 
   transitions <- list(
     infect = forced_si_infect(),
     recover = forced_si_recover(parameters$recovery_rate)
   )
   people_cnt <- as.integer(parameters$people_cnt)
-  pfpr <- parameters$initial_pfpr
-  individuals <- forced_si_population(people_cnt, pfpr)
+  people_state <- forced_si_population(people_cnt, parameters$initial_pfpr)
+  stopifnot(colnames(people_state) == c("who", "disease", "bites"))
 
   simulation <- continuous_simulation(
-    individuals,
+    people_state,  # The `state` variable will be this plus time columns.
     transitions,
     forced_si_observer
   )
@@ -144,19 +146,35 @@ forced_si_module <- function(parameters) {
 #' Takes one time step of the discrete time step.
 #'
 #' @param simulation A forced-SI model.
-#' @param bites A list of bites for each person. Each item in the list is a vector
-#'     of times when an infectious bite happens.
+#' @param bites A datatable where each row has a human=ID
+#'     and a bites=list(array of bite times).
 #' @return a simulation object
 #' @examples
 #' \dontrun{
-#' step_si_module(simulation, forced_si_create_bites(100, 1/20, current_time, 14))
+#' step_si_module(simulation,
+#'                forced_si_create_bites(100, 1/20, current_time, 14))
 #' }
 #' @export
 mash_step.forced_si <- function(simulation, bites) {
   # Save previous state so we know start what the recorded events are changing.
   simulation$previous_state <- simulation$state[, .(who, disease)]
   # We need to turn the bites into events within the stochastic system.
-  infections <- bites[order(human), .(bite_time = min(times)), by = .(human)]
+  bites <- bites[order(human), ]
+  next_bite <- vapply(
+    1:nrow(bites),
+    function(r) {
+      bite_vec <- bites[r, times]
+      stopifnot(is.vector(bite_vec))
+      if (length(bite_vec) > 0) {
+        min(bite_vec)
+      } else {
+        Inf  # never is a valid value.
+      }
+    },
+    numeric(1)
+  )
+  infections <- data.table::data.table(
+    human = bites$human, bite_time = next_bite)
   data.table::setkey(infections, "human")
   data.table::setkey(simulation$state, "who")
   joined <- infections[simulation$state]
