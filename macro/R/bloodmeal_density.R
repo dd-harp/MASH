@@ -461,9 +461,13 @@ bloodmeal_density_module <- function(parameters) {
 #' @param bites_dt Rate of infectious mosquito bites over time in bites per day.
 #' @return Returns the simulation that's updated.
 #' @export
-mash_step.bloodmeal_density <- function(simulation, health_dt, movement_dt, bites_dt) {
+mash_step.bloodmeal_density <- function(
+  simulation, health_dt, movement_dt, bites_dt
+  ) {
   outcome <- bld_bloodmeal_process(
-    health_dt, movement_dt, bites_dt, simulation$day_start, simulation[["parameters"]])
+    health_dt, movement_dt, bites_dt, simulation$day_start,
+    simulation[["parameters"]]
+    )
   simulation$mosquito_events <- outcome$mosquito_events
   simulation$human_events <- outcome$human_events
   simulation$day_start <- simulation$day_start + simulation$parameters$day_cnt

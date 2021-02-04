@@ -92,7 +92,8 @@ sample_travel <- function(world) {
 sample_mosquitoes <- function(world) {
   with(world, {
     multitudes_of_mosquitoes <- rbinom(location_cnt, 5, 0.4)
-    mosquitoes <- rbinom(location_cnt, mosquito_cnt*multitudes_of_mosquitoes, 0.2)
+    mosquitoes <- rbinom(
+      location_cnt, mosquito_cnt*multitudes_of_mosquitoes, 0.2)
     mosquitoes
   })
 }
