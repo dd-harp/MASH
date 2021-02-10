@@ -31,6 +31,7 @@ build_biting_parameters <- function(patch_cnt) {
     a = 0.6,
     # Fraction of mosquitoes infected on any day.
     infected_fraction = rep(0.1, patch_cnt),
+    biting_weight = 0.5,
     year_day_start = 1
   )
 }
@@ -254,7 +255,9 @@ mosquito_rm_aquatic <- function(lambda) {
 #' the rest is deterministic.
 #'
 #' @export
-mosquito_rm_dynamics <- function(state, parameters, bites, aquatic = mosquito_rm_aquatic) {
+mosquito_rm_dynamics <- function(
+  state, parameters, bites, aquatic = mosquito_rm_aquatic
+  ) {
   with(parameters, {
     with(state, {
       simulation_day <- simulation_day + 1
@@ -314,7 +317,14 @@ mosquito_rm_module <- function(parameters) {
     "duration", "N", "lambda", "psi", "biting_weight", "EIP", "maxEIP",
     "p", "a", "infected_fraction", "year_day_start"
   )
-  stopifnot(sort(required) == sort(names(parameters)))
+  if (!(setequal(required, names(parameters)))) {
+    inreq <- paste0(setdiff(required, names(parameters)), collapse = ", ")
+    inpar <- paste0(setdiff(names(parameters), required), collapse = ", ")
+    stop(paste(
+      "mosquito_rm_module parameters missing", inreq,
+      "and won't use given parameters:", inpar
+      ))
+  }
   for (pv_idx in seq(parameters)) {
     pv <- parameters[[pv_idx]]
     if (is.null(pv) || is.na(pv)) {
@@ -426,7 +436,8 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
   future_state <- mosquito_rm_copy_state(today_state)
   output <- vector(mode = "list", length = params$duration)
   for (i in 1:params$duration) {
-    future_state <- mosquito_rm_dynamics(future_state, params, future_kappa[, i])
+    future_state <- mosquito_rm_dynamics(
+      future_state, params, future_kappa[, i])
     output[[i]] <- with(future_state, data.table(
       Location = 1:length(M),
       Time = simulation_day - 1,
@@ -459,6 +470,7 @@ mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
     external_parameters = module$external_parameters,
     parameters = module$parameters,
     state = step_output$state,
+    future_state = step_output$future_state,
     output = step_output$output
   )
   class(stepped_module) <- "mosquito_rm"

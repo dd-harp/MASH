@@ -6,6 +6,7 @@ output: html_notebook
 ```{r load_libs, show = FALSE}
 library(macro)
 library(data.table)
+library(ggplot2)
 ```
 
 # Introduction
@@ -109,7 +110,7 @@ bloodmeal <- bloodmeal_density_module(params)
 # Assemble and run
 
 ```{r}
-macro:::local_logging("debug")
+macro:::local_logging("info")
 modules = list(
   location = movement,
   health = health,
@@ -120,24 +121,28 @@ observer <- complete_observer()
 dump_if <- function(step, idx) { step == "bloodmeal" }
 seen <- list()
 for (main_idx in 1:10) {
-  cat(paste("Running step", main_idx))
-  modules <- step_mainloop(modules, observer, 1, dump_if)
+  cat(paste("Running 10-day step", main_idx, "\n"))
+  modules <- step_mainloop(modules, observer, main_idx, dump_if)
   observer <- modules$observer
 }
 ```
 
 ```{r}
-library(ggplot2)
-day_idx <- 1
+day_idx <- 2
 day_str <- sprintf("%d", day_idx)
 bm <- observer$bloodmeal_mosquito[[day_str]]
-aggregate(bm$Bites, by = list(Location=bm$Location), FUN=sum)
-ggplot(bm, aes(Bites)) + geom_histogram()
+bm$Location <- as.factor(bm$Location)
+ggplot(bm, aes(Time, Bites, colour = Location)) + geom_point() +
+  labs(title = "Bites in Each Location During Time Step", y = "Bites per Day")
 ```
+Bloodmeal's bites for the human.
 ```{r}
 bh <- observer$bloodmeal_human[[day_str]]
-ggplot(bh, aes(times)) + geom_histogram()
+ggplot(bh, aes(times)) + geom_histogram(binwidth = 10 / 40) +
+  labs(title = "Bites for all Humans During Time Step", y = "Bites per Quarter Day")
 ```
+
+
 ```{r}
 day_str <- "1"
 bmosy <- observer$mosquito[[day_str]]

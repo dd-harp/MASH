@@ -18,19 +18,21 @@ test_that("bloodmeal_daily makes rates that match mosquito counts", {
   world <- build_world(5, 20)
   travel <- sample_travel(world)
   mosquitoes <- sample_mosquitoes(world)
+  bite_rate <- world$c
+  bite_weight <- world$b
 
   sample_cnt <- 10000
   bites_l_draws <- vapply(1:sample_cnt, function(i) {
-      bites <- sample_bites(travel, mosquitoes, world)
+      bites <- sample_bites(travel, mosquitoes, bite_rate, bite_weight, world)
       rowSums(bites)
     },
-    numeric(world$l_cnt)
+    numeric(world$location_cnt)
     )
 
-  expected_location_bites <- mosquitoes * world$c
+  expected_location_bites <- mosquitoes * bite_rate
   compare_over_statistic <- function(statistic) {
     # Generate a robust estimator of the Poisson distribution
-    mean_generated <- lapply(1:world$l_cnt, function(l_idx) {
+    mean_generated <- lapply(1:world$location_cnt, function(l_idx) {
       basic_rate <- rpois(1000, expected_location_bites[l_idx])
       boot::boot(
         data = basic_rate,
@@ -39,7 +41,7 @@ test_that("bloodmeal_daily makes rates that match mosquito counts", {
       )
     })
     # Compare with same robust estimator on observed values
-    mean_est <- lapply(1:world$l_cnt, function(l_idx) {
+    mean_est <- lapply(1:world$location_cnt, function(l_idx) {
       boot::boot(
         data = bites_l_draws[l_idx,],
         statistic = statistic,
@@ -50,7 +52,9 @@ test_that("bloodmeal_daily makes rates that match mosquito counts", {
     expected_bites <- vapply(mean_generated, function(m) m$t0, numeric(1))
     cbind(sampled_bites, expected_bites)
   }
-
+  trimmed_mean <- function(data, indices) {
+    mean(data[indices], trim = 0.2)
+  }
   # These are around 200 bites.
   result <- compare_over_statistic(trimmed_mean)
   for (check_idx in 1:dim(result)[1]) {

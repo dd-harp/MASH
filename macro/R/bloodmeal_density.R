@@ -199,64 +199,6 @@ bld_bite_outcomes <- function(location_events, bites) {
 }
 
 
-#' Given the movement history of a single person, calculate fraction of
-#' time in any place.
-#'
-#' @param h_record A row from the movement table.
-#' @param location_cnt The number of locations.
-#' @param move_cnt The maximum number of moves possible
-#'     (width of movement table/2)
-#' @param step_duration Amount of time for all time steps.
-#' @param day_duration How long each time step is.
-#' @return an array with fraction of time in each location on each day.
-#'     The size is location x days.
-single_dwell1 <- function(
-  h_record, location_cnt, move_cnt, day_start, step_duration, day_duration = 1
-  ) {
-  day_cnt <- as.integer(step_duration / day_duration)
-  # lt = location, time.
-  dwell.lt <- array(
-    numeric(location_cnt * day_cnt), dim = c(location_cnt, day_cnt))
-
-  loc_previous <- h_record$Start
-  day_previous <- day_start
-  time_previous <- (day_previous - 1) * day_duration
-  for (move_idx in 1:move_cnt) {
-    # loop invariants
-    stopifnot(time_previous >= (day_previous - 1) * day_duration)
-    stopifnot(time_previous < day_previous * day_duration)
-
-    next_time <- h_record[[sprintf("Time%d", move_idx)]]
-    if (is.finite(next_time)) {
-      while (ceiling(next_time / day_duration) > day_previous) {
-        dwell.lt[loc_previous, day_previous - day_start + 1] <-
-          dwell.lt[loc_previous, day_previous - day_start + 1] +
-          day_previous * day_duration - time_previous
-        time_previous <- day_previous * day_duration
-        day_previous <- day_previous + 1
-      }
-      dwell.lt[loc_previous, day_previous - day_start + 1] <-
-        dwell.lt[loc_previous, day_previous - day_start + 1] +
-        next_time - time_previous
-      time_previous <- next_time
-      loc_previous <- h_record[[sprintf("Location%d", move_idx)]]
-    }
-  }
-  next_time <- step_duration
-  while (ceiling(next_time / day_duration) > day_previous) {
-    dwell.lt[loc_previous, day_previous - day_start + 1] <-
-      dwell.lt[loc_previous, day_previous - day_start + 1] +
-      day_previous * day_duration - time_previous
-    time_previous <- day_previous * day_duration
-    day_previous <- day_previous + 1
-  }
-  dwell.lt[loc_previous, day_previous - day_start + 1] <-
-    dwell.lt[loc_previous, day_previous - day_start + 1] +
-    next_time - time_previous
-  dwell.lt
-}
-
-
 #' Count time in each place for a single individual.
 #'
 #' @param hrec The list of movements.
@@ -519,9 +461,13 @@ bloodmeal_density_module <- function(parameters) {
 #' @param bites_dt Rate of infectious mosquito bites over time in bites per day.
 #' @return Returns the simulation that's updated.
 #' @export
-mash_step.bloodmeal_density <- function(simulation, health_dt, movement_dt, bites_dt) {
+mash_step.bloodmeal_density <- function(
+  simulation, health_dt, movement_dt, bites_dt
+  ) {
   outcome <- bld_bloodmeal_process(
-    health_dt, movement_dt, bites_dt, simulation$day_start, simulation[["parameters"]])
+    health_dt, movement_dt, bites_dt, simulation$day_start,
+    simulation[["parameters"]]
+    )
   simulation$mosquito_events <- outcome$mosquito_events
   simulation$human_events <- outcome$human_events
   simulation$day_start <- simulation$day_start + simulation$parameters$day_cnt
