@@ -436,7 +436,8 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
   future_state <- mosquito_rm_copy_state(today_state)
   output <- vector(mode = "list", length = params$duration)
   for (i in 1:params$duration) {
-    future_state <- mosquito_rm_dynamics(future_state, params, future_kappa[, i])
+    future_state <- mosquito_rm_dynamics(
+      future_state, params, future_kappa[, i])
     output[[i]] <- with(future_state, data.table(
       Location = 1:length(M),
       Time = simulation_day - 1,
