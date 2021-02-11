@@ -220,30 +220,34 @@ person_path.simple_trip <- function(simulation) {
   npeople <- nrow(simulation$state)
   nevent <- simulation$trajectory_cnt
 
-  # How wide should the data.table be?
-  trajectory <- simulation$trajectory[1:nevent]
-  whos <- vapply(trajectory, function(entry) entry$id, FUN.VALUE=integer(1))
-  max_moves <- max(vapply(1:npeople, function(i) sum(whos == i), FUN.VALUE=numeric(1)))
-
-  move_dt <- data.table::data.table(
+  # The trajectory can accommodate more events, so truncate it.
+  trajectory <- data.table::rbindlist(simulation$trajectory[1:nevent])
+  # The first move tells us where they started.
+  first_moves <- trajectory[
+    trajectory[, .I[curtime == min(curtime)], by = id]$V1]
+  first_location <- first_moves[, .(id, prev_location)]
+  data.table::setnames(first_location, c("id"), c("ID"))
+  initial_time <- simulation$time - simulation$variables$duration_days
+  # Build initial state from the final state and the first jump.
+  final_state <- data.table::data.table(
     ID = simulation$state$who,
-    Start = simulation$state$current
+    Location = simulation$state$current,
+    Time = initial_time
   )
-  move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- 0
-  move_dt[, paste0(c("Time", "Location"), rep(1:max_moves, each = 2))] <- NA
+  initial_state <- merge(
+    final_state,
+    first_location,
+    by = "ID",
+    all.x = TRUE
+  )
+  initial_state[!is.na(initial_state$prev_location), .(Location = prev_location)]
+  initial_state[, prev_location := NULL]
 
-  for(i in 1:nevent){
-    event <- trajectory[[i]]
-    h_idx <- event$id
-    move_idx <- which(is.na(move_dt[h_idx,]))[1]
-    if (move_idx == 3) {
-      move_dt[h_idx, Start := event$prev_location]
-    }  # No fixup if not the first event for this person.
-    move_dt[h_idx, (move_idx) := event$curtime]
-    move_dt[h_idx, (move_idx + 1) := event$curr_location]
-  }
+  onlycols <- trajectory[, .(id, curr_location, curtime)]
+  data.table::setnames(
+    onlycols, c("id", "curr_location", "curtime"), c("ID", "Location", "Time"))
 
-  return(move_dt)
+  return(rbind(initial_state, onlycols))
 }
 
 

@@ -284,6 +284,7 @@ init_continuous <- function(simulation) {
 }
 
 
+# Stop when the next transition would exceed the time duration.
 next_step_over_time <- function(duration) {
   function(state, step_cnt, current_time, next_time) {
     next_time >= duration
@@ -360,6 +361,6 @@ run_continuous <- function(simulation, duration) {
   simulation$state <- individuals
   simulation$trajectory <- trajectory
   simulation$trajectory_cnt <- trajectory_cnt
-  simulation$time <- current_time
+  simulation$time <- stop_time
   simulation
 }
