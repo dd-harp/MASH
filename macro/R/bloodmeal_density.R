@@ -272,7 +272,7 @@ data_table_to_array <- function(dt, row, col, value) {
 #'     as location_cnt and duration of the time step.
 #' @return A three-dimensional array, location x human x days, so that
 #'     we can process a day at a time.
-human_dwell <- function(movement_dt, day_start, params) {
+human_dwell_wide <- function(movement_dt, day_start, params) {
   location_cnt <- params$location_cnt
   step_duration <- params$duration
 
@@ -290,6 +290,51 @@ human_dwell <- function(movement_dt, day_start, params) {
   )
   # Reorder days to be last so that we can later access each day quickly.
   aperm(dwell_loc_day_human, c(1, 3, 2))
+}
+
+
+#' Given all human movement, return a matrix of fraction of time at each
+#' location on each day.
+#' @param movement_dt The movement data table where each row is an event.
+#' @param params A list or data frame that has simulation parameters such
+#'     as location_cnt and duration of the time step.
+#' @return A three-dimensional array, location x human x days, so that
+#'     we can process a day at a time.
+human_dwell <- function(movement_dt, day_start, params) {
+  stopifnot(c("cur_location", "curtime", "id") %in% colNames(movement_dt))
+  location_cnt <- params$location_cnt
+  step_duration <- params$duration
+
+  day_cnt <- as.integer(round(step_duration / 1))
+  move_cnt <- length(grep("Time", names(movement_dt)))
+
+  # initial state is for times at zero, but give leeway to be sure to get 0.0.
+  state <- unique(move_dt[curtime < day_start + 1e-9,], by = c("id"))
+  # Adding last moves makes logic easier for accumulation of last dwell time.
+  last_moves_dt <- move_dt[move_dt[, .I[curtime == max(curtime)], by = id]$V1]
+  last_moves_dt[, curtime := day_start + day_cnt]
+  move_all_dt <- rbind(move_dt, last_moves_dt)
+  # Construct in transpose because we add to one location at a time.
+  # time index 1 corresponds to duration (day_start, day_start + 1).
+  dwell.tl <- array(0, dim = c(day_cnt, location_cnt))
+
+  for (row_idx in seq(nrow(move_all_dt))) {
+    pid <- move_all_dt[row_idx, id]
+    ptime <- move_all_dt[row_idx, curtime]
+    ploc <- move_all_dt[row_idx, curr_location]
+    dlims <- c(state[id == pid, curtime], ptime)
+    lloc <- state[id == pid, curr_location]
+    state[id == pid, `:=`(curtime = ptime, curr_location = ploc)]
+
+    # ceiling because day idx=4 goes from time 3.0 to time 4.0.
+    for (idx in seq(ceiling(dlims[1]), ceiling(dlims[2]))) {
+      cat(paste("within", idx, dlims[1], dlims[2], "\n"))
+      within_day <- min(idx, dlims[2]) - max(idx - 1, dlims[1])
+      didx <- idx - day_start
+      dwell.tl[didx, lloc] <- dwell.tl[didx, lloc] + within_day
+    }
+  }
+  t(dwell.tl)
 }
 
 
