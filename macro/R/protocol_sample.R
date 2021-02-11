@@ -45,42 +45,24 @@ sample_health_infection_status <- function(human_cnt = 10L, time_step = 10.0) {
 #'
 #' @export
 sample_move_location <- function(human_cnt = 10L, place_cnt = 5L, time_step = 10.0) {
-  rate <- 0.2
+  rate <- .5
 
-  events <- data.table(
-    ID = sample(1:human_cnt),
-    Start = sample(1:place_cnt, human_cnt, replace = TRUE)
-  )
-
-  move_cnt <- human_cnt
-  moving <- 1L:move_cnt
-  location <- events$Start
-  now <- rep(0.0, move_cnt)
-  move_idx <- 1L
-
-  while (move_cnt > 0) {
-    when <- now[moving] + rexp(move_cnt, rate)
-    in_time <- when < time_step
-    moving <- moving[in_time]
-    if (length(moving) > 0) {
-      next_location <- unlist(lapply(moving, function(who) {
-        sample(setdiff(1:place_cnt, location[who]), 1)
-      }))
-      time_col <- paste0("Time", move_idx)
-      loc_col <- paste0("Location", move_idx)
-      events[, time_col] <- 0.0
-      events[, time_col] <- NA
-      events[, loc_col] <- 1L
-      events[, loc_col] <- NA
-      events[moving, time_col] <- when[in_time]
-      events[moving, loc_col] <- next_location
-      now[moving] <- when[in_time]
-      location[moving] <- next_location
-    }
-    move_cnt <- length(moving)
-    move_idx <- move_idx + 1L
+  events <- list()
+  for (pidx in 1:human_cnt) {
+    ptimes <- c(0, rexp(10, rate / time_step))
+    pkeep <- sort(ptimes[ptimes < time_step])
+    # Use offsets to ensure you always move to a different location.
+    place_offset <- sample(1L:(place_cnt - 1L), length(pkeep), replace = TRUE)
+    ploc <- (cumsum(place_offset) %% place_cnt) + 1L
+    events[[length(events) + 1]] <- data.table::data.table(
+      ID = rep(pidx, length(pkeep)),
+      Time = pkeep,
+      Location = ploc
+    )
   }
-  events
+  event_dt <- data.table::rbindlist(events)
+  data.table::setorder(event_dt, Time)
+  event_dt
 }
 
 

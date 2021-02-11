@@ -154,6 +154,7 @@ points(bmosy1$Time, bmosy1$Y, col = "blue", pch = 16)
 points(bmosy1$Time, bmosy1$Z, col = "green", pch = 16)
 legend("bottomright", legend = c("M", "Y", "Z"), fill = c("black", "blue", "green"))
 ```
+
 ```{r}
 hrec <- data.table(ID=12, Start = 3, Time1=10.359, Location1=2, Time2=NA, Location2=NA)
 macro:::single_dwell(hrec, 3, 1, 11, 10)
