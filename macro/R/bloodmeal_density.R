@@ -306,7 +306,7 @@ human_dwell <- function(movement_dt, day_start, params) {
   step_duration <- params$duration
 
   day_cnt <- as.integer(round(step_duration / 1))
-  move_cnt <- length(grep("Time", names(movement_dt)))
+  human_cnt <- length(unique(movement_dt$ID))
 
   # initial state is for times at zero, but give leeway to be sure to get 0.0.
   state <- unique(movement_dt[Time < day_start + 1e-9,], by = c("ID"))
@@ -316,7 +316,7 @@ human_dwell <- function(movement_dt, day_start, params) {
   move_all_dt <- rbind(movement_dt, last_moves_dt)
   # Construct in transpose because we add to one location at a time.
   # time index 1 corresponds to duration (day_start, day_start + 1).
-  dwell.tl <- array(0, dim = c(day_cnt, location_cnt))
+  dwell.tlh <- array(0, dim = c(day_cnt, location_cnt, human_cnt))
 
   for (row_idx in seq(nrow(move_all_dt))) {
     pid <- move_all_dt[row_idx, ID]
@@ -328,13 +328,13 @@ human_dwell <- function(movement_dt, day_start, params) {
 
     # ceiling because day idx=4 goes from time 3.0 to time 4.0.
     for (idx in seq(ceiling(dlims[1]), ceiling(dlims[2]))) {
-      cat(paste("within", idx, dlims[1], dlims[2], "\n"))
       within_day <- min(idx, dlims[2]) - max(idx - 1, dlims[1])
       didx <- idx - day_start
-      dwell.tl[didx, lloc] <- dwell.tl[didx, lloc] + within_day
+      dwell.tlh[didx, lloc, pid] <- dwell.tlh[didx, lloc, pid] + within_day
     }
   }
-  t(dwell.tl)
+  # return (location, human, day)
+  aperm(dwell.tlh, c(2, 3, 1))
 }
 
 
