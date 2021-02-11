@@ -199,47 +199,6 @@ bld_bite_outcomes <- function(location_events, bites) {
 }
 
 
-#' Count time in each place for a single individual.
-#'
-#' @param hrec The list of movements.
-#' @param loc_n How many locations.
-#' @param move_n The maximum number of possible moves.
-#' @param dio is day index, one-based. So time for day 1 is from 0 to 1.
-#' @param delta is step duration in days.
-#'
-#' Movement data comes in as a data.table with one row per individual.
-#' This calculates how much time one of those individuals spends in
-#' all locations over a time step.
-single_dwell <- function(
-  hrec, loc_n, move_n, dio, delta
-  )
-{
-  # This is dwell time by one human over all locations and days.
-  X.lt <- array(numeric(loc_n * delta), dim = c(loc_n, delta))
-  loc <- hrec$Start
-  now <- dio - 1
-  move_idx <- 1
-  for (day in dio:(dio + delta - 1)) {
-    while (TRUE) {
-      next_time <- if (move_idx <= move_n) {
-        pnt <- hrec[[sprintf("Time%d", move_idx)]]
-        ifelse(is.finite(pnt), pnt, Inf)
-      } else { Inf }
-      if (next_time < day) {
-        X.lt[loc, day - dio + 1] <- X.lt[loc, day - dio + 1] + next_time - now
-        now <- next_time
-        move_idx <- move_idx + 1
-      } else {
-        X.lt[loc, day - dio + 1] <- X.lt[loc, day - dio + 1] + day - now
-        now <- day
-        break
-      }
-    }
-  }
-  X.lt
-}
-
-
 #' Given a data table, generate an array form.
 #' @param dt the data table
 #' @param row the name of the column to use as row values. Must be integers.
@@ -261,35 +220,6 @@ data_table_to_array <- function(dt, row, col, value) {
     arr[rec[[row]] + row_offset, rec[[col]] + col_offset] <- rec[[value]]
   }
   arr
-}
-
-
-#' Given all human movement, return a matrix of fraction of time at each
-#' location on each day.
-#' @param movement_dt The movement data table where each row is a person
-#'     and columns are locations and times.
-#' @param params A list or data frame that has simulation parameters such
-#'     as location_cnt and duration of the time step.
-#' @return A three-dimensional array, location x human x days, so that
-#'     we can process a day at a time.
-human_dwell_wide <- function(movement_dt, day_start, params) {
-  location_cnt <- params$location_cnt
-  step_duration <- params$duration
-
-  day_cnt <- as.integer(round(step_duration / 1))
-  move_cnt <- length(grep("Time", names(movement_dt)))
-
-  humans <- sort(unique(movement_dt$ID))
-  dwell_loc_day_human <- vapply(
-    humans,
-    function(h_idx) {
-      h_record <- movement_dt[movement_dt$ID == h_idx, ]
-      single_dwell(h_record, location_cnt, move_cnt, day_start, step_duration)
-    },
-    FUN.VALUE = array(0, dim=c(location_cnt, day_cnt))
-  )
-  # Reorder days to be last so that we can later access each day quickly.
-  aperm(dwell_loc_day_human, c(1, 3, 2))
 }
 
 
@@ -327,6 +257,9 @@ human_dwell <- function(movement_dt, day_start, params) {
     state[ID == pid, `:=`(Time = ptime, Location = ploc)]
 
     # ceiling because day idx=4 goes from time 3.0 to time 4.0.
+    if (!all(is.finite(dlims))) {
+      cat(paste("move_all", move_all_dt, "\n"))
+    }
     for (idx in seq(ceiling(dlims[1]), ceiling(dlims[2]))) {
       within_day <- min(idx, dlims[2]) - max(idx - 1, dlims[1])
       didx <- idx - day_start
