@@ -9,6 +9,42 @@ all_movement_locations <- function(location_dt) {
 }
 
 
+test_that("assign levels gives bites", {
+  params <- list(day_duration = 1)
+  health_rec = data.table::data.table(
+    ID = 2,
+    Start = 0,
+    Time1 = 0.3,
+    Level1 = 1,
+    Time2 = 2.7,
+    Level2 = 0,
+    Time3 = 7.3,
+    Level3 = 1
+  )
+  lt <- macro:::assign_levels_to_bites2(
+    health_rec, 10, 3, c("Time1", "Time2", "Time3"),
+    c("Start", "Level1", "Level2", "Level3"),
+    params
+    )
+  human <- lt$human_level
+  bites <- lt$times
+
+  health_rec = data.table::data.table(
+    ID = c(2, 2, 2, 2),
+    Level = c(0, 1, 0, 1),
+    Time = c(0, 0.3, 2.5, 7.3)
+  )
+  bite_cnt <- 10
+  day_idx <- 3
+  bite_times <- with(
+    params,
+    sort(runif(bite_cnt, (day_idx - 1) * day_duration, day_idx * day_duration))
+  )
+  health_rec$Level[cut(bite_times, health_rec$Time, labels = FALSE)]
+  lt2 = macro:::assign_levels_to_bites2(health_rec, 10, 3, params)
+})
+
+
 test_that("bloodmeal density assigns bites at location", {
   params <- list(
     human_cnt = 8L,

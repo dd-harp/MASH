@@ -272,12 +272,13 @@ human_dwell <- function(movement_dt, day_start, params) {
 
 
 #' Assign bite levels for bites of a single human.
-#' @param health_rec a single row of the health data table.
+#' @param health_rec a single row of the health data table that has one
+#'     row per person.
 #'
 #' health_rec <- health_dt[health_dt$ID == h_idx,]
 #' time_cols <- grep("Time", names(health_rec))
 #' level_cols <- c(time_cols[1] - 1, time_cols + 1)
-assign_levels_to_bites <- function(health_rec, bite_cnt, day_idx, time_cols, level_cols, params) {
+assign_levels_to_bites2 <- function(health_rec, bite_cnt, day_idx, time_cols, level_cols, params) {
   stopifnot(nrow(health_rec) == 1)
   times <- c(0, unlist(health_rec[, ..time_cols]))
   levels <- unlist(health_rec[, ..level_cols])
@@ -289,6 +290,24 @@ assign_levels_to_bites <- function(health_rec, bite_cnt, day_idx, time_cols, lev
     human_level = unname(levels[cut(bite_times, breaks = ts, labels = FALSE)]),
     times = bite_times
     )
+}
+
+
+#' Assign bite levels for bites of a single human.
+#' @param health_dt Data for just this human from the health table.
+#' @param bite_cnt The number of bites to create in day `day_idx`.
+#' @param The day within the duration. Day 1 starts at time 0.
+#' @param params Has a `day_duration` which is usually 1.
+assign_levels_to_bites <- function(health_dt, bite_cnt, day_idx, params) {
+  bite_times <- with(
+    params,
+    sort(runif(bite_cnt, (day_idx - 1) * day_duration, day_idx * day_duration))
+  )
+  levels <- health_dt$Level[cut(bite_times, health_dt$Time, labels = FALSE)]
+  data.table::data.table(
+    human_level = levels,
+    times = bite_times
+  )
 }
 
 
@@ -316,6 +335,21 @@ assign_mosquito_status <- function(bites_df, M, Y, Z) {
 }
 
 
+#' Assign bites to humans and mosquitoes for one day.
+#'
+#' @param day_idx Index of day within the time step.
+#' @param M_arr Matrix of location x day for total number of mosquitoes.
+#' @param Y_arr Matrix of location x day for incubating mosquitoes.
+#' @param Z_arr Matrix of location x day for infectious mosquitoes.
+#' @param biting_arr Sample bites from this, location x day.
+#' @param dwell.lh Total dwell time in each location by humans,
+#'     location x human.
+#' @param bite_weight Biting weight of each human.
+#' @param health_dt Health status from the human module.
+#' @param params Module parameters.
+#'
+#' This function samples bites in accordance with both the human
+#' biting weight and the mosquito biting rate.
 bld_single_day <- function(
       day_idx, M_arr, Y_arr, Z_arr, biting_arr, dwell.lh, bite_weight,
       health_dt, params
