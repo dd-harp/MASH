@@ -11,29 +11,25 @@ library(data.table)
 #'
 #' @export
 sample_health_infection_status <- function(human_cnt = 10L, time_step = 10.0) {
-  infected_fraction = 0.4
-  recover_fraction <- 0.5
-  infect_fraction <- 1.0 - recover_fraction
-  start_infected <- rep(1.0, infected_fraction * human_cnt)
-  recover_cnt <- as.integer(length(start_infected) * recover_fraction)
-  infect_cnt <- recover_cnt
-  titles <- paste0(c("Time", "Level"), rep(1:3, each = 2L))
-  events <- data.table(
-    ID = sample(1:human_cnt),
-    Start = c(start_infected, rep(0.0, human_cnt - length(start_infected)))
-  )
-  events[, titles] <- 0.0  # So that column has type numeric.
-  events[, titles] <- NA
-
-  events[1:recover_cnt, "Time1"] <- runif(recover_cnt, 0, time_step)
-  events[1:recover_cnt, "Level1"] <- numeric(recover_cnt)
-  events[1, "Time2"] = runif(1, events[1, Time1], time_step)
-  events[1, "Level2"] = 1.0
-
-  events[(human_cnt - infect_cnt + 1):human_cnt, "Time1"] <- runif(infect_cnt, 0, time_step)
-  events[(human_cnt - infect_cnt + 1):human_cnt, "Level1"] <- rep(1.0, infect_cnt)
-
-  events[order(ID)]
+  infected_fraction <- 0.4
+  state <- rbinom(human_cnt, 1, infected_fraction)
+  events <- list()
+  for (sidx in 1:human_cnt) {
+    events[[length(events) + 1]] <- list(
+      ID = sidx, Time = 0.0, Level = state[sidx]
+      )
+  }
+  ecnt <- round(0.2 * time_step * human_cnt)
+  for (nidx in 1:ecnt) {
+    who <- sample(1:human_cnt, 1)
+    state[who] <- 1 - state[who]
+    events[[length(events) + 1]] <- list(
+      ID = who,
+      Time = nidx * time_step / (ecnt + 1),
+      Level = state[who]
+    )
+  }
+  data.table::rbindlist(events)
 }
 
 

@@ -2,10 +2,10 @@ library(data.table)
 library(macro)
 
 check_health_path <- function(health_dt, people_cnt) {
-  has_people <- nrow(health_dt) == people_cnt
-  has_cols <- all(c("ID", "Start", "Time1", "Level1") %in% colnames(health_dt))
-  had_an_event <- health_dt[!is.na(health_dt$Time1),]
-  start_set_ok <- all(had_an_event$Level1 != had_an_event$Start)
+  has_people <- length(unique(health_dt$ID)) == people_cnt
+  has_cols <- all(c("ID", "Time", "Level") %in% colnames(health_dt))
+  had_an_event <- nrow(health_dt) > people_cnt
+  start_set_ok <- length(health_dt$Time < 1e-7) >= people_cnt
   c(has_people = has_people, has_cols = has_cols, start_set_ok = start_set_ok)
 }
 

@@ -49,12 +49,15 @@ human_si_module <- function(parameters) {
     "recovery_rate", "people_cnt", "duration_days", "initial_pfpr")
   stopifnot(all(names(parameters) %in% expected_parameters))
   stopifnot(all(expected_parameters %in% names(parameters)))
+  # This is the definition of the state, aka compartments.
+  # It is a matrix of people x (uninfected, infected), as 0 or 1.
   matrix_state <- matrix(0, nrow = parameters$people_cnt, ncol = 2)
   matrix_state[, 2] <- rbinom(parameters$people_cnt, 1, parameters$initial_pfpr)
   matrix_state[, 1] <- 1 - matrix_state[, 2]
   simulation <- list(
     parameters = parameters,
     state = matrix_state,
+    initial_state = matrix_state,
     events = NULL,
     time = 0
   )
@@ -76,6 +79,7 @@ human_si_module <- function(parameters) {
 #' @export
 mash_step.human_si <- function(simulation, bites_dt) {
   # The first step has correct information, so we save its state.
+  initial_state <- simulation$state
   step_result <- human_si_step_days(
     simulation$state,
     bites_dt,
@@ -92,6 +96,7 @@ mash_step.human_si <- function(simulation, bites_dt) {
     simulation$time,
     simulation$parameters
   )
+  simulation$initial_state <- initial_state
   simulation$events <- step_result$events
   class(simulation) <- "human_si"
   simulation
@@ -105,33 +110,11 @@ human_disease_path.human_si <- function(simulation) {
   parameters <- simulation$parameters
   # Needs one row per person.
   # Titles are ID, Start, Time1, Level1, Time2, Level2
-  dt <- data.table::data.table(
+  initial <- data.table::data.table(
     ID = 1:parameters$people_cnt,
-    Start = simulation$state[, 2],
-    Time1 = as.numeric(rep(NA, parameters$people_cnt)),
-    Level1 = as.numeric(rep(NA, parameters$people_cnt)),
-    Time2 = as.numeric(rep(NA, parameters$people_cnt)),
-    Level2 = as.numeric(rep(NA, parameters$people_cnt)),
-    Time3 = as.numeric(rep(NA, parameters$people_cnt)),
-    Level3 = as.numeric(rep(NA, parameters$people_cnt))
+    Time = 0,
+    Level = simulation$initial_state[, 2]
   )
-  events <- simulation$events[order(simulation$events$Time),]
-  for (eidx in 1:nrow(events)) {
-    human_idx <- events[eidx, ID]
-    next_na <- which(!is.finite(as.numeric(dt[human_idx, ])))
-    if (length(next_na) > 1) {
-      dt[human_idx, next_na[1]] <- events[eidx, Time]
-      dt[human_idx, next_na[2]] <- events[eidx, Level]
-      if (next_na[1] == 3) {
-        # We set the start to be the end state, but we can infer the start.
-        dt[human_idx, "Start"] <- 1 - events[eidx, Level]
-      }
-    } else {
-      msg <- paste(
-        "need another column", human_idx, "row", dt[human_idx,]
-      )
-      stop(msg)
-    }
-  }
-  dt
+  events <- simulation$events[order(simulation$events$Time), .(ID, Time, Level)]
+  rbind(initial, events)
 }
