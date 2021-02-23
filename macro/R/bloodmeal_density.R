@@ -388,7 +388,9 @@ bld_single_day <- function(
 #'
 #' @param health_dt Health events from the protocol.
 #' @param movement_dt Movement events from the protocol.
-#' @param bites_dt Bite events from the protocol.
+#' @param mosquito_dt Mosquito levels.
+#' @param day_start The time at which the first day starts, so 0.0 or 10.0,
+#'     not 1L or 11L.
 #' @param params Has `human_cnt`, `location_cnt`, `duration`,
 #'     `day_duration`, `dispersion`, `day_cnt`, `biting_weight`.
 #' infect_human <- outcome_dt[Bite > 0.0]
@@ -418,12 +420,14 @@ bld_bloodmeal_process <- function(
                                      dwell.lh, bite_weight, health_dt, params)
   )
   # day_list has an entry for each day. Each entry is a list of two dataframes.
-  list(
-    mosquito_events = data.table::data.table(
-        do.call(rbind, lapply(days_list, function(x) x[[1]]))),
-    human_events = data.table::data.table(
-        do.call(rbind, lapply(days_list, function(x) x[[2]])))
-  )
+  mosquito_events <- data.table::data.table(
+    do.call(rbind, lapply(days_list, function(x) x[[1]])))
+  mosquito_events[, `:=`(time = time + day_start)]
+  human_events <- data.table::data.table(
+    do.call(rbind, lapply(days_list, function(x) x[[2]])))
+  human_events[, `:=`(times = times + day_start)]
+
+  list(mosquito_events = mosquito_events, human_events = human_events)
 }
 
 
@@ -487,7 +491,8 @@ infects_human_path.bloodmeal_density <- function(simulation) {
 #' @export
 infects_mosquito_path.bloodmeal_density <- function(simulation) {
   data.table::setnames(simulation$mosquito_events, "location", "Location")
-  data.table::setnames(simulation$mosquito_events, "mosquito_infections", "Bites")
+  data.table::setnames(
+    simulation$mosquito_events, "mosquito_infections", "Bites")
   data.table::setnames(simulation$mosquito_events, "time", "Time")
   simulation$mosquito_events
 }
