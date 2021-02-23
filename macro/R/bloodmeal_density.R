@@ -272,28 +272,6 @@ human_dwell <- function(movement_dt, day_start, params) {
 
 
 #' Assign bite levels for bites of a single human.
-#' @param health_rec a single row of the health data table that has one
-#'     row per person.
-#'
-#' health_rec <- health_dt[health_dt$ID == h_idx,]
-#' time_cols <- grep("Time", names(health_rec))
-#' level_cols <- c(time_cols[1] - 1, time_cols + 1)
-assign_levels_to_bites2 <- function(health_rec, bite_cnt, day_idx, time_cols, level_cols, params) {
-  stopifnot(nrow(health_rec) == 1)
-  times <- c(0, unlist(health_rec[, ..time_cols]))
-  levels <- unlist(health_rec[, ..level_cols])
-  ts <- c(unname(times[is.finite(times)]), 10)
-  bite_times <- with(params,
-    runif(bite_cnt, (day_idx - 1) * day_duration, day_idx * day_duration)
-  )
-  data.table(
-    human_level = unname(levels[cut(bite_times, breaks = ts, labels = FALSE)]),
-    times = bite_times
-    )
-}
-
-
-#' Assign bite levels for bites of a single human.
 #' @param health_dt Data for just this human from the health table.
 #' @param bite_cnt The number of bites to create in day `day_idx`.
 #' @param The day within the duration. Day 1 starts at time 0.
