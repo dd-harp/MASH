@@ -53,11 +53,19 @@ ui <- fluidPage(
             numericInput("mosy2", label="mosy2", value = 30),
             numericInput("mosy3", label="mosy3", value = 10)
         )
+    ),
+    fluidRow(
+        column(2, actionButton("simulate", "Simulate")),
+        column(10, textOutput("greeting"))
     )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    mosy_init <- eventReactive(input$simulate, { input$mosy1 })
+    output$greeting <- renderText({
+        paste0("Hello ", mosy_init())
+    })
 }
 
 # Run the application
