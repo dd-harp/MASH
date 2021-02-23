@@ -281,7 +281,8 @@ assign_levels_to_bites <- function(health_dt, bite_cnt, day_idx, params) {
     params,
     sort(runif(bite_cnt, (day_idx - 1) * day_duration, day_idx * day_duration))
   )
-  levels <- health_dt$Level[cut(bite_times, health_dt$Time, labels = FALSE)]
+  breaks <- c(health_dt$Time, day_idx * params$day_duration + 1e-7)
+  levels <- health_dt$Level[cut(bite_times, breaks, labels = FALSE)]
   data.table::data.table(
     human_level = levels,
     times = bite_times
@@ -354,7 +355,7 @@ bld_single_day <- function(
       bite_cnt <- bites.lh[l_idx, h_idx]
       health_rec <- health_dt[health_dt$ID == h_idx,]
       human_status <- assign_levels_to_bites(
-          health_rec, bite_cnt, day_idx, time_cols, level_cols, params)
+          health_rec, bite_cnt, day_idx, params)
       with_mosquito <- assign_mosquito_status(
           human_status, M_day[l_idx], Y_day[l_idx], Z_day[l_idx])
       human_infections <- with_mosquito[
