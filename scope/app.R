@@ -48,14 +48,14 @@ build_health_module <- function(parameters, pfpr) {
 }
 
 
-build_mosquito_module <- function(parameters, M, Z) {
+build_mosquito_module <- function(parameters, lambda, z) {
     year_days <- 365
     # XXX M should determine lambda.
     mosquito_parameters <- list(
         duration = parameters$duration_days,
         N = parameters$location_cnt,
         lambda = matrix(
-            rep(100, year_days * parameters$location_cnt),
+            rep(lambda, year_days),
             nrow = parameters$location_cnt),
         psi = diag(parameters$location_cnt),  # diffusion matrix
         biting_weight = 0.4,  # The human biting weight. Should be from human.XXX
@@ -64,7 +64,7 @@ build_mosquito_module <- function(parameters, M, Z) {
         p = 0.9,  # survival
         # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
         a = 0.6,
-        infected_fraction = Z / M,
+        infected_fraction = z,
         year_day_start = 1
     )
     mosquito_rm_module(mosquito_parameters)
@@ -174,17 +174,17 @@ ui <- fluidPage(
         ),
         column(
             2,
-            "Mosquitoes",
+            "Daily Emergence",
             numericInput("mosy1", label="mosy1", value = 200),
             numericInput("mosy2", label="mosy2", value = 300),
             numericInput("mosy3", label="mosy3", value = 100)
         ),
         column(
             2,
-            "Z",
-            numericInput("z1", label="z1", value = 20),
-            numericInput("z2", label="z2", value = 30),
-            numericInput("z3", label="z3", value = 10)
+            "z",
+            numericInput("z1", label="z1", value = 0.2),
+            numericInput("z2", label="z2", value = 0.3),
+            numericInput("z3", label="z3", value = 0.05)
         )
     ),
     fluidRow(
@@ -212,9 +212,9 @@ server <- function(input, output) {
         human <- c(input$n1, input$n2, input$n3)
         pfpr <- c(input$pfpr1, input$pfpr2, input$pfpr3)
         travel <- c(input$travel1, input$travel2, input$travel3)
-        m <- c(input$mosy1, input$mosy2, input$mosy3)
+        lambda <- c(input$mosy1, input$mosy2, input$mosy3)
         z <- c(input$z1, input$z2, input$z3)
-        generate_data(human, pfpr, travel, m, z)
+        generate_data(human, pfpr, travel, lambda, z)
         })
     output$greeting <- renderText({
         obs <- observations()
