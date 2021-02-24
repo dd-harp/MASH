@@ -145,6 +145,27 @@ observations <- lapply(
 )
 names(observations) <- msgnames
 ```
+```{r}
+homeloc <- rep(1:parameters$location_cnt, parameters$humans.l)
+state <- homeloc
+loc_df <- observations$location
+sumloc <- matrix(0, ncol = nrow(loc_df), nrow = (parameters$location_cnt + 1))
+for (ridx in 1:nrow(loc_df)) {
+  state[loc_df[ridx, ID]] <- loc_df[ridx, Location]
+  sumloc[, ridx] <- c(
+    loc_df[ridx, Time],
+    hist(state, breaks = 0:parameters$location_cnt, plot = FALSE)$counts
+  )
+}
+loc_dt <- data.table::data.table(t(sumloc))
+# Keep only the last of any times that are identical.
+loc_dt <- loc_dt[!duplicated(loc_dt[, 1], fromLast = TRUE)]
+colnames(loc_dt) <- c("Time", paste0("Loc", 1:parameters$location_cnt))
+ggplot(loc_dt, aes(Time, Loc1, colour = "green")) + geom_line()
+  ggplot(loc_dt, aes(Time, Loc2, colour = "black")) + geom_line()
+  ggplot(loc_dt, aes(Time, Loc3, colour = "blue")) + geom_line()
+
+```
 
 
 ```{r}
