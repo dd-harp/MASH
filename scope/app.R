@@ -2,11 +2,7 @@
 # This is a Shiny web application. You can run the application by clicking
 # the 'Run App' button above.
 #
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
+library(ggplot2)
 library(shiny)
 library(shinythemes)
 library(reactable)
@@ -194,6 +190,18 @@ ui <- fluidPage(
     fluidRow(
         column(2, actionButton("simulate", "Simulate")),
         column(10, textOutput("greeting"))
+    ),
+    fluidRow(
+        column(6,
+               plotOutput("bites")
+               ),
+        column(6,
+               plotOutput("humanBites")
+               )
+    ),
+    fluidRow(
+        column(12,
+               plotOutput("mosyz"))
     )
 )
 
@@ -210,8 +218,23 @@ server <- function(input, output) {
         })
     output$greeting <- renderText({
         obs <- observations()
-        paste0("Hello ", length(obs$bloodmeal_mosquito))
+        paste0("Days: ", nrow(obs$bloodmeal_mosquito))
     })
+    output$bites <- renderPlot({
+        bm <- observations()$bloodmeal_mosquito
+        bm$Location <- as.factor(bm$Location)
+        ggplot(bm, aes(Time, Bites, colour = Location)) + geom_point() +
+            labs(title = "Bites in Each Location During Time Step", y = "Bites per Day")
+    }, res = 96)
+    output$humanBites <- renderPlot({
+        bh <- observations()$bloodmeal_human
+        ggplot(bh, aes(times)) + geom_histogram(binwidth = 10 / 40) +
+            labs(title = "Bites for all Humans During Time Step", y = "Bites per Quarter Day")
+    }, res = 96)
+    output$mosyz <- renderPlot({
+        mosy <- observations()$mosquito[, c("Location", "Time", "M", "Y", "Z")]
+        ggplot(data=mosy, aes(x=Time, y = Z)) + geom_point() + facet_wrap(~Location)
+    }, res = 96)
 }
 
 
