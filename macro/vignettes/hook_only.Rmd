@@ -198,4 +198,30 @@ library(ggplot2)
 mosy <- observations$mosquito[, c("Location", "Time", "M", "Y", "Z")]
 ggplot(data=mosy, aes(x=Time, y = Z)) + geom_point() + facet_wrap(~Location)
 ```
+```{r}
+# Number sick for each location.
+state_dt <- data.table::data.table(
+  home = rep(1:parameters$location_cnt, parameters$humans.l),
+  state = numeric(length=parameters$human_cnt)
+)
+loc_df <- observations$location
+h_df <- observations$health
+sumh <- matrix(0, ncol = nrow(h_df), nrow = (parameters$location_cnt + 1))
+for (ridx in 1:nrow(h_df)) {
+  id <- h_df[ridx, ID]
+  newlevel <- h_df[ridx, Level]
+  state_dt[id, `:=`(state = newlevel)]
+  sumh[, ridx] <- c(
+    h_df[ridx, Time],
+    state_dt[, sum(state), home][, V1]
+  )
+}
+h_dt <- data.table::data.table(t(sumh))
+# Keep only the last of any times that are identical.
+h_dt <- h_dt[!duplicated(h_dt[, 1], fromLast = TRUE)]
+colnames(h_dt) <- c("Time", paste0("Loc", 1:parameters$location_cnt))
+ggplot(h_dt, aes(Time, Loc1, colour = "green")) + geom_line()
+  ggplot(h_dt, aes(Time, Loc2, colour = "black")) + geom_line()
+  ggplot(h_dt, aes(Time, Loc3, colour = "blue")) + geom_line()
+```
 
