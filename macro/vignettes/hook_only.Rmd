@@ -132,7 +132,7 @@ bloodmeal <- bloodmeal_density_module(params)
 ```{r}
 macro:::local_logging("debug")
 modules = list(
-  location = movement,
+  location = constant_movement,
   health = constant_health,
   bloodmeal = bloodmeal,
   mosquito = mosquito_module
