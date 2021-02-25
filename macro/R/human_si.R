@@ -57,7 +57,6 @@ human_si_module <- function(parameters) {
   simulation <- list(
     parameters = parameters,
     state = matrix_state,
-    initial_state = matrix_state,
     events = NULL,
     time = 0
   )
@@ -78,8 +77,7 @@ human_si_module <- function(parameters) {
 #' @param bites_dt a data.table of bites.
 #' @export
 mash_step.human_si <- function(simulation, bites_dt) {
-  # The first step has correct information, so we save its state.
-  initial_state <- simulation$state
+  # The first step is to incorporate past bites, so we save its state.
   step_result <- human_si_step_days(
     simulation$state,
     bites_dt,
@@ -96,7 +94,6 @@ mash_step.human_si <- function(simulation, bites_dt) {
     simulation$time,
     simulation$parameters
   )
-  simulation$initial_state <- initial_state
   simulation$events <- step_result$events
   class(simulation) <- "human_si"
   simulation
@@ -108,13 +105,19 @@ mash_step.human_si <- function(simulation, bites_dt) {
 #' @export
 human_disease_path.human_si <- function(simulation) {
   parameters <- simulation$parameters
-  # Needs one row per person.
-  # Titles are ID, Start, Time1, Level1, Time2, Level2
+  # Add an initial population back at the start of the time step.
   initial <- data.table::data.table(
     ID = 1:parameters$people_cnt,
-    Time = 0,
-    Level = simulation$initial_state[, 2]
+    Time = simulation$time,
+    Level = simulation$state[, 2]  # Events are since the mid-point state.
   )
   events <- simulation$events[order(simulation$events$Time), .(ID, Time, Level)]
-  rbind(initial, events)
+  if (nrow(events) > 0) {
+    logdebug(paste(
+      "human_disease_path:", simulation$time, nrow(events), min(events$Time), max(events$Time)
+      ))
+  } else {
+    logdebug(paste("human_disease_path:", simulation$time, "no events"))
+  }
+  data.table::rbindlist(list(initial, events))
 }

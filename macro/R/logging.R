@@ -35,6 +35,14 @@ string_log_level <- function(levelName) {
 }
 
 
+#' List the possible logging levels.
+#' @returns A list of strings.
+#' @export
+log_levels <- function() {
+  names(.name_to_level)
+}
+
+
 #' Set up logging for use on a local machine.
 #' @param level_name One of the strings (trace, debug, info, warn, error, fatal)
 #'     Default value is "info".
@@ -43,13 +51,25 @@ string_log_level <- function(levelName) {
 #' so that all logging messages for this package can be turned on or off
 #' together. This function makes everything go to the console on
 #' standard out.
+#' @param level_name A string name from `log_levels()`.
+#' @param logfn A logfile name, default is NULL which means no log file.
 #' @export
-local_logging <- function(level_name = "info") {
-  invisible(futile.logger::flog.logger(
-    .baseLogger,
-    threshold=string_log_level(level_name),
-    layout=futile.logger::layout.format('~l [~t] ~n:~f ~m')
+local_logging <- function(level_name = "info", logfn = NULL) {
+  if (!is.null(logfn)) {
+    if (file.exists(logfn)) file.remove(logfn)
+    invisible(futile.logger::flog.logger(
+      .baseLogger,
+      threshold=string_log_level(level_name),
+      appender=futile.logger::appender.file(logfn),
+      layout=futile.logger::layout.format('~l [~t] ~n:~f ~m')
+      ))
+  } else {
+    invisible(futile.logger::flog.logger(
+      .baseLogger,
+      threshold=string_log_level(level_name),
+      layout=futile.logger::layout.format('~l [~t] ~n:~f ~m')
     ))
+  }
 }
 
 
@@ -80,7 +100,7 @@ cluster_logging <- function(level_name = "info", error_directory = NULL) {
   futile.logger::flog.logger(
     .errorLogger,
     threshold=string_log_level(level_name),
-    appender=appender.file(error_file),
+    appender=futile.logger::appender.file(error_file),
     layout=futile.logger::layout.format('~l [~t] ~n:~f ~m')
     )
 }

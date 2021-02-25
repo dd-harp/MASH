@@ -2,11 +2,12 @@
 #
 # Discrete-time, ten-day timestep built from single-day discrete time.
 #
-# Written from: Reiner Jr, Robert C., et al. "Estimating malaria transmission from
-# humans to mosquitoes in a noisy landscape." Journal of the Royal Society Interface
-# 12.111 (2015): 20150478.
-# Notation, and more explanation, from Smith, David L., et al. "Ross, Macdonald, and a theory for
-# the dynamics and control of mosquito-transmitted pathogens." PLoS pathog 8.4 (2012): e1002588.
+# Written from: Reiner Jr, Robert C., et al. "Estimating malaria transmission
+# from humans to mosquitoes in a noisy landscape." Journal of the Royal Society
+# Interface 12.111 (2015): 20150478.
+# Notation, and more explanation, from Smith, David L., et al. "Ross, Macdonald,
+# and a theory for the dynamics and control of mosquito-transmitted pathogens."
+# PLoS pathog 8.4 (2012): e1002588.
 
 
 #' Make a base set of parameters for R-M mosquitoes.
@@ -21,13 +22,15 @@ build_biting_parameters <- function(patch_cnt) {
     duration = 10L,  # number of days in module time step
     N = patch_cnt,  # patches
     # emergence matrix, patches x days of the year.
-    # mosquito count is \lambda * p / (1-p) where p is conditional daily survival.
+    # mosquito count is \lambda * p / (1-p) where p is
+    # conditional daily survival.
     lambda = matrix(rep(100, year_days * patch_cnt), nrow = patch_cnt),
     psi = diag(patch_cnt),  # diffusion matrix
     EIP = rep(12, year_days),  # Extrinsic incubation period,
     maxEIP = 12,  # Maximum length of EIP.
     p = 0.9,  # conditional daily survival
-    # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
+    # human blood feeding rate, the proportion of mosquitoes that feed
+    # on humans each day
     a = 0.6,
     # Fraction of mosquitoes infected on any day.
     infected_fraction = rep(0.1, patch_cnt),
@@ -143,7 +146,8 @@ long_term <- function(b, parameters, location_idx) {
   A[2, 1] <- b
   A[EIP + 2, EIP + 2] <- p
   eval <- eigen(A)
-  # The first eigenvalue really is one, which means we want the first eigenvector.
+  # The first eigenvalue really is one, which means we want the
+  # first eigenvector.
   stopifnot(abs(Im(eval$values[1])) < 1e-12)
   stopifnot(abs(1 - Re(eval$values[1])) < 1e-12)
   ll <- Re(eval$vectors[, 1])
@@ -168,12 +172,15 @@ make_tosolve <- function(parameters, location_idx) {
 #' @param parameters The initial array of parameters.
 #' @return A list of the main variables.
 #'     \itemize{
-#'       \item \eqn{M} is adult females. This will be an array with a float for each patch.
-#'       \item \eqn{Y} are incubating mosquitoes, one for each patch, and one for each day
-#'         of the EIP, so it's a matrix (patch x EIP day). The first column is newly-hatched.
-#'         The last column are those incubating mosquitoes that are beyond the EIP.
-#'       \item \eqn{Z} are infectihttps://washington.zoom.us/j/99687781877ous mosquitoes.
-#'       \item \code{simulation_day} This is the count of the number of days into the simulation.
+#'       \item \eqn{M} is adult females. This will be an array with a float
+#'           for each patch.
+#'       \item \eqn{Y} are incubating mosquitoes, one for each patch, and one
+#'         for each day of the EIP, so it's a matrix (patch x EIP day). The
+#'         first column is newly-hatched. The last column are those incubating
+#'         mosquitoes that are beyond the EIP.
+#'       \item \eqn{Z} are infectious mosquitoes.
+#'       \item \code{simulation_day} This is the count of the number of days
+#'           into the simulation.
 #'     }
 #'
 #' @export
@@ -446,7 +453,7 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
       Z = Z
     ))
   }
-  unified_out <- do.call(rbind, output)
+  unified_out <- data.table::rbindlist(output)
   unified_out[, c("a") := params$a]
   colnames(unified_out) <- c("Location", "Time", "M", "Y", "Z", "a")
   list(
@@ -454,6 +461,21 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
     future_state = future_state,  # Pass future state in order to check it.
     output = unified_out
   )
+}
+
+
+check_mosquito_rm_output <- function(output) {
+  stopifnot(is(output, "data.table"))
+  stopifnot(setequal(
+    colnames(output), c("Location", "Time", "M", "Y", "Z", "a")))
+  no_na_values <- !anyNA(output)
+  # Time can be less than zero.
+  all_output_gt_zero <- all(output[, .(M, Y, Z, a)] >= 0)
+  if (!all_output_gt_zero || !no_na_values) {
+    logerror(paste0(print(output), collapse = " "))
+  }
+  stopifnot(no_na_values)
+  stopifnot(all_output_gt_zero)
 }
 
 
@@ -484,5 +506,6 @@ mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
 #' @return A data.table
 #' @export
 mosquito_path.mosquito_rm <- function(module) {
+  check_mosquito_rm_output(module$output)
   module$output
 }
