@@ -277,12 +277,12 @@ human_dwell <- function(movement_dt, day_start, params) {
 #' @param The day within the duration. Day 1 starts at time 0.
 #' @param params Has a `day_duration` which is usually 1.
 assign_levels_to_bites <- function(health_dt, bite_cnt, day_idx, params) {
-  bite_times <- with(
-    params,
-    sort(runif(bite_cnt, (day_idx - 1) * day_duration, day_idx * day_duration))
-  )
-  breaks <- c(health_dt$Time, day_idx * params$day_duration + 1e-7)
+  bite_times <- sort(runif(bite_cnt, day_idx - 1, day_idx))
+  base_time <- min(health_dt$Time)
+  # Ensure there is one break past the end and rescale times to 0-10.
+  breaks <- c(health_dt$Time - base_time, params$duration + 1e-7)
   levels <- health_dt$Level[cut(bite_times, breaks, labels = FALSE)]
+  stopifnot(all(!is.na(levels)))
   data.table::data.table(
     human_level = levels,
     times = bite_times
@@ -422,10 +422,10 @@ bld_bloodmeal_process <- function(
   # day_list has an entry for each day. Each entry is a list of two dataframes.
   mosquito_events <- data.table::data.table(
     do.call(rbind, lapply(days_list, function(x) x[[1]])))
-  mosquito_events[, `:=`(time = time + day_start)]
+  mosquito_events[, `:=`(time = time + day_start - 1)]
   human_events <- data.table::data.table(
     do.call(rbind, lapply(days_list, function(x) x[[2]])))
-  human_events[, `:=`(times = times + day_start)]
+  human_events[, `:=`(times = times + day_start - 1)]
 
   list(mosquito_events = mosquito_events, human_events = human_events)
 }
