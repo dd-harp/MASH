@@ -54,6 +54,15 @@ simpletrip_parameters <- list2env(list(
 movement <- simple_trip_module(simpletrip_parameters)
 ```
 
+We can make a movement module where nobody moves. It's useful for debugging.
+
+```{r}
+constant_movement <- single_location(list(
+  home = start_at_home,
+  duration_days = parameters$duration_days
+))
+```
+
 # Health Module
 
 The parameters for the S-I health module are few.
@@ -66,6 +75,17 @@ health_parameters <- list(
   initial_pfpr = 0.2
 )
 health <- human_si_module(health_parameters)
+```
+
+We can make a health module where people don't change infectiousness.
+
+```{r}
+constant_health_parameters <- list(
+  people_cnt = parameters$human_cnt,
+  duration_days = parameters$duration_days,
+  initial_pfpr = 0.2
+)
+constant_health <- human_constant_module(constant_health_parameters)
 ```
 
 # Mosquito Module
@@ -113,7 +133,7 @@ bloodmeal <- bloodmeal_density_module(params)
 macro:::local_logging("debug")
 modules = list(
   location = movement,
-  health = health,
+  health = constant_health,
   bloodmeal = bloodmeal,
   mosquito = mosquito_module
 )
