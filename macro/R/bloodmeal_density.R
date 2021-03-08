@@ -256,10 +256,6 @@ human_dwell <- function(movement_dt, day_start, params) {
     lloc <- state[ID == pid, Location]
     state[ID == pid, `:=`(Time = ptime, Location = ploc)]
 
-    # ceiling because day idx=4 goes from time 3.0 to time 4.0.
-    if (!all(is.finite(dlims))) {
-      cat(paste("move_all", move_all_dt, "\n"))
-    }
     for (idx in seq(ceiling(dlims[1]), ceiling(dlims[2]))) {
       within_day <- min(idx, dlims[2]) - max(idx - 1, dlims[1])
       didx <- idx - day_start
