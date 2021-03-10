@@ -444,6 +444,34 @@ bloodmeal_density_module <- function(parameters) {
 }
 
 
+bd_check_input_health <- function(step_id, health_dt) {
+  stopifnot(setequal(colnames(health_dt), c("ID", "Level", "Time")))
+  early <- step_id$time
+  late <- step_id$time + step_id$duration
+  stopifnot(all(early <= health_dt$Time))
+  stopifnot(all(health_dt$Time <= late))
+}
+
+
+bd_check_input_movement <- function(step_id, movement_dt) {
+  stopifnot(setequal(colnames(movement_dt), c("ID", "Location", "Time")))
+  early <- step_id$time
+  late <- step_id$time + step_id$duration
+  stopifnot(all(early <= movement_dt$Time))
+  stopifnot(all(movement_dt$Time <= late))
+}
+
+
+bd_check_input_bites <- function(step_id, bites_dt) {
+  stopifnot(setequal(colnames(bites_dt),
+                     c("Location", "Time", "M", "Y", "Z", "a")))
+  early <- step_id$time
+  late <- step_id$time + step_id$duration
+  stopifnot(all(early <= bites_dt$Time))
+  stopifnot(all(bites_dt$Time <= late))
+}
+
+
 #' Take one time step for a bloodmeal module.
 #'
 #' @param simulation The blodmeal module.
@@ -455,6 +483,10 @@ bloodmeal_density_module <- function(parameters) {
 mash_step.bloodmeal_density <- function(
   simulation, step_id, health_dt, movement_dt, bites_dt
   ) {
+  bd_check_input_health(step_id, health_dt)
+  bd_check_input_movement(step_id, movement_dt)
+  bd_check_input_bites(step_id, bites_dt)
+
   outcome <- bld_bloodmeal_process(
     health_dt, movement_dt, bites_dt, simulation$day_start,
     simulation[["parameters"]]

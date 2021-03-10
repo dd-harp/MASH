@@ -147,6 +147,16 @@ simple_trip_module <- function(parameters) {
 }
 
 
+st_times_within_step <- function(step_id, sim) {
+  # Trajectory is a list of lists, each of which has curtime, name,
+  # id, prev_location, curr_location.
+  time_span <- c(
+    sim$trajectory[1]$curtime, sim$trajectory[sim$trajectory_cnt]$curtime)
+  stopifnot(step_id$time <= time_span[1])
+  stopifnot(time_span[2] <= step_id$time + step_id$duration)
+}
+
+
 #' Takes one time step of the Simple Trip model
 #'
 #' @param simulation A simple trip model (most likely made via \code{\link[macro]{simple_trip_module}})
@@ -164,7 +174,8 @@ mash_step.simple_trip <- function(simulation, step_id, health_path) {
   # run sim
   simulation <- run_continuous(simulation, simulation$variables$duration_days)
 
-  return(simulation)
+  st_times_within_step(step_id, simulation)
+  return(structure(simulation, class = "simple_trip"))
 }
 
 
@@ -195,14 +206,20 @@ location_path.simple_trip <- function(simulation) {
 
     event <- simulation$trajectory[[i]]
 
-    location_path[[event$prev_location]][which(is.nan(location_path[[event$prev_location]]$time))[1], ] <- c(arrive = NaN, leave = event$id, time = event$curtime)
-    location_path[[event$prev_location]][which(is.nan(location_path[[event$curr_location]]$time))[1], ] <- c(arrive = event$id, leave = NaN, time = event$curtime)
+    location_path[[event$prev_location]][
+      which(is.nan(location_path[[event$prev_location]]$time))[1], ] <-
+      c(arrive = NaN, leave = event$id, time = event$curtime)
+
+    location_path[[event$prev_location]][
+      which(is.nan(location_path[[event$curr_location]]$time))[1], ] <-
+      c(arrive = event$id, leave = NaN, time = event$curtime)
 
   }
 
   # trim excess
   for(i in 1:npatch) {
-    location_path[[i]] <- location_path[[i]][which(!is.nan(location_path[[i]]$time)), ]
+    location_path[[i]] <-
+      location_path[[i]][which(!is.nan(location_path[[i]]$time)), ]
   }
 
   return(location_path)
@@ -212,7 +229,8 @@ location_path.simple_trip <- function(simulation) {
 #' Return trajectory by person for Simple Trip model
 #'
 #' @param simulation A simple trip model (most likely made via \code{\link[macro]{simple_trip_module}})
-#' @return a list of \code{data.frame}, one for person giving the time and new location when they moved
+#' @return a list of \code{data.frame}, one for person giving the time and
+#'     new location when they moved
 #' @export
 person_path.simple_trip <- function(simulation) {
 

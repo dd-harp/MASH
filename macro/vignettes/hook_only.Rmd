@@ -54,6 +54,8 @@ simpletrip_parameters <- list2env(list(
 movement <- simple_trip_module(simpletrip_parameters)
 ```
 
+The data table coming from this module has columns `ID`, `Location`, and `Time`.
+
 We can make a movement module where nobody moves. It's useful for debugging.
 
 ```{r}
@@ -88,6 +90,8 @@ constant_health_parameters <- list(
 constant_health <- human_constant_module(constant_health_parameters)
 ```
 
+The data table from the health module is `ID`, `Time`, and `Level`, where Level is the level of infectiousness to mosquitoes.
+
 # Mosquito Module
 
 ```{r make_mosquito_module}
@@ -110,6 +114,8 @@ mosquito_parameters <- list(
 )
 mosquito_module <- mosquito_rm_module(mosquito_parameters)
 ```
+
+The data table from the mosquito module has columns: `Location`, `Time`, `M`, `Y`, `Z`, and `a`.
 
 # Bloodmeal module
 
