@@ -27,7 +27,7 @@ lag_mosquito_module <- function(parameters) {
 #'     These are the bites received during the last time step, not this one.
 #' @return a modified simulation object
 #' @export
-mash_step.lag_mosquito <- function(simulation, bloodmeal_path) {
+mash_step.lag_mosquito <- function(simulation, step_id, bloodmeal_path) {
   # The path should be a list of biting times.
   stopifnot(is.numeric(bloodmeal_path))
   simulation$step_cnt <- simulation$step_cnt + 1

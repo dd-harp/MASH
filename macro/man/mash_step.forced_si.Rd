@@ -4,7 +4,7 @@
 \alias{mash_step.forced_si}
 \title{Takes one time step of the discrete time step.}
 \usage{
-\method{mash_step}{forced_si}(simulation, bites)
+\method{mash_step}{forced_si}(simulation, step_id, bites)
 }
 \arguments{
 \item{simulation}{A forced-SI model.}

@@ -4,7 +4,7 @@
 \alias{mash_step.mosquito_rm}
 \title{One discrete time step for the mosquito_rm module.}
 \usage{
-\method{mash_step}{mosquito_rm}(module, bloodmeal_dt)
+\method{mash_step}{mosquito_rm}(module, step_id, bloodmeal_dt)
 }
 \arguments{
 \item{module}{The mosquito_rm module.}

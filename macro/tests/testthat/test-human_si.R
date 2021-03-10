@@ -42,7 +42,10 @@ test_that("human_si returns events at each step", {
     )
 
     human <- human_si_module(parameters)
-    human <- mash_step(human, bites_dt)
+    time_id <- list(
+      time = (i - 1) * parameters$duration_days,
+      duration = parameters$duration_days)
+    human <- mash_step(human, time_id, bites_dt)
     health_dt <- human_disease_path(human)
     expect_true(all(check_health_path(health_dt, parameters$people_cnt)))
     current_time <- current_time + parameters$duration_days

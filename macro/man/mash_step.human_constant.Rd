@@ -4,7 +4,7 @@
 \alias{mash_step.human_constant}
 \title{One step of the human_constant module.}
 \usage{
-\method{mash_step}{human_constant}(simulation, bites_dt)
+\method{mash_step}{human_constant}(simulation, step_id, bites_dt)
 }
 \arguments{
 \item{simulation}{The module.}

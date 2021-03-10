@@ -154,7 +154,7 @@ simple_trip_module <- function(parameters) {
 #' @param health_path The history of health states for each person.
 #'
 #' @export
-mash_step.simple_trip <- function(simulation, health_path) {
+mash_step.simple_trip <- function(simulation, step_id, health_path) {
   stopifnot(is.finite(simulation$variables$duration_days))
 
   # clear trajectory before starting

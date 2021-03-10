@@ -4,7 +4,7 @@
 \alias{mash_step.lag_mosquito}
 \title{One time step of an exponential bite module.}
 \usage{
-\method{mash_step}{lag_mosquito}(simulation, bloodmeal_path)
+\method{mash_step}{lag_mosquito}(simulation, step_id, bloodmeal_path)
 }
 \arguments{
 \item{simulation}{the simulation object.}

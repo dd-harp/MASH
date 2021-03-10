@@ -4,7 +4,7 @@
 \alias{mash_step.single_location}
 \title{Increment time so that everybody stays in the one location.}
 \usage{
-\method{mash_step}{single_location}(location_module, health_path)
+\method{mash_step}{single_location}(location_module, step_id, health_path)
 }
 \arguments{
 \item{location_module}{The MASH module.}

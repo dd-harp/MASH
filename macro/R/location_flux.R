@@ -121,7 +121,7 @@ flux_module <- function(parameters) {
 #' @param health_path The history of health states for each person.
 #'
 #' @export
-mash_step.flux <- function(simulation, duration_days, health_path) {
+mash_step.flux <- function(simulation, step_id, duration_days, health_path) {
   stopifnot(is.finite(duration_days))
 
   # clear trajectory before starting

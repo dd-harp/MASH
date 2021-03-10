@@ -127,6 +127,12 @@ params <- list(
 bloodmeal <- bloodmeal_density_module(params)
 ```
 
+What comes out of a bloodmeal module? It returns data to both the mosquito module and the human health module.
+
+To the human health module, it returns a data frame with two columns, `times`, and `human`. The times are the time of each bite as a float, within the days, and the human entries are the IDs of humans. They aren't necessarily ordered by time.
+
+To the mosquito module, it returns a data frame with three columns, `Location`, `Bites`, and `Time`. The Location is an ID. The Bites is an integer count of bites during a day. The Time is a 0-based integer time, marking the start of the day.
+
 # Assemble and run
 
 ```{r}
@@ -137,7 +143,7 @@ modules = list(
   bloodmeal = bloodmeal,
   mosquito = mosquito_module
 )
-step_cnt <- 5
+step_cnt <- 1
 observer <- complete_observer()
 singleobs <- vector(mode = "list", length = step_cnt)
 msgnames <- c(

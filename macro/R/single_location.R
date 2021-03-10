@@ -17,7 +17,7 @@ single_location <- function(params) {
 #' @param location_module The MASH module.
 #' @param health_path The history of health states, which is ignored here.
 #' @export
-mash_step.single_location <- function(location_module, health_path) {
+mash_step.single_location <- function(location_module, step_id, health_path) {
   # Nothing to do besides updating time because nobody moves.
   location_module$time <- location_module$time +
       location_module$params$duration_days

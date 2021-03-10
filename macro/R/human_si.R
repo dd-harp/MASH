@@ -76,7 +76,7 @@ human_si_module <- function(parameters) {
 #' @param simulation The module.
 #' @param bites_dt a data.table of bites.
 #' @export
-mash_step.human_si <- function(simulation, bites_dt) {
+mash_step.human_si <- function(simulation, step_id, bites_dt) {
   # The first step is to incorporate past bites, so we save its state.
   step_result <- human_si_step_days(
     simulation$state,

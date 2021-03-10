@@ -485,7 +485,7 @@ check_mosquito_rm_output <- function(output) {
 #'     This has Bites, Time, Location in a data table.
 #' @return The mosqutio_rm module back again, after the time step.
 #' @export
-mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
+mash_step.mosquito_rm <- function(module, step_id, bloodmeal_dt) {
   past_bites <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
   step_output <- mosquito_rm_discrete_step(module, past_bites)
   stepped_module <- list(

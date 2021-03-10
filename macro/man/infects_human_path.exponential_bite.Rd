@@ -10,7 +10,8 @@
 \item{simulation}{an exponential bites simulation object.}
 }
 \value{
-bites a list with an entry for each person containing a vector of bite times.
+bites a list with an entry for each person containing a vector
+of bite times.
 }
 \description{
 Get the trajectory from a simulation time step.

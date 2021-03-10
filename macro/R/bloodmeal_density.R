@@ -453,7 +453,7 @@ bloodmeal_density_module <- function(parameters) {
 #' @return Returns the simulation that's updated.
 #' @export
 mash_step.bloodmeal_density <- function(
-  simulation, health_dt, movement_dt, bites_dt
+  simulation, step_id, health_dt, movement_dt, bites_dt
   ) {
   outcome <- bld_bloodmeal_process(
     health_dt, movement_dt, bites_dt, simulation$day_start,

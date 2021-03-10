@@ -155,7 +155,7 @@ forced_si_module <- function(parameters) {
 #'                forced_si_create_bites(100, 1/20, current_time, 14))
 #' }
 #' @export
-mash_step.forced_si <- function(simulation, bites) {
+mash_step.forced_si <- function(simulation, step_id, bites) {
   # Save previous state so we know start what the recorded events are changing.
   simulation$previous_state <- simulation$state[, .(who, disease)]
   # We need to turn the bites into events within the stochastic system.

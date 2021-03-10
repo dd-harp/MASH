@@ -13,7 +13,8 @@ test_that("flux model matches theoretical expectations", {
   parameters$location <- 1:2
 
   simulation <- flux_module(parameters)
-  simulation <- mash_step(simulation, 2e4, NULL)
+  time_id <- list(time = 0, duration = 10)
+  simulation <- mash_step(simulation, time_id, 2e4, NULL)
 
   trajectory <- Filter(Negate(is.null),simulation$trajectory)
   trajectory <- do.call(rbind,trajectory)

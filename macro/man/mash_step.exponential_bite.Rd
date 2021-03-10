@@ -4,7 +4,7 @@
 \alias{mash_step.exponential_bite}
 \title{One time step of an exponential bite module.}
 \usage{
-\method{mash_step}{exponential_bite}(simulation, location_path, health_path)
+\method{mash_step}{exponential_bite}(simulation, step_id, location_path, health_path)
 }
 \arguments{
 \item{simulation}{the simulation object.}
