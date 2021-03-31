@@ -85,7 +85,8 @@ test_that("mosquito-rm aggregates Y0 geometrically", {
   for (i in 1:100) {
     state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
   }
-  expect_true(macro:::within_absolute_error(state$Y[, 1] / (1 - params$p), rowSums(state$Y), 1e-5))
+  expect_true(macro:::within_absolute_error(
+    state$Y[, 1] / (1 - params$p), rowSums(state$Y) + state$Z, 1e-5))
 })
 
 

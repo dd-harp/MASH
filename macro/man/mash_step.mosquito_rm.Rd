@@ -13,7 +13,7 @@
 This has Bites, Time, Location in a data table.}
 }
 \value{
-The mosqutio_rm module back again, after the time step.
+The mosquito_rm module back again, after the time step.
 }
 \description{
 One discrete time step for the mosquito_rm module.

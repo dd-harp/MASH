@@ -10,7 +10,8 @@
 \item{simulation}{A simple trip model (most likely made via \code{\link[macro]{simple_trip_module}})}
 }
 \value{
-a list of \code{data.frame}, one for person giving the time and new location when they moved
+a list of \code{data.frame}, one for person giving the time and
+new location when they moved
 }
 \description{
 Return trajectory by person for Simple Trip model

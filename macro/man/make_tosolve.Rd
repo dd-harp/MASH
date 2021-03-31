@@ -11,6 +11,10 @@ make_tosolve(parameters, location_idx)
 }
 \value{
 A function to use for optimization.
+If we know how many mosquitoes should be infected at steady state,
+find the number of bites that must be happening. This has to figure
+out how to allocated the infected fraction among Y and Z and invert
+the relationship between biting and Y and Z.
 }
 \description{
 Find fraction of mosquitoes bitten each day, given fraction infected.
