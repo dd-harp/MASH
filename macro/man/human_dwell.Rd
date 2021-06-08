@@ -8,8 +8,7 @@ location on each day.}
 human_dwell(movement_dt, day_start, params)
 }
 \arguments{
-\item{movement_dt}{The movement data table where each row is a person
-and columns are locations and times.}
+\item{movement_dt}{The movement data table where each row is an event.}
 
 \item{params}{A list or data frame that has simulation parameters such
 as location_cnt and duration of the time step.}

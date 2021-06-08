@@ -47,6 +47,14 @@ build_health_module <- function(parameters, pfpr) {
     human_si_module(health_parameters)
 }
 
+build_constant_health_module <- function(parameters, pfpr) {
+  health_parameters <- list(
+    people_cnt = parameters$human_cnt,
+    duration_days = parameters$duration_days,
+    initial_pfpr = pfpr[1]  # XXX want to set by location!
+  )
+  human_constant_module(health_parameters)
+}
 
 build_mosquito_module <- function(parameters, lambda, z) {
     year_days <- 365
@@ -86,7 +94,7 @@ build_bloodmeal_module <- function(parameters) {
 }
 
 
-build_modules <- function(human, pfpr, travel, M, Z) {
+build_modules <- function(human, pfpr, travel, M, Z, module_choices) {
     parameters <- list(
         human_cnt = sum(human),
         humans.l = human,
@@ -94,7 +102,11 @@ build_modules <- function(human, pfpr, travel, M, Z) {
         duration_days = 10
     )
     movement <- build_movement_module(parameters, travel)
-    health <- build_health_module(parameters, pfpr)
+    if (module_choices$health == "SI") {
+      health <- build_health_module(parameters, pfpr)
+    } else {
+      health <- build_constant_health_module(parameters, pfpr)
+    }
     mosquito <- build_mosquito_module(parameters, M, Z)
     bloodmeal <- build_bloodmeal_module(parameters)
     list(location = movement,
@@ -110,8 +122,9 @@ build_modules <- function(human, pfpr, travel, M, Z) {
 #' @param travel Rate of travel to other locations.
 #' @param M total number of msoquitoes at each location.
 #' @param Z number of infectious mosquitoes at each location.
-generate_data <- function(human, pfpr, travel, M, Z) {
-    modules <- build_modules(human, pfpr, travel, M, Z)
+generate_data <- function(human, pfpr, travel, M, Z, module_choices) {
+    modules <- build_modules(
+      human, pfpr, travel, M, Z, module_choices)
 
     step_cnt <- 5
     observer <- complete_observer()
@@ -149,6 +162,24 @@ ui <- fluidPage(
 
     # Application title
     titlePanel("MASH for Three Locations"),
+
+    fluidRow(
+      column(
+          4,
+          "Health",
+          selectInput("health", "Health:", c("SI", "Constant PfPR"))
+      ),
+      column(
+          4,
+          "Location",
+          selectInput("location", "Location:", c("SimpleTrip", "Constant"))
+      ),
+      column(
+          4,
+          "Mosquito",
+          selectInput("mosquito", "Mosquito:", c("RM"))
+      )
+    ),
 
     fluidRow(
         column(
@@ -214,7 +245,10 @@ server <- function(input, output) {
         travel <- c(input$travel1, input$travel2, input$travel3)
         lambda <- c(input$mosy1, input$mosy2, input$mosy3)
         z <- c(input$z1, input$z2, input$z3)
-        generate_data(human, pfpr, travel, lambda, z)
+        module_choices <- list(
+          health = input$health
+        )
+        generate_data(human, pfpr, travel, lambda, z, module_choices)
         })
     output$greeting <- renderText({
         obs <- observations()

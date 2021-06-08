@@ -125,11 +125,13 @@ step_mainloop <- function(modules, observer, step_cnt = 1, dump_condition = NULL
     health=health_path, mosquito=mosquito_trajectory
   )
 
+  duration <- 10
   for (step_idx in 1:step_cnt) {
+    step_id <- list(time = (step_idx - 1) * duration, duration = duration)
     observer <- observe_begin_step(observer, step_idx)
 
     # Location depends on current health.
-    location <- mash_step(location, health_path)
+    location <- mash_step(location, step_id, health_path)
     human_path <- person_path(location)
     observer <- observe_location(observer, human_path, step_idx)
 
@@ -138,23 +140,26 @@ step_mainloop <- function(modules, observer, step_cnt = 1, dump_condition = NULL
       "bloodmeal", step_idx,
       health=health_path, location=human_path, mosquito=mosquito_trajectory
     )
-    bloodmeal <- mash_step(bloodmeal, health_path, human_path, mosquito_trajectory)
+    bloodmeal <- mash_step(
+        bloodmeal, step_id, health_path, human_path, mosquito_trajectory)
     human_bloodmeal_path <- infects_human_path(bloodmeal)
-    observer <- observe_bloodmeal_human(observer, human_bloodmeal_path, step_idx)
+    observer <- observe_bloodmeal_human(
+        observer, human_bloodmeal_path, step_idx)
     mosquito_bloodmeal_path <- infects_mosquito_path(bloodmeal)
-    observer <- observe_bloodmeal_mosquito(observer, mosquito_bloodmeal_path, step_idx)
+    observer <- observe_bloodmeal_mosquito(
+        observer, mosquito_bloodmeal_path, step_idx)
 
     if (dump_condition("postblood", step_idx)) dump_arguments(
       "postblood", step_idx,
       human_meal=human_bloodmeal_path, mosquito_meal=mosquito_bloodmeal_path
     )
     # The mosquito moves us to the next step.
-    mosquito <- mash_step(mosquito, mosquito_bloodmeal_path)
+    mosquito <- mash_step(mosquito, step_id, mosquito_bloodmeal_path)
     mosquito_trajectory <- mosquito_path(mosquito)
     observer <- observe_mosquito(observer, mosquito_trajectory, step_idx)
 
     # Health moves us to the next step.
-    health <- mash_step(health, human_bloodmeal_path)
+    health <- mash_step(health, step_id, human_bloodmeal_path)
     health_path <- human_disease_path(health)
     observer <- observe_health(observer, health_path, step_idx)
 

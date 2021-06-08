@@ -7,7 +7,8 @@
 exponential_bite_module(parameters)
 }
 \arguments{
-\item{parameters}{containing \code{people_cnt}, \code{bite_rate}, \code{duration}.}
+\item{parameters}{containing \code{people_cnt}, \code{bite_rate},
+\code{duration}.}
 }
 \value{
 A bite module.

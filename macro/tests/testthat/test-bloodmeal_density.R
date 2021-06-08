@@ -53,7 +53,9 @@ test_that("bloodmeal density processes sample data", {
   mosquito_dt <- sample_mosquito_myz(params$location_cnt, params$duration)
 
   bloodmeal <- bloodmeal_density_module(params)
-  bloodmeal <- mash_step(bloodmeal, health_dt, movement_dt, mosquito_dt)
+  time_id <- list(time = 0, duration = params$duration)
+  bloodmeal <- mash_step(
+      bloodmeal, time_id, health_dt, movement_dt, mosquito_dt)
   human_infections <- infects_human_path(bloodmeal)
   mosquito_infections <- infects_mosquito_path(bloodmeal)
   expect_equal(nrow(mosquito_infections), params$day_cnt * params$location_cnt)

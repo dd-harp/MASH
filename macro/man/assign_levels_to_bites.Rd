@@ -4,21 +4,16 @@
 \alias{assign_levels_to_bites}
 \title{Assign bite levels for bites of a single human.}
 \usage{
-assign_levels_to_bites(
-  health_rec,
-  bite_cnt,
-  day_idx,
-  time_cols,
-  level_cols,
-  params
-)
+assign_levels_to_bites(health_dt, bite_cnt, day_idx, params)
 }
 \arguments{
-\item{health_rec}{a single row of the health data table.
+\item{health_dt}{Data for just this human from the health table.}
 
-health_rec <- health_dt\link{health_dt$ID == h_idx,}
-time_cols <- grep("Time", names(health_rec))
-level_cols <- c(time_cols\link{1} - 1, time_cols + 1)}
+\item{bite_cnt}{The number of bites to create in day \code{day_idx}.}
+
+\item{params}{Has a \code{day_duration} which is usually 1.}
+
+\item{The}{day within the duration. Day 1 starts at time 0.}
 }
 \description{
 Assign bite levels for bites of a single human.

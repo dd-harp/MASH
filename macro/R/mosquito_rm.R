@@ -17,17 +17,19 @@
 #'
 #' @export
 build_biting_parameters <- function(patch_cnt) {
-  year_days = 365
+  year_days = 365L
+  maxEIP = 12L
   list(
     duration = 10L,  # number of days in module time step
     N = patch_cnt,  # patches
     # emergence matrix, patches x days of the year.
     # mosquito count is \lambda * p / (1-p) where p is
-    # conditional daily survival.
+    # daily survival.
     lambda = matrix(rep(100, year_days * patch_cnt), nrow = patch_cnt),
     psi = diag(patch_cnt),  # diffusion matrix
-    EIP = rep(12, year_days),  # Extrinsic incubation period,
-    maxEIP = 12,  # Maximum length of EIP.
+    maxEIP = maxEIP,  # Maximum length of EIP.
+    # EIP changes through the year.
+    EIP = rep(maxEIP, year_days),  # Extrinsic incubation period,
     p = 0.9,  # conditional daily survival
     # human blood feeding rate, the proportion of mosquitoes that feed
     # on humans each day
@@ -35,17 +37,14 @@ build_biting_parameters <- function(patch_cnt) {
     # Fraction of mosquitoes infected on any day.
     infected_fraction = rep(0.1, patch_cnt),
     biting_weight = 0.5,
+    # Day 1 of the simulation is this day of the year.
     year_day_start = 1
   )
 }
 
 
-#' Given a day that counts past multiple years, what's day within year.
-#' @param day integer count of days since start of year.
-#' @param day_cnt It's 365 unless you're testing.
-#' @export
-day_within_year <- function(day, day_cnt = 365) {
-  ((day - 1) %% day_cnt) + 1
+day_within_year <- function(day, day_cnt = 365L) {
+  ((day - 1L) %% day_cnt) + 1L
 }
 
 
@@ -60,8 +59,6 @@ day_within_year <- function(day, day_cnt = 365) {
 #' It tells you how many days back to get the newly-infected
 #' mosquitoes. It could be zero or more than one previous day.
 #' The value is a ragged array by day of year.
-#'
-#' @export
 look_back_eip <- function(EIP) {
   day_cnt <- length(EIP)
   look <- lapply(1:day_cnt, function(x) numeric(0))
@@ -94,8 +91,6 @@ look_back_eip <- function(EIP) {
 #' This is for half-open intervals, meaning the last column of the matrix
 #' doesn't shift. It accumulates individuals that are added from the previous
 #' day. This number will be gradually reduced by the survival.
-#'
-#' @export
 shift_with_open_interval <- function(N) {
   y_shift <- diag(c(numeric(N - 1), 1))
   diag(y_shift[, -1]) <- rep(1, N - 1L)
@@ -107,8 +102,6 @@ shift_with_open_interval <- function(N) {
 #'
 #' @param parameters The external parameters.
 #' @param adult_scale A scale for total mosquito counts for all patches.
-#'
-#' @export
 build_internal_parameters <- function(parameters) {
   with(parameters, {
     list(
@@ -120,7 +113,7 @@ build_internal_parameters <- function(parameters) {
       maxEIP = maxEIP,
       a = a,
       one_day_older = shift_with_open_interval(maxEIP + 1),
-      year_day_offset = year_day_start - 1
+      year_day_start = year_day_start
     )
   })
 }
@@ -130,7 +123,9 @@ build_internal_parameters <- function(parameters) {
 #' @param b The fraction that bite infectious humans each round.
 #' @param parameters all other parameters
 #' @param location_idx which location to model for steady-state.
-#' @return A long-time steady state value.
+#' @return A long-time steady state value for M, Y, and Z as a vector.
+#' Given emergence, EIP, and biting rate, what would be a steady-state
+#' number of M, Y, and Z? This solves x'=Ax for steady state.
 #' You might think we should just solve this matrix. Yes.
 long_term <- function(b, parameters, location_idx) {
   lambda <- parameters$lambda[location_idx, 1]  # emergence per day
@@ -158,6 +153,10 @@ long_term <- function(b, parameters, location_idx) {
 #' Find fraction of mosquitoes bitten each day, given fraction infected.
 #' @param parameters The input module parameters.
 #' @return A function to use for optimization.
+#' If we know how many mosquitoes should be infected at steady state,
+#' find the number of bites that must be happening. This has to figure
+#' out how to allocated the infected fraction among Y and Z and invert
+#' the relationship between biting and Y and Z.
 make_tosolve <- function(parameters, location_idx) {
   f <- parameters$infected_fraction[location_idx]
   tosolve <- function(b) {
@@ -182,8 +181,6 @@ make_tosolve <- function(parameters, location_idx) {
 #'       \item \code{simulation_day} This is the count of the number of days
 #'           into the simulation.
 #'     }
-#'
-#' @export
 mosquito_rm_build_biting_state <- function(parameters) {
   pnames <- c(
     "infected_fraction", "p", "N", "EIP", "lambda", "maxEIP"
@@ -192,16 +189,16 @@ mosquito_rm_build_biting_state <- function(parameters) {
   f <- parameters$infected_fraction
   p <- parameters$p
   b <- (1 - p) * f / (1 + f)  # approximate biting rate.
-  for (solve_idx in 1:parameters$N) {
-    location_func <- make_tosolve(parameters, solve_idx)
-    b[solve_idx] = optim(
-      b[solve_idx],
+  for (solve_location_idx in 1:parameters$N) {
+    location_func <- make_tosolve(parameters, solve_location_idx)
+    b[solve_location_idx] = optim(
+      b[solve_location_idx],
       location_func,
       method = "Brent", lower = 0, upper = 1)$par
   }
-  M <- parameters$lambda[, 1] * p / (1 - p)
+  M <- parameters$lambda[, parameters$year_day_start] * p / (1 - p)
   EIP_open <- parameters$maxEIP + 1
-  EIP <- parameters$EIP[1]
+  EIP <- parameters$EIP[parameters$year_day_start]
   Y <- matrix(0, nrow = parameters$N, ncol = EIP_open)
   Z <- M[]
   for (init_idx in 1:parameters$N) {
@@ -209,29 +206,31 @@ mosquito_rm_build_biting_state <- function(parameters) {
     # The long-term estimate is a total Y. We allocate that into
     # successive waves
     Y[init_idx, 1:EIP] <- x[2:(2 + EIP - 1)]
-    Y[init_idx, EIP + 1] <- x[length(x)]  # The last entry in Y holds Z.
     Z[init_idx] <- x[length(x)]  # And Z holds Z.
   }
   list(
     M = M,
     Y = Y,
     Z = Z,
-    simulation_day = 1,
-    last_y = EIP - 1  # marks the last column in Y, not Z.
+    simulation_day = 1
   )
 }
 
 
-#' Make a copy of the state of the Mosqutio-RM model.
+#' Make a copy of the state of the Mosquito-RM model.
 #'
 #' @param state A list of the state
 #' @return A copy of the state with no changes.
-#'
-#' @export
 mosquito_rm_copy_state <- function(state) {
-  with(state, {
+  state_cp <- with(state, {
     list(M = M, Y = Y, Z = Z, simulation_day = simulation_day)
   })
+  same_names <- setequal(names(state_cp), names(state))
+  if (!same_names) {
+    stop(c(paste(names(state_cp), collapse = ", "),
+           paste(names(state), collapse = ", ")))
+  }
+  state_cp
 }
 
 
@@ -239,8 +238,6 @@ mosquito_rm_copy_state <- function(state) {
 #'
 #' @param lambda A vector of emergence rate per patch, in mosquitoes per day.
 #' @return Returns a vector count of emerged mosquitoes.
-#'
-#' @export
 mosquito_rm_aquatic <- function(lambda) {
   rpois(length(lambda), lambda)
 }
@@ -260,15 +257,13 @@ mosquito_rm_aquatic <- function(lambda) {
 #' This is a single-day dynamics step for a discrete-time analog
 #' of the Ross-Macdonald model. The aquatic lifecycle is stochastic, but
 #' the rest is deterministic.
-#'
-#' @export
 mosquito_rm_dynamics <- function(
   state, parameters, bites, aquatic = mosquito_rm_aquatic
   ) {
   with(parameters, {
     with(state, {
       simulation_day <- simulation_day + 1
-      year_day <- day_within_year(simulation_day + year_day_offset)
+      year_day <- day_within_year(simulation_day + year_day_start - 1)
 
       # It matters whether we apply survival to the new adults.
       M <- p_psi %*% (M + aquatic(lambda[, year_day]))
@@ -280,13 +275,13 @@ mosquito_rm_dynamics <- function(
       if (length(broods) > 0) {
         for (brood in broods) {
           Z = Z + Y[, brood]
-          last_y <- brood - 1  # Marks the last column that is in Y, not Z.
+          Y[, brood] <- 0
         }
       }
 
       # This would be a * kappa * (M - rowSums(Y)) but has been calculated
       # inside the bloodmeal because we sent it M, Y, Z, and a.
-      Y0 <- min(bites, (M - rowSums(Y)))
+      Y0 <- min(bites, (M - rowSums(Y) - Z))
       Y0[Y0 < 0] <- 0
       Y <- Y %*% one_day_older
       Y[, 1] <- Y0
@@ -294,8 +289,7 @@ mosquito_rm_dynamics <- function(
         M = M,
         Y = Y,
         Z = Z,
-        simulation_day = simulation_day,
-        last_y = last_y
+        simulation_day = simulation_day
       )
     })
   })
@@ -339,15 +333,15 @@ mosquito_rm_module <- function(parameters) {
     }
   }
   state = mosquito_rm_build_biting_state(parameters)
-  stopifnot(all(c("M", "Y", "Z", "last_y") %in% names(state)))
+  stopifnot(all(c("M", "Y", "Z") %in% names(state)))
   # We take the steady state and turn it into a long-term static state
   # because this module has to bootstrap the simulation before it gets input.
   day_cnt <- parameters$duration
   putative_past <- data.table::data.table(
     Location = rep(1:parameters$N, day_cnt),
-    Time = rep(-parameters$duration:-1, each = parameters$N),
+    Time = rep(0:(parameters$duration - 1), each = parameters$N),
     M = rep(state$M, day_cnt),
-    Y = rep(rowSums(state$Y[, 1:state$last_y]), day_cnt),
+    Y = rep(rowSums(state$Y), day_cnt),
     Z = rep(state$Z, day_cnt)
   )
   putative_past[, c("a") := parameters$a]
@@ -378,8 +372,6 @@ mosquito_rm_aggregate_state <- function(output, state) {
 #' a constant value for the future. These values shouldn't have an
 #' effect on the module's output because of delays in the system,
 #' but we make them to be consistent.
-#'
-#' @export
 mosquito_rm_average_kappa <- function(kappa) {
   duration <- dim(kappa)[2]
   weights <- exp((-1 / duration) * (duration - 1:duration))
@@ -398,8 +390,6 @@ mosquito_rm_average_kappa <- function(kappa) {
 #' We use this function because it can look at trends instead of a
 #' simple average. This version uses an autoregressive process to
 #' find a trend.
-#'
-#' @export
 mosquito_rm_trended_kappa <- function(kappa) {
   N <- dim(kappa)[1]
   duration <- dim(kappa)[2]
@@ -431,8 +421,6 @@ mosquito_rm_trended_kappa <- function(kappa) {
 #' To do that, it saves its state after the first ten-day calculation
 #' and recalculates the second set of ten days the next time
 #' it is called.
-#'
-#' @export
 mosquito_rm_discrete_step <- function(module, bites_arr) {
   params <- module$parameters
   today_state <- module$state
@@ -449,7 +437,7 @@ mosquito_rm_discrete_step <- function(module, bites_arr) {
       Location = 1:length(M),
       Time = simulation_day - 1,
       M = M,
-      Y = rowSums(Y[, 1:last_y]),
+      Y = rowSums(Y),
       Z = Z
     ))
   }
@@ -483,9 +471,9 @@ check_mosquito_rm_output <- function(output) {
 #' @param module The mosquito_rm module.
 #' @param bloodmeal_dt The input bloodmeal data from the last time step.
 #'     This has Bites, Time, Location in a data table.
-#' @return The mosqutio_rm module back again, after the time step.
+#' @return The mosquito_rm module back again, after the time step.
 #' @export
-mash_step.mosquito_rm <- function(module, bloodmeal_dt) {
+mash_step.mosquito_rm <- function(module, step_id, bloodmeal_dt) {
   past_bites <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
   step_output <- mosquito_rm_discrete_step(module, past_bites)
   stepped_module <- list(

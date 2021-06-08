@@ -85,7 +85,8 @@ test_that("mosquito-rm aggregates Y0 geometrically", {
   for (i in 1:100) {
     state <- mosquito_rm_dynamics(state, internal_params, bites_patch, aquatic)
   }
-  expect_true(macro:::within_absolute_error(state$Y[, 1] / (1 - params$p), rowSums(state$Y), 1e-5))
+  expect_true(macro:::within_absolute_error(
+    state$Y[, 1] / (1 - params$p), rowSums(state$Y) + state$Z, 1e-5))
 })
 
 
@@ -138,7 +139,8 @@ test_that("mosquito-rm module can do a time step", {
   user_parameters <- build_biting_parameters(patch_cnt)
   module_initial <- mosquito_rm_module(user_parameters)
   bloodmeal_dt <- sample_mosquito_kappa(patch_cnt, user_parameters$duration)
-  module <- mash_step(module_initial, bloodmeal_dt)
+  time_id <- list(time = 0, duration = 10)
+  module <- mash_step(module_initial, time_id, bloodmeal_dt)
   expect_equal(names(module_initial), names(module))
   result <- module$output
   expect_equal(nrow(result), patch_cnt * user_parameters$duration)
@@ -156,7 +158,8 @@ test_that("mosquito-rm module can observe results", {
   names(bloodmeal_dt) <- c("Location", "Time")
   bloodmeal_dt$Time <- bloodmeal_dt$Time - 1
   bloodmeal_dt$Bites <- sample(10:20, nrow(bloodmeal_dt), replace = TRUE)
-  module <- mash_step(module, bloodmeal_dt)
+  time_id <- list(time = 0, duration = 10)
+  module <- mash_step(module, time_id, bloodmeal_dt)
   bites_dt <- mosquito_path(module)
   expect_equal(nrow(bites_dt), patch_cnt * user_parameters$duration)
 })

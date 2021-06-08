@@ -4,7 +4,7 @@
 \alias{mash_step.mosquito_rm}
 \title{One discrete time step for the mosquito_rm module.}
 \usage{
-\method{mash_step}{mosquito_rm}(module, bloodmeal_dt)
+\method{mash_step}{mosquito_rm}(module, step_id, bloodmeal_dt)
 }
 \arguments{
 \item{module}{The mosquito_rm module.}
@@ -13,7 +13,7 @@
 This has Bites, Time, Location in a data table.}
 }
 \value{
-The mosqutio_rm module back again, after the time step.
+The mosquito_rm module back again, after the time step.
 }
 \description{
 One discrete time step for the mosquito_rm module.

@@ -4,16 +4,12 @@
 \alias{local_logging}
 \title{Set up logging for use on a local machine.}
 \usage{
-local_logging(level_name = "info")
+local_logging(level_name = "info", logfn = NULL)
 }
 \arguments{
-\item{level_name}{One of the strings (trace, debug, info, warn, error, fatal)
-Default value is "info".
+\item{level_name}{A string name from \code{log_levels()}.}
 
-This creates a logger that is named after the package
-so that all logging messages for this package can be turned on or off
-together. This function makes everything go to the console on
-standard out.}
+\item{logfn}{A logfile name, default is NULL which means no log file.}
 }
 \description{
 Set up logging for use on a local machine.

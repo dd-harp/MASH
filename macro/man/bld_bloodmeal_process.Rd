@@ -11,12 +11,15 @@ bld_bloodmeal_process(health_dt, movement_dt, mosquito_dt, day_start, params)
 
 \item{movement_dt}{Movement events from the protocol.}
 
+\item{mosquito_dt}{Mosquito levels.}
+
+\item{day_start}{The time at which the first day starts, so 0.0 or 10.0,
+not 1L or 11L.}
+
 \item{params}{Has \code{human_cnt}, \code{location_cnt}, \code{duration},
 \code{day_duration}, \code{dispersion}, \code{day_cnt}, \code{biting_weight}.
 infect_human <- outcome_dt\link{Bite > 0.0}
 infect_mosquito <- outcome_dt\link{(Bite == 0.0) & (Level > 0.0)}}
-
-\item{bites_dt}{Bite events from the protocol.}
 }
 \description{
 Assign bites to people, the top-level function.

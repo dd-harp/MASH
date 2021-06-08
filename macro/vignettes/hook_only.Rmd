@@ -54,6 +54,17 @@ simpletrip_parameters <- list2env(list(
 movement <- simple_trip_module(simpletrip_parameters)
 ```
 
+The data table coming from this module has columns `ID`, `Location`, and `Time`.
+
+We can make a movement module where nobody moves. It's useful for debugging.
+
+```{r}
+constant_movement <- single_location(list(
+  home = start_at_home,
+  duration_days = parameters$duration_days
+))
+```
+
 # Health Module
 
 The parameters for the S-I health module are few.
@@ -67,6 +78,19 @@ health_parameters <- list(
 )
 health <- human_si_module(health_parameters)
 ```
+
+We can make a health module where people don't change infectiousness.
+
+```{r}
+constant_health_parameters <- list(
+  people_cnt = parameters$human_cnt,
+  duration_days = parameters$duration_days,
+  initial_pfpr = 0.2
+)
+constant_health <- human_constant_module(constant_health_parameters)
+```
+
+The data table from the health module is `ID`, `Time`, and `Level`, where Level is the level of infectiousness to mosquitoes.
 
 # Mosquito Module
 
@@ -91,6 +115,8 @@ mosquito_parameters <- list(
 mosquito_module <- mosquito_rm_module(mosquito_parameters)
 ```
 
+The data table from the mosquito module has columns: `Location`, `Time`, `M`, `Y`, `Z`, and `a`.
+
 # Bloodmeal module
 
 ```{r bloodmeal_parameters}
@@ -107,17 +133,23 @@ params <- list(
 bloodmeal <- bloodmeal_density_module(params)
 ```
 
+What comes out of a bloodmeal module? It returns data to both the mosquito module and the human health module.
+
+To the human health module, it returns a data frame with two columns, `times`, and `human`. The times are the time of each bite as a float, within the days, and the human entries are the IDs of humans. They aren't necessarily ordered by time.
+
+To the mosquito module, it returns a data frame with three columns, `Location`, `Bites`, and `Time`. The Location is an ID. The Bites is an integer count of bites during a day. The Time is a 0-based integer time, marking the start of the day.
+
 # Assemble and run
 
 ```{r}
 macro:::local_logging("debug")
 modules = list(
-  location = movement,
-  health = health,
+  location = constant_movement,
+  health = constant_health,
   bloodmeal = bloodmeal,
   mosquito = mosquito_module
 )
-step_cnt <- 5
+step_cnt <- 1
 observer <- complete_observer()
 singleobs <- vector(mode = "list", length = step_cnt)
 msgnames <- c(

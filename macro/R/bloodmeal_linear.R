@@ -207,7 +207,8 @@ bloodmeal_linear_module <- function(parameters) {
 #' @param bites_dt Mosquito bite data.
 #' @return Returns the simulation that's updated.
 #' @export
-mash_step.bloodmeal_linear <- function(simulation, health_dt, movement_dt, bites_dt) {
+mash_step.bloodmeal_linear <- function(
+    simulation, step_id, health_dt, movement_dt, bites_dt) {
   outcome_dt <- bloodmeal_process(health_dt, movement_dt, bites_dt)
   simulation[["outcome"]] <- outcome_dt
   class(simulation) <- "bloodmeal_linear"

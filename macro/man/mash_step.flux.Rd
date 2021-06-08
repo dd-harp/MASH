@@ -4,7 +4,7 @@
 \alias{mash_step.flux}
 \title{Takes one time step of the Flux model}
 \usage{
-\method{mash_step}{flux}(simulation, duration_days, health_path)
+\method{mash_step}{flux}(simulation, step_id, duration_days, health_path)
 }
 \arguments{
 \item{simulation}{A flux model (most likely made via \code{\link[macro]{flux_module}})}

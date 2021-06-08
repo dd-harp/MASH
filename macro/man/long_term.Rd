@@ -14,7 +14,9 @@ long_term(b, parameters, location_idx)
 \item{location_idx}{which location to model for steady-state.}
 }
 \value{
-A long-time steady state value.
+A long-time steady state value for M, Y, and Z as a vector.
+Given emergence, EIP, and biting rate, what would be a steady-state
+number of M, Y, and Z? This solves x'=Ax for steady state.
 You might think we should just solve this matrix. Yes.
 }
 \description{

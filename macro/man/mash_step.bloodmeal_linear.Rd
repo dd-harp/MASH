@@ -4,7 +4,7 @@
 \alias{mash_step.bloodmeal_linear}
 \title{Take one time step for a bloodmeal module.}
 \usage{
-\method{mash_step}{bloodmeal_linear}(simulation, health_dt, movement_dt, bites_dt)
+\method{mash_step}{bloodmeal_linear}(simulation, step_id, health_dt, movement_dt, bites_dt)
 }
 \arguments{
 \item{simulation}{The blodmeal module.}

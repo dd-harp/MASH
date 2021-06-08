@@ -4,12 +4,12 @@
 \alias{mash_step.single_location}
 \title{Increment time so that everybody stays in the one location.}
 \usage{
-\method{mash_step}{single_location}(location_module, health_path)
+\method{mash_step}{single_location}(location_module, step_id, health_path)
 }
 \arguments{
 \item{location_module}{The MASH module.}
 
-\item{health_path}{The history of health states for each person.}
+\item{health_path}{The history of health states, which is ignored here.}
 }
 \description{
 Increment time so that everybody stays in the one location.
