@@ -1,0 +1,268 @@
+---
+title: "MBITES in MASH"
+output: html_notebook
+---
+
+```{r load_libs, show = FALSE}
+library(macro)
+library(data.table)
+library(ggplot2)
+```
+
+# Introduction
+
+This will run MBITES as a module within MASH. It begins as a copy of the latest `main()` for MASH, the `hook_only.Rmd` vignette.
+
+```{r}
+# install.packages(path_to_mbites, repos = NULL, type="source")
+library(MBITES)
+```
+
+
+Very directly make the modules and run them. No testing here.
+
+```{r initial_sense}
+parameters <- list(
+  human_cnt = 40L,
+  location_cnt = 3L,
+  duration_days = 10
+)
+# Count of humans in each location.
+parameters$humans.l <- c(rmultinom(1, parameters$human_cnt, c(0.1, 0.3, 0.6)))
+stopifnot(length(parameters$humans.l) == parameters$location_cnt)
+```
+
+Here, the `.l` means it's a vector over locations. We'll use `.h` to mean a vector over humans. It's a convenient signal about what a variable's dimensions are for.
+
+# Movement Module
+
+This module is independent of the others, so let's take care of it first. It needs a stochastic matrix for movement, where rows are people and columns are locations.
+
+```{r make_simpletrip}
+start_at_home <- rep(1:parameters$location_cnt, parameters$humans.l)
+stopifnot(length(start_at_home) == parameters$human_cnt)
+
+stochastic_matrix <- matrix(runif(parameters$location_cnt^2), nrow = parameters$location_cnt)
+diag(stochastic_matrix) <- 0
+# The rows should sum to one.
+stochastic_matrix <- diag(1 / rowSums(stochastic_matrix)) %*% stochastic_matrix
+return_matrix <- matrix(1, nrow = parameters$location_cnt, ncol = parameters$location_cnt)
+diag(return_matrix) <- 0
+return_matrix <- diag(1 / rowSums(return_matrix)) %*% return_matrix
+
+simpletrip_parameters <- list2env(list(
+  trip_rate = rep(0.1, parameters$location_cnt),
+  trip_dest = stochastic_matrix,
+  return_home_rate = return_matrix,
+  npatch = parameters$location_cnt,
+  home = start_at_home,
+  current = start_at_home,
+  duration_days = parameters$duration_days
+))
+movement <- simple_trip_module(simpletrip_parameters)
+```
+
+The data table coming from this module has columns `ID`, `Location`, and `Time`.
+
+We can make a movement module where nobody moves. It's useful for debugging.
+
+```{r}
+constant_movement <- single_location(list(
+  home = start_at_home,
+  duration_days = parameters$duration_days
+))
+```
+
+# Health Module
+
+The parameters for the S-I health module are few.
+
+```{r make_health}
+health_parameters <- list(
+  recovery_rate = 1 / 200,
+  people_cnt = parameters$human_cnt,
+  duration_days = parameters$duration_days,
+  initial_pfpr = 0.2
+)
+health <- human_si_module(health_parameters)
+```
+
+We can make a health module where people don't change infectiousness.
+
+```{r}
+constant_health_parameters <- list(
+  people_cnt = parameters$human_cnt,
+  duration_days = parameters$duration_days,
+  initial_pfpr = 0.2
+)
+constant_health <- human_constant_module(constant_health_parameters)
+```
+
+The data table from the health module is `ID`, `Time`, and `Level`, where Level is the level of infectiousness to mosquitoes.
+
+# Mosquito Module
+
+```{r make_mosquito_module}
+year_days <- 365
+mosquito_parameters <- list(
+  duration = parameters$duration_days,
+  N = parameters$location_cnt,
+  lambda = matrix(
+    rep(100, year_days * parameters$location_cnt),
+    nrow = parameters$location_cnt),
+  psi = diag(parameters$location_cnt),  # diffusion matrix
+  biting_weight = 0.4,  # The human biting weight. Should be from human.XXX
+  EIP = rep(12, year_days),  # Extrinsic incubation period,
+  maxEIP = 12,  # Maximum length of EIP.
+  p = 0.9,  # survival
+  # human blood feeding rate, the proportion of mosquitoes that feed on humans each day
+  a = 0.6,
+  infected_fraction = rep(0.1, parameters$location_cnt),
+  year_day_start = 1
+)
+mosquito_module <- mosquito_rm_module(mosquito_parameters)
+```
+
+The data table from the mosquito module has columns: `Location`, `Time`, `M`, `Y`, `Z`, and `a`.
+
+# Bloodmeal module
+
+```{r bloodmeal_parameters}
+params <- list(
+  human_cnt = parameters$human_cnt,
+  location_cnt = parameters$location_cnt,
+  duration = parameters$duration_days,
+  day_duration = 1,
+  dispersion = 1.5,
+  day_cnt = 10,
+  day_start = 1,
+  biting_weight = 0.5
+)
+bloodmeal <- bloodmeal_density_module(params)
+```
+
+What comes out of a bloodmeal module? It returns data to both the mosquito module and the human health module.
+
+To the human health module, it returns a data frame with two columns, `times`, and `human`. The times are the time of each bite as a float, within the days, and the human entries are the IDs of humans. They aren't necessarily ordered by time.
+
+To the mosquito module, it returns a data frame with three columns, `Location`, `Bites`, and `Time`. The Location is an ID. The Bites is an integer count of bites during a day. The Time is a 0-based integer time, marking the start of the day.
+
+# Assemble and run
+
+```{r}
+macro:::local_logging("debug")
+modules = list(
+  location = constant_movement,
+  health = constant_health,
+  bloodmeal = bloodmeal,
+  mosquito = mosquito_module
+)
+step_cnt <- 1
+observer <- complete_observer()
+singleobs <- vector(mode = "list", length = step_cnt)
+msgnames <- c(
+  "location", "bloodmeal_human", "bloodmeal_mosquito", "health", "mosquito")
+dump_if <- function(step, idx) { step == "bloodmeal" }
+seen <- list()
+for (main_idx in 1:step_cnt) {
+  cat(paste("Running 10-day step", main_idx, "\n"))
+  modules <- step_mainloop(modules, observer, main_idx, dump_if)
+  singleobs[[main_idx]] <- lapply(
+    msgnames,
+    function(msgtype) {
+      data.table::rbindlist(modules$observer[[msgtype]])
+    }
+  )
+  names(singleobs[[main_idx]]) <- msgnames
+}
+observations <- lapply(
+  msgnames,
+  function(msgname) {
+    data.table::rbindlist(
+      lapply(singleobs, function(obs) obs[[msgname]])
+    )
+  }
+)
+names(observations) <- msgnames
+```
+
+```{r}
+homeloc <- rep(1:parameters$location_cnt, parameters$humans.l)
+state <- homeloc
+loc_df <- observations$location
+sumloc <- matrix(0, ncol = nrow(loc_df), nrow = (parameters$location_cnt + 1))
+for (ridx in 1:nrow(loc_df)) {
+  state[loc_df[ridx, ID]] <- loc_df[ridx, Location]
+  sumloc[, ridx] <- c(
+    loc_df[ridx, Time],
+    hist(state, breaks = 0:parameters$location_cnt, plot = FALSE)$counts
+  )
+}
+loc_dt <- data.table::data.table(t(sumloc))
+# Keep only the last of any times that are identical.
+loc_dt <- loc_dt[!duplicated(loc_dt[, 1], fromLast = TRUE)]
+colnames(loc_dt) <- c("Time", paste0("Loc", 1:parameters$location_cnt))
+ggplot(loc_dt, aes(Time, Loc1, colour = "green")) + geom_line()
+  ggplot(loc_dt, aes(Time, Loc2, colour = "black")) + geom_line()
+  ggplot(loc_dt, aes(Time, Loc3, colour = "blue")) + geom_line()
+
+```
+
+```{r}
+bm <- observations$bloodmeal_mosquito
+bm$Location <- as.factor(bm$Location)
+ggplot(bm, aes(Time, Bites, colour = Location)) + geom_point() +
+  labs(title = "Bites in Each Location During Time Step", y = "Bites per Day")
+```
+
+Bloodmeal's bites for the human.
+
+```{r}
+bh <- observations$bloodmeal_human
+ggplot(bh, aes(times)) + geom_histogram(binwidth = 10 / 40) +
+  labs(title = "Bites for all Humans During Time Step", y = "Bites per Quarter Day")
+```
+
+```{r}
+bmosy <- observations$mosquito
+bmosy1 <- bmosy[bmosy$Location == 1,]
+ymax <- 1.1 * max(bmosy1$M, bmosy1$Y, bmosy1$Z)
+plot(bmosy1$Time, bmosy1$M, type = "p", pch = 16,
+     ylim = c(0, ymax))
+points(bmosy1$Time, bmosy1$Y, col = "blue", pch = 16)
+points(bmosy1$Time, bmosy1$Z, col = "green", pch = 16)
+legend("bottomright", legend = c("M", "Y", "Z"), fill = c("black", "blue", "green"))
+```
+
+```{r}
+library(ggplot2)
+mosy <- observations$mosquito[, c("Location", "Time", "M", "Y", "Z")]
+ggplot(data=mosy, aes(x=Time, y = Z)) + geom_point() + facet_wrap(~Location)
+```
+
+```{r}
+# Number sick for each location.
+state_dt <- data.table::data.table(
+  home = rep(1:parameters$location_cnt, parameters$humans.l),
+  state = numeric(length=parameters$human_cnt)
+)
+loc_df <- observations$location
+h_df <- observations$health
+sumh <- matrix(0, ncol = nrow(h_df), nrow = (parameters$location_cnt + 1))
+for (ridx in 1:nrow(h_df)) {
+  id <- h_df[ridx, ID]
+  newlevel <- h_df[ridx, Level]
+  state_dt[id, `:=`(state = newlevel)]
+  sumh[, ridx] <- c(
+    h_df[ridx, Time],
+    state_dt[, sum(state), home][, V1]
+  )
+}
+h_dt <- data.table::data.table(t(sumh))
+# Keep only the last of any times that are identical.
+h_dt <- h_dt[!duplicated(h_dt[, 1], fromLast = TRUE)]
+colnames(h_dt) <- c("Time", paste0("Loc", 1:parameters$location_cnt))
+ggplot(h_dt, aes(Time, Loc1, colour = "green")) + geom_line()
+  ggplot(h_dt, aes(Time, Loc2, colour = "black")) + geom_line()
+  ggplot(h_dt, aes(Time, Loc3, colour = "blue")) + geom_line()
+```
