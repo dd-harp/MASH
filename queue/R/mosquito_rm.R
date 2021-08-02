@@ -2,6 +2,7 @@ library(data.table)
 library(futile.logger)
 
 
+#' Make sure the parameters list has every value it should have.
 mrm_check_parameters <- function(parameters) {
   required <- c(
     "duration", "N", "lambda", "psi", "biting_weight", "EIP", "maxEIP",
@@ -22,6 +23,7 @@ mrm_check_parameters <- function(parameters) {
     }
   }
 }
+
 
 #' Make a base set of parameters for R-M mosquitoes.
 #'
@@ -348,8 +350,9 @@ Mosquito_RM <- R6::R6Class(
         Y = rep(rowSums(private$state$Y), day_cnt),
         Z = rep(private$state$Z, day_cnt)
       )
-      # putative_past[, c("a") := parameters$a]
-      putative_past[, c("a") := list(parameters$a)]
+      stopifnot(is.data.table(putative_past))
+      putative_past[, c("a") := parameters$a]
+      # putative_past[, c("a") := list(parameters$a)]
       # putative_past[, `:=`(a = parameters$a)]
       private$output <- putative_past
     },
@@ -392,9 +395,7 @@ Mosquito_RM <- R6::R6Class(
 
     #' @description
     #' Destructor
-    finalize = function() {
-      # futile.logger::flog.trace("Human_NULL %i being killed at self: %s , private: %s",private$id,pryr::address(self),pryr::address(private))
-    }
+    finalize = function() {}
   ),
 
   private = list(
