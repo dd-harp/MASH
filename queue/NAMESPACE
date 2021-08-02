@@ -2,4 +2,5 @@
 
 export(Aquatic_Poisson)
 export(Human_SI)
+export(Mosquito_RM)
 export(build_biting_parameters)

@@ -1,3 +1,7 @@
+library(data.table)
+library(futile.logger)
+
+
 mrm_check_parameters <- function(parameters) {
   required <- c(
     "duration", "N", "lambda", "psi", "biting_weight", "EIP", "maxEIP",
@@ -194,6 +198,53 @@ mosquito_rm_dynamics <- function(
 }
 
 
+#' This stochastic matrix approximates the R-M model for initial values.
+#' @param b The fraction that bite infectious humans each round.
+#' @param parameters all other parameters
+#' @param location_idx which location to model for steady-state.
+#' @return A long-time steady state value for M, Y, and Z as a vector.
+#' Given emergence, EIP, and biting rate, what would be a steady-state
+#' number of M, Y, and Z? This solves x'=Ax for steady state.
+#' You might think we should just solve this matrix. Yes.
+long_term <- function(b, parameters, location_idx) {
+  lambda <- parameters$lambda[location_idx, 1]  # emergence per day
+  p <- parameters$p  # daily survival.
+  M0 <- lambda * p / (1 - p)  # The total number of mosquitoes, given emergence
+  EIP <- parameters$EIP[1]
+  m <- 1 - p  # mortality
+  # A stochastic matrix for susceptible, lots of Y, and one Z.
+  A <- matrix(0, nrow = EIP + 2, ncol = EIP + 2)
+  A[1, ] <- 1 - p
+  A[row(A) == col(A) + 1] <- p
+  A[1, 1] <- 1 - b
+  A[2, 1] <- b
+  A[EIP + 2, EIP + 2] <- p
+  eval <- eigen(A)
+  # The first eigenvalue really is one, which means we want the
+  # first eigenvector.
+  stopifnot(abs(Im(eval$values[1])) < 1e-12)
+  stopifnot(abs(1 - Re(eval$values[1])) < 1e-12)
+  ll <- Re(eval$vectors[, 1])
+  M0 * ll / sum(ll)
+}
+
+
+#' Find fraction of mosquitoes bitten each day, given fraction infected.
+#' @param parameters The input module parameters.
+#' @return A function to use for optimization.
+#' If we know how many mosquitoes should be infected at steady state,
+#' find the number of bites that must be happening. This has to figure
+#' out how to allocated the infected fraction among Y and Z and invert
+#' the relationship between biting and Y and Z.
+make_tosolve <- function(parameters, location_idx) {
+  f <- parameters$infected_fraction[location_idx]
+  tosolve <- function(b) {
+    x <- long_term(b, parameters, location_idx)
+    abs(sum(x[2:length(x)]) / sum(x) - f)
+  }
+}
+
+
 #' Create a default state for mosquito-RM model.
 #'
 #' @param parameters The initial array of parameters.
@@ -261,6 +312,16 @@ mosquito_rm_copy_state <- function(state) {
 }
 
 
+
+#' A module to represent mosquitoes at sites, as a filed of mosquitoes.
+#'
+#' A \code{Mosquito_RM} is a module for MASH.
+#'
+#' @docType class
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords R6 class
+#'
+#' @export
 Mosquito_RM <- R6::R6Class(
   classname = "Mosquito_RM",
   portable = TRUE,
@@ -283,11 +344,13 @@ Mosquito_RM <- R6::R6Class(
       putative_past <- data.table::data.table(
         Location = rep(1:parameters$N, day_cnt),
         Time = rep(0:(parameters$duration - 1), each = parameters$N),
-        M = rep(state$M, day_cnt),
-        Y = rep(rowSums(state$Y), day_cnt),
-        Z = rep(state$Z, day_cnt)
+        M = rep(private$state$M, day_cnt),
+        Y = rep(rowSums(private$state$Y), day_cnt),
+        Z = rep(private$state$Z, day_cnt)
       )
-      putative_past[, c("a") := parameters$a]
+      # putative_past[, c("a") := parameters$a]
+      putative_past[, c("a") := list(parameters$a)]
+      # putative_past[, `:=`(a = parameters$a)]
       private$output <- putative_past
     },
 
