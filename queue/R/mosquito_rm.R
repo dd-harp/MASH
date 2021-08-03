@@ -1,7 +1,3 @@
-library(data.table)
-library(futile.logger)
-
-
 #' Make sure the parameters list has every value it should have.
 mrm_check_parameters <- function(parameters) {
   required <- c(
@@ -162,7 +158,7 @@ mosquito_rm_convert_bloodmeal <- function(bloodmeal_dt) {
 #' of the Ross-Macdonald model. The aquatic lifecycle is stochastic, but
 #' the rest is deterministic.
 mosquito_rm_dynamics <- function(
-  state, parameters, bites, aquatic = mosquito_rm_aquatic
+  state, parameters, bites, aquatic
 ) {
   with(parameters, {
     with(state, {
@@ -170,7 +166,7 @@ mosquito_rm_dynamics <- function(
       year_day <- day_within_year(simulation_day + year_day_start - 1)
 
       # It matters whether we apply survival to the new adults.
-      M <- p_psi %*% (M + aquatic(lambda[, year_day]))
+      M <- p_psi %*% (M + aquatic)
       Y <- p_psi %*% Y
       Z <- p_psi %*% Z
 
@@ -197,6 +193,26 @@ mosquito_rm_dynamics <- function(
       )
     })
   })
+}
+
+
+#' An average of kappa over the past ten days so that we can project forward.
+#'
+#' @param kappa A matrix of values for each patch, for all days. Nx10.
+#' @return A matrix of kappa values for each patch and day, Nx10.
+#'
+#' We use this function because it can look at trends instead of a
+#' simple average. This version weights most recent days to construct
+#' a constant value for the future. These values shouldn't have an
+#' effect on the module's output because of delays in the system,
+#' but we make them to be consistent.
+mosquito_rm_average_kappa <- function(kappa) {
+  duration <- dim(kappa)[2]
+  weights <- exp((-1 / duration) * (duration - 1:duration))
+  weights <- weights / sum(weights)
+  one_day <- kappa %*% weights
+  as_row <- rep(one_day, duration)
+  matrix(as_row, ncol = duration)
 }
 
 
@@ -314,6 +330,25 @@ mosquito_rm_copy_state <- function(state) {
 }
 
 
+#' Create a sample dataset from mosquitoes to bloodmeal.
+#'
+#' @param place_cnt Integer number of locations to do the biting.
+#' @param time_step Duration of time step within which to bite.
+#'
+#' @export
+sample_mosquito_kappa <- function(place_cnt = 3L, time_step = 10.0) {
+  infected_rate <- runif(place_cnt, 0, 100)
+  step_cnt <- as.integer(time_step)
+  bites <- sapply(infected_rate, function(x) {rpois(step_cnt, x)})
+  events <- data.table(
+    Location = rep(1:place_cnt, step_cnt),
+    Bites = as.numeric(t(bites)),
+    Time = rep(1:step_cnt - 1, each = place_cnt)
+  )
+  events
+}
+
+
 
 #' A module to represent mosquitoes at sites, as a filed of mosquitoes.
 #'
@@ -362,21 +397,23 @@ Mosquito_RM <- R6::R6Class(
     #' @param step_id The integer ID of this step.
     #' @param bloodmeal_dt The input bloodmeal data from the last time step.
     #'     This has Bites, Time, Location in a data table.
-    step = function(step_id, bloodmeal_dt) {
+    #' @param aquatic A matrix of emergence for mosquitoes at sites.
+    step = function(step_id, bloodmeal_dt, aquatic) {
       # Let's consider how to get the bloodmeal information into this module.
       past_bites <- mosquito_rm_convert_bloodmeal(bloodmeal_dt)
       # mosquito_rm_discrete_step
       params <- private$parameters
       today_state <- private$state
       for (i in 1:params$duration) {
-        today_state <- mosquito_rm_dynamics(today_state, params, bites_arr[, i])
+        today_state <- mosquito_rm_dynamics(
+          today_state, params, past_bites[, i], aquatic[, i])
       }
-      future_kappa <- mosquito_rm_average_kappa(bites_arr)
+      future_kappa <- mosquito_rm_average_kappa(past_bites)
       future_state <- mosquito_rm_copy_state(today_state)
       output <- vector(mode = "list", length = params$duration)
       for (i in 1:params$duration) {
         future_state <- mosquito_rm_dynamics(
-          future_state, params, future_kappa[, i])
+          future_state, params, future_kappa[, i], aquatic[, i])
         output[[i]] <- with(future_state, data.table(
           Location = 1:length(M),
           Time = simulation_day - 1,
@@ -391,6 +428,11 @@ Mosquito_RM <- R6::R6Class(
       private$state <- today_state
       private$output <- unified_out
       invisible(self)
+    },
+
+    #' Get mosquito density at each site.
+    path = function() {
+      private$output
     },
 
     #' @description
